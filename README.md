@@ -1,8 +1,9 @@
-# Microsoft Power BI visuals Core
-
 > Note: this repository was recently moved from `PowerBI-Visuals`. This repository contains information about the core PowerBI Visuals and reference for custom visuals developed using the old method / tools.
 >
 > If you are creating a new custom visual it is highly recommended that you use the new api / tools [read more](https://github.com/Microsoft/PowerBI-visuals)
+
+
+# Microsoft Power BI visuals Core
 
 [![Build status](https://ci.appveyor.com/api/projects/status/77d940234217vpap/branch/master?svg=true)](https://ci.appveyor.com/project/powerbi-gitbot/powerbi-visuals)
 [![Build Status](https://travis-ci.org/Microsoft/PowerBI-visuals.svg?branch=master)](https://travis-ci.org/Microsoft/PowerBI-visuals)
