@@ -1,6 +1,6 @@
 # Microsoft Power BI visuals Core
 
-> Note: this repo was recently moved from `PowerBI-Visuals` this contains information about the core PowerBI Visuals and reference for custom visuals developed using the old method
+> Note: this repository was recently moved from `PowerBI-Visuals`. This repository contains information about the core PowerBI Visuals and reference for custom visuals developed using the old method / tools.
 >
 > If you are creating a new custom visual it is highly recommended that you use the new api / tools [read more](https://github.com/Microsoft/PowerBI-visuals)
 
