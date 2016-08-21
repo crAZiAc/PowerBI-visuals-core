@@ -39,7 +39,6 @@ module powerbi.visuals {
     export interface SlicerBehaviorOptions {
         slicerContainer: D3.Selection;
         itemLabels: D3.Selection;
-        clear: D3.Selection;
         dataPoints: SlicerDataPoint[];
         interactivityService: IInteractivityService;
         settings: SlicerSettings;
@@ -68,7 +67,6 @@ module powerbi.visuals {
             interactivityService: IInteractivityService): void {
 
             SlicerWebBehavior.bindSlicerItemSelectionEvent(slicers, selectionHandler, slicerSettings, interactivityService);
-            SlicerWebBehavior.bindSlicerClearEvent(behaviorOptions.clear, selectionHandler);
             if (behaviorOptions.searchInput)
                 SlicerWebBehavior.bindSlicerSearchEvent(behaviorOptions.searchInput, selectionHandler, behaviorOptions.slicerValueHandler);
 
@@ -108,10 +106,13 @@ module powerbi.visuals {
                     shouldCheck = jsCommon.LogicExtensions.XOR(d.selected, isSelectionInverted);
                 }
                 
-                if (shouldCheck)
+                if (shouldCheck){
                     slicerItem.classList.add('selected');
-                else
+                }
+                else {
                     slicerItem.classList.remove('selected');
+                }
+                    
 
                 // Set input selected state to match selection
                 let input = slicerItem.getElementsByTagName('input')[0];
@@ -131,15 +132,6 @@ module powerbi.visuals {
                 }
                 selectionHandler.persistSelectionFilter(slicerProps.filterPropertyIdentifier);
             });
-        }
-
-        private static bindSlicerClearEvent(slicerClear: D3.Selection, selectionHandler: ISelectionHandler): void {
-            if (slicerClear) {
-                slicerClear.on("click", () => {
-                    selectionHandler.handleClearSelection();
-                    selectionHandler.persistSelectionFilter(slicerProps.filterPropertyIdentifier);
-                });
-            }
         }
         
         private static bindSlicerSearchEvent(slicerSearch: D3.Selection, selectionHandler: ISelectionHandler, slicerValueHandler: SlicerValueHandler): void {

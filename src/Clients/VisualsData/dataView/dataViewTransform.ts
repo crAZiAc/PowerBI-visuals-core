@@ -24,6 +24,8 @@
  *  THE SOFTWARE.
  */
 
+/// <reference path="../_references.ts"/>
+
 module powerbi.data {
     import inherit = Prototype.inherit;
     import inheritSingle = Prototype.inheritSingle;
@@ -237,7 +239,7 @@ module powerbi.data {
             
             transformObjects(transformed, transformContext.visualCapabilitiesDataViewKinds, objectDescriptors, transformContext.transforms.objects, selectTransforms, transformContext.colorAllocatorFactory);
 
-            transformed = DataViewCategoricalProjectionOrder.apply(transformed, transformContext.applicableRoleMappings, projectionOrdering, selectsToInclude);
+            transformed = DataViewCategoricalProjectionOrder.apply(transformed, transformContext.applicableRoleMappings, transformContext.dataRoles, projectionOrdering, selectsToInclude);
 
             // Note: Do this step after transformObjects() so that metadata columns in 'transformed' have roles and objects.general.formatString populated
             transformed = DataViewConcatenateCategoricalColumns.detectAndApply(
@@ -687,8 +689,13 @@ module powerbi.data {
 
             let metadataOnce = objectsForAllSelectors.metadataOnce;
             let dataObjects = objectsForAllSelectors.data;
-            if (metadataOnce)
-                evaluateMetadataObjects(dataView, selectTransforms, objectDescriptors, metadataOnce.objects, dataObjects, colorAllocatorFactory);
+            if (metadataOnce) {
+                for (let i = 0, len = metadataOnce.length; i < len; i++) {
+                    let metadataOnceObject = metadataOnce[i];
+                    let objectDefns = metadataOnceObject.objects;
+                    evaluateMetadataObjects(dataView, selectTransforms, objectDescriptors, metadataOnceObject.selector, objectDefns, dataObjects, colorAllocatorFactory);
+                }
+            }
 
             let metadataObjects = objectsForAllSelectors.metadata;
             if (metadataObjects) {
@@ -706,48 +713,31 @@ module powerbi.data {
                 let colorAllocatorCache = populateColorAllocatorCache(dataView, selectTransforms, objectDefns, colorAllocatorFactory);
                 evaluateDataRepetition(dataView, targetDataViewKinds, selectTransforms, objectDescriptors, dataObject.selector, dataObject.rules, objectDefns, colorAllocatorCache);
             }
-
-            let userDefined = objectsForAllSelectors.userDefined;
-            if (userDefined) {
-                // TODO: We only handle user defined objects at the metadata level, but should be able to support them with arbitrary repetition.
-                evaluateUserDefinedObjects(dataView, selectTransforms, objectDescriptors, userDefined, colorAllocatorFactory);
-            }
         }
 
-        function evaluateUserDefinedObjects(
-            dataView: DataView,
-            selectTransforms: DataViewSelectTransform[],
-            objectDescriptors: DataViewObjectDescriptors,
-            objectDefns: DataViewObjectDefinitionsForSelector[],
-            colorAllocatorFactory: IColorAllocatorFactory): void {
-            debug.assertValue(dataView, 'dataView');
-            debug.assertAnyValue(selectTransforms, 'selectTransforms');
-            debug.assertValue(objectDescriptors, 'objectDescriptors');
-            debug.assertValue(objectDefns, 'objectDefns');
-            debug.assertValue(colorAllocatorFactory, 'colorAllocatorFactory');
+        export function mergeObjects(targetObjects: DataViewObjects, sourceObjects: _.Dictionary<DataViewObject>, selector: Selector): void {
+            debug.assertValue(targetObjects, 'targetObjects');
+            debug.assertAnyValue(selector, 'selector');
 
-            let dataViewObjects: DataViewObjects = dataView.metadata.objects;
-            if (!dataViewObjects) {
-                dataViewObjects = dataView.metadata.objects = {};
-            }
+            if (_.isEmpty(sourceObjects))
+                return;
 
-            for (let objectDefn of objectDefns) {
-                let id = objectDefn.selector.id;
+            for (let objectName in sourceObjects) {
+                let sourceObject = sourceObjects[objectName];
 
-                let colorAllocatorCache = populateColorAllocatorCache(dataView, selectTransforms, objectDefn.objects, colorAllocatorFactory);
-                let evalContext = createStaticEvalContext(colorAllocatorCache, dataView, selectTransforms);
-                let objects = DataViewObjectEvaluationUtils.evaluateDataViewObjects(evalContext, objectDescriptors, objectDefn.objects);
+                if (selector && selector.id !== undefined) {
+                    let targetObject = targetObjects[objectName];
+                    if (!targetObject)
+                        targetObject = targetObjects[objectName] = {};
 
-                for (let objectName in objects) {
-                    let object = <DataViewObject>objects[objectName];
+                    let instances = targetObject.$instances;
+                    if (!instances)
+                        instances = targetObject.$instances = {};
 
-                    let map = <DataViewObjectMap>dataViewObjects[objectName];
-                    if (!map)
-                        map = dataViewObjects[objectName] = [];
-                    debug.assert(DataViewObjects.isUserDefined(map), 'expected DataViewObjectMap');
-
-                    // NOTE: We do not check for duplicate ids.
-                    map.push({ id: id, object: object });
+                    instances[selector.id] = sourceObject;
+                }
+                else {
+                    targetObjects[objectName] = sourceObject;
                 }
             }
         }
@@ -757,12 +747,14 @@ module powerbi.data {
             dataView: DataView,
             selectTransforms: DataViewSelectTransform[],
             objectDescriptors: DataViewObjectDescriptors,
+            selector: Selector,
             objectDefns: DataViewNamedObjectDefinition[],
             dataObjects: DataViewObjectDefinitionsForSelectorWithRule[],
             colorAllocatorFactory: IColorAllocatorFactory): void {
             debug.assertValue(dataView, 'dataView');
             debug.assertAnyValue(selectTransforms, 'selectTransforms');
             debug.assertValue(objectDescriptors, 'objectDescriptors');
+            debug.assertAnyValue(selector, 'selector');
             debug.assertValue(objectDefns, 'objectDefns');
             debug.assertValue(dataObjects, 'dataObjects');
             debug.assertValue(colorAllocatorFactory, 'colorAllocatorFactory');
@@ -771,10 +763,15 @@ module powerbi.data {
             let evalContext = createStaticEvalContext(colorAllocatorCache, dataView, selectTransforms);
             let objects = DataViewObjectEvaluationUtils.evaluateDataViewObjects(evalContext, objectDescriptors, objectDefns);
             if (objects) {
-                dataView.metadata.objects = objects;
+                let metadataObjects: DataViewObjects = dataView.metadata.objects;
+                if (!metadataObjects) {
+                    metadataObjects = dataView.metadata.objects = {};
+                }
+
+                mergeObjects(metadataObjects, objects, selector);
 
                 for (let objectName in objects) {
-                    let object = <DataViewObject>objects[objectName],
+                    let object = objects[objectName],
                         objectDesc = objectDescriptors[objectName];
 
                     for (let propertyName in object) {
@@ -1175,11 +1172,17 @@ module powerbi.data {
                     if (objects) {
                         // TODO: This mutates the DataView -- the assumption is that prototypal inheritance has already occurred.  We should
                         // revisit this, likely when we do lazy evaluation of DataView.
-                        if (!targetColumn.column.objects) {
-                            targetColumn.column.objects = [];
+                        let columnObjects: DataViewObjects[] = targetColumn.column.objects; 
+                        if (!columnObjects) {
+                            columnObjects = targetColumn.column.objects = [];
                             targetColumn.column.objects.length = len;
                         }
-                        targetColumn.column.objects[i] = objects;
+
+                        if (!columnObjects[i]) {
+                            columnObjects[i] = {};
+                        }
+
+                        mergeObjects(columnObjects[i], objects, selector);
                     }
 
                     if (!containsWildcard)
@@ -1240,9 +1243,17 @@ module powerbi.data {
                             for (let j = 0, jlen = valuesInGroup.length; j < jlen; j++) {
                                 let valueColumn = valuesInGroup[j],
                                     valueSource = valueColumn.source;
+
                                 if (valueSource.queryName === selectorMetadata) {
                                     let valueSourceOverwrite = Prototype.inherit(valueSource);
-                                    valueSourceOverwrite.objects = objects;
+
+                                    let valueColumnObjects: DataViewObjects = valueSourceOverwrite.objects;
+                                    if (!valueColumnObjects) {
+                                        valueColumnObjects = valueSourceOverwrite.objects = {};
+                                    }
+
+                                    mergeObjects(valueColumnObjects, objects, selector);
+
                                     valueColumn.source = valueSourceOverwrite;
 
                                     foundMatch = true;
@@ -1251,7 +1262,13 @@ module powerbi.data {
                             }
                         }
                         else {
-                            valueGroup.objects = objects;
+                            let valueGroupObjects: DataViewObjects = valueGroup.objects;
+                            if (!valueGroupObjects) {
+                                valueGroupObjects = valueGroup.objects = {};
+                            }
+
+                            mergeObjects(valueGroupObjects, objects, selector);
+
                             setGrouped(dataViewCategoricalValues, valuesGrouped);
 
                             foundMatch = true;
@@ -1525,8 +1542,13 @@ module powerbi.data {
                 let column = columns[i];
                 if (column.queryName === metadataId) {
                     let objects = DataViewObjectEvaluationUtils.evaluateDataViewObjects(evalContext, objectDescriptors, objectDefns);
-                    if (objects)
-                        column.objects = objects;
+
+                    let columnObjects: DataViewObjects = column.objects;
+                    if (!columnObjects) {
+                        columnObjects = column.objects = {};
+                    }
+
+                    mergeObjects(columnObjects, objects, selector);
                 }
             }
         }

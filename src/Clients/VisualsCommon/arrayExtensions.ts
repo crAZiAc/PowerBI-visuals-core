@@ -150,14 +150,15 @@ module jsCommon {
         /**
          * Returns a value indicating whether the arrays have the same values in the same sequence.
          */
-        export function sequenceEqual<T>(left: T[], right: T[], comparison: (x: T, y: T) => boolean): boolean {
+        export function sequenceEqual<T, U>(left: T[], right: U[], comparison: (x: T, y: U) => boolean): boolean {
             debug.assertValue(comparison, 'comparison');
 
             // Normalize falsy to null
             if (!left) { left = null; }
             if (!right) { right = null; }
 
-            if (left === right) {
+            // T can be same as U, and it is possible for left and right to be the same array object...
+            if (left === <any[]>right) {
                 return true;
             }
 
@@ -396,7 +397,7 @@ module jsCommon {
                 (a, b) => b - a :
                 (a, b) => a - b;
                 
-            return isSorted(values, compareFunction);            
+            return isSorted(values, compareFunction);
         }
     }
 } 

@@ -193,7 +193,8 @@ declare module powerbi {
     export interface DataViewMappingScriptDefinition {
         source: DataViewObjectPropertyIdentifier;
         provider: DataViewObjectPropertyIdentifier;
-        imageFormat?: string;
+        scriptSourceDefault?: string;
+        scriptProviderDefault?: string;
     }
 
     export interface DataViewScriptResultMapping {

@@ -44,6 +44,23 @@ module powerbi.data {
         Where: QueryFilter[];
     }
 
+    export interface GroupingDefinition {
+        Version: number;
+        Sources: EntitySource[];
+        GroupedColumns: QueryExpressionContainer[];
+        GroupItems?: GroupItem[];
+        BinItem?: BinItem;
+    }
+
+    export interface GroupItem {
+        DisplayName: string;
+        Expression?: QueryExpressionContainer;
+    }
+
+    export interface BinItem {
+        Expression: QueryExpressionContainer;
+    }
+
     export enum EntitySourceType {
         Table = 0,
         Pod = 1,

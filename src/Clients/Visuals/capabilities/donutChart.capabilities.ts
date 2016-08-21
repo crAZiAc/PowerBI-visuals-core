@@ -46,6 +46,11 @@ module powerbi.visuals {
                 displayName: data.createDisplayNameGetter('Role_DisplayName_Values'),
                 description: data.createDisplayNameGetter('Role_DisplayName_ValuesDescription'),
                 requiredTypes: [{ numeric: true }, { integer: true }],
+            }, {
+                name: 'Tooltips',
+                kind: VisualDataRoleKind.Measure,
+                displayName: data.createDisplayNameGetter('Role_DisplayName_Tooltips'),
+                joinPredicate: JoinPredicateBehavior.None,
             }
         ],
         objects:{ 
@@ -109,7 +114,7 @@ module powerbi.visuals {
                 values: {
                     group: {
                         by: 'Series',
-                        select: [{ bind: { to: 'Y' } }],
+                        select: [{ bind: { to: 'Y' } }, { for: { in: 'Tooltips' } }],
                         dataReductionAlgorithm: { top: {} }
                     }
                 },

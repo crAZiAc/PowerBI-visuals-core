@@ -28,8 +28,12 @@
 
 module powerbi.visuals {
     import EnumExtensions = jsCommon.EnumExtensions;
-    import ClassAndSelector = jsCommon.CssConstants.ClassAndSelector;
     import createClassAndSelector = jsCommon.CssConstants.createClassAndSelector;
+    import ReferenceLine = ReferenceLineHelper.ReferenceLine;
+    import ReferenceLineOptions = ReferenceLineHelper.ReferenceLineOptions;
+    import ReferenceLineDataLabelOptions = ReferenceLineHelper.ReferenceLineDataLabelOptions;
+    import SvgScrollbar = powerbi.visuals.controls.SvgScrollbar;
+    import Extent = powerbi.visuals.controls.Extent;
 
     const DEFAULT_AXIS_SCALE_TYPE: string = axisScale.linear;
     const COMBOCHART_DOMAIN_OVERLAP_TRESHOLD_PERCENTAGE = 0.1;
@@ -113,7 +117,6 @@ module powerbi.visuals {
         behavior?: IInteractiveBehavior;
         isLabelInteractivityEnabled?: boolean;
         tooltipsEnabled?: boolean;
-        tooltipBucketEnabled?: boolean;
         trimOrdinalDataOnOverflow?: boolean;
         advancedLineLabelsEnabled?: boolean;
         forecastEnabled?: boolean;
@@ -137,6 +140,7 @@ module powerbi.visuals {
         isStacked?(): boolean;
         shouldSuppressAnimation?(): boolean;
         supportsForecast?(): boolean;
+        getAxisLocationForRole?(role: string): AxisLocation;
     }
 
     export interface CartesianVisualConstructorOptions {
@@ -145,7 +149,6 @@ module powerbi.visuals {
         animator?: IGenericAnimator;
         isLabelInteractivityEnabled?: boolean;
         tooltipsEnabled?: boolean;
-        tooltipBucketEnabled?: boolean;
         advancedLineLabelsEnabled?: boolean;
         forecastEnabled?: boolean;
     }
@@ -182,6 +185,9 @@ module powerbi.visuals {
         cartesianHost: ICartesianVisualHost;
         chartType?: CartesianChartType;
         labelsContext?: D3.Selection; //TEMPORARY - for PlayAxis
+        services: {
+            tooltips: ITooltipService
+        };
     }
 
     export interface ICartesianVisualHost {
@@ -224,25 +230,6 @@ module powerbi.visuals {
         y2?: IAxisProperties;
     }
 
-    export interface ReferenceLineOptions {
-        graphicContext: D3.Selection;
-        referenceLineProperties: DataViewObject;
-        axes: CartesianAxisProperties;
-        viewport: IViewport;
-        classAndSelector: ClassAndSelector;
-        defaultColor: string;
-        isHorizontal: boolean;
-    }
-
-    export interface ReferenceLineDataLabelOptions {
-        referenceLineProperties: DataViewObject;
-        axes: CartesianAxisProperties;
-        viewport: IViewport;
-        defaultColor: string;
-        isHorizontal: boolean;
-        key: string;
-    }
-    
     export interface ViewportDataRange {
         startIndex: number;
         endIndex: number;
@@ -292,33 +279,30 @@ module powerbi.visuals {
         private legendObjectProperties: DataViewObject;
         private categoryAxisProperties: DataViewObject;
         private valueAxisProperties: DataViewObject;
-        private xAxisReferenceLines: DataViewObjectMap;
-        private y1AxisReferenceLines: DataViewObjectMap;
-        private referenceLines: DataViewObjectMap;
+        private referenceLines: ReferenceLine[];
+        private isScalar: boolean;
+
         private cartesianSmallViewPortProperties: CartesianSmallViewPortProperties;
         private interactivityService: IInteractivityService;
         private behavior: IInteractiveBehavior;
         private sharedColorPalette: SharedColorPalette;
         private isLabelInteractivityEnabled: boolean;
         private tooltipsEnabled: boolean;
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
         private trimOrdinalDataOnOverflow: boolean;
         private isMobileChart: boolean;
         private advancedLineLabelsEnabled: boolean;
         private forecastEnabled: boolean;
 
         private trendLines: TrendLine[];
-        private forecastLine: Forecast;
-
-        private xRefLine: ClassAndSelector = createClassAndSelector('x-ref-line');
-        private y1RefLine: ClassAndSelector = createClassAndSelector('y1-ref-line');
+        private forecastLines: Forecast[];
 
         public animator: IGenericAnimator;
 
         private axes: CartesianAxes;
         private scrollableAxes: ScrollableAxes;
         private svgAxes: SvgCartesianAxes;
-        private svgBrush: SvgBrush;
+        private svgScrollbar: SvgScrollbar;
         private renderedPlotArea: IViewport; // to help disable animation when property changes result in layout changes (e.g. 'legend off' should not animate)
 
         // TODO: Remove onDataChanged & onResizing once all visuals have implemented update.
@@ -346,7 +330,6 @@ module powerbi.visuals {
             this.trimOrdinalDataOnOverflow = true;
             if (options) {
                 this.tooltipsEnabled = options.tooltipsEnabled;
-                this.tooltipBucketEnabled = options.tooltipBucketEnabled;
                 this.forecastEnabled = options.forecastEnabled;
                 this.type = options.chartType;
                 this.isLabelInteractivityEnabled = options.isLabelInteractivityEnabled;
@@ -367,13 +350,14 @@ module powerbi.visuals {
 
             this.axes = new CartesianAxes(isScrollable, ScrollableAxes.ScrollbarWidth, this.trimOrdinalDataOnOverflow);
             this.svgAxes = new SvgCartesianAxes(this.axes);
-            this.svgBrush = new SvgBrush(ScrollableAxes.ScrollbarWidth);
-            this.scrollableAxes = new ScrollableAxes(this.axes, this.svgBrush);
+            this.svgScrollbar = new SvgScrollbar(ScrollableAxes.ScrollbarWidth);
+            this.scrollableAxes = new ScrollableAxes(this.axes, this.svgScrollbar);
         }
 
         public init(options: VisualInitOptions) {
             this.visualInitOptions = options;
             this.layers = [];
+            this.referenceLines = [];
 
             let element = this.element = options.element;
 
@@ -396,7 +380,7 @@ module powerbi.visuals {
             this.axes.setAxisLinesVisibility(axisLinesVisibility);
 
             this.svgAxes.init(chartAreaSvg);
-            this.svgBrush.init(chartAreaSvg);
+            this.svgScrollbar.init(chartAreaSvg);
 
             this.sharedColorPalette = new SharedColorPalette(options.style.colorPalette.dataColors);
 
@@ -407,6 +391,8 @@ module powerbi.visuals {
                 this.axes.isScrollable);
 
             this.isMobileChart = options.interactivity && options.interactivity.isInteractiveLegend;
+
+            this.tooltipService = createTooltipService(options.host);
         }
 
         private isPlayAxis(): boolean {
@@ -447,6 +433,32 @@ module powerbi.visuals {
             return !AxisHelper.isOrdinal(type);
         }
 
+        public static getScalarKeys(dataViewCategoryColumn: DataViewCategoryColumn): ScalarKeys {
+            let categoryColumnObjects: DataViewObjects[];
+            if (dataViewCategoryColumn)
+                categoryColumnObjects = dataViewCategoryColumn.objects;
+
+            if (!_.isEmpty(categoryColumnObjects)) {
+                let scalarKeys: ScalarKeys;
+                let categoryObjectsLength = categoryColumnObjects.length;
+
+                for (let i = 0; i < categoryObjectsLength; i++) {
+                    let categoryObjects: DataViewObjects = categoryColumnObjects[i];
+                    let scalarKey = DataViewObjects.getValue<PrimitiveValue>(categoryObjects, cartesianChartProps.scalarKey.scalarKeyMin);
+                    if (scalarKey !== undefined) {
+                        if (!scalarKeys) {
+                            scalarKeys = {
+                                values: new Array<PrimitiveValueRange>(categoryObjectsLength)
+                            };
+                        }
+                        let key: PrimitiveValueRange = { min: scalarKey };
+                        scalarKeys.values[i] = key;
+                    }
+                }
+                return scalarKeys;
+            }
+        }
+
         public static getAdditionalTelemetry(dataView: DataView): any {
             let telemetry: any = {};
 
@@ -481,27 +493,72 @@ module powerbi.visuals {
 
         private populateObjectProperties(dataViews: DataView[]) {
             if (dataViews && dataViews.length > 0) {
-                let dataViewMetadata = dataViews[0].metadata;
-
+                let dataView = dataViews[0];
+                let dataViewMetadata = dataView.metadata;
+                let hasScalarKeys = false;
+                
                 if (dataViewMetadata) {
+                    if (dataView.categorical && !_.isEmpty(dataView.categorical.categories))
+                        hasScalarKeys = !!CartesianChart.getScalarKeys(dataView.categorical.categories[0]);
                     this.legendObjectProperties = DataViewObjects.getObject(dataViewMetadata.objects, 'legend', {});
-                    this.xAxisReferenceLines = DataViewObjects.getUserDefinedObjects(dataViewMetadata.objects, 'xAxisReferenceLine');
-                    this.y1AxisReferenceLines = DataViewObjects.getUserDefinedObjects(dataViewMetadata.objects, 'y1AxisReferenceLine');
-                    this.referenceLines = DataViewObjects.getUserDefinedObjects(dataViewMetadata.objects, 'referenceLine');
+                    this.referenceLines = this.getStaticReferenceLines(dataViewMetadata);
                 }
                 else {
                     this.legendObjectProperties = {};
                 }
 
-                this.categoryAxisProperties = CartesianHelper.getCategoryAxisProperties(dataViewMetadata);
+                this.categoryAxisProperties = CartesianHelper.getCategoryAxisProperties(dataViewMetadata, hasScalarKeys /*axisTitleOnByDefault*/);
                 this.valueAxisProperties = CartesianHelper.getValueAxisProperties(dataViewMetadata);
             }
+        }
+
+        private getStaticReferenceLines(dataViewMetadata: DataViewMetadata): ReferenceLine[] {
+            let defaultColor = this.sharedColorPalette.getColorByIndex(0).value;
+            let referenceLines: ReferenceLine[] = [];
+
+            let xAxisReferenceLines = DataViewObjects.getUserDefinedObjects(dataViewMetadata.objects, 'xAxisReferenceLine');
+            referenceLines.push(...ReferenceLineHelper.readDataView(xAxisReferenceLines, defaultColor, 'xAxisReferenceLine', AxisLocation.X));
+
+            let y1AxisReferenceLines = DataViewObjects.getUserDefinedObjects(dataViewMetadata.objects, 'y1AxisReferenceLine');
+            referenceLines.push(...ReferenceLineHelper.readDataView(y1AxisReferenceLines, defaultColor, 'y1AxisReferenceLine', AxisLocation.Y1));
+
+            return referenceLines;
+        }
+
+        private getDataBoundReferenceLines(layerDataView: DataView, layer: ICartesianVisual): ReferenceLine[] {
+            let referenceLines: ReferenceLine[] = [];
+            if (layerDataView && layerDataView.categorical && layerDataView.categorical.values) {
+                let columnGroup = _.first(layerDataView.categorical.values.grouped());
+                if (columnGroup) {
+                    let defaultColor = this.sharedColorPalette.getColorByIndex(0).value;
+                    for (let valueColumn of columnGroup.values) {
+                        let metadataColumn = valueColumn.source;
+                        let dataBoundReferenceLines = DataViewObjects.getUserDefinedObjects(metadataColumn.objects, 'referenceLine');
+                        let axisLocation = this.getCartesianRoleKind(metadataColumn, layer);
+                        referenceLines.push(...ReferenceLineHelper.readDataView(dataBoundReferenceLines, defaultColor, 'referenceLine', axisLocation, metadataColumn.queryName));
+                    }
+                }
+            }
+
+            return referenceLines;
+        }
+
+        private getCartesianRoleKind(column: DataViewMetadataColumn, layer: ICartesianVisual): AxisLocation {
+            let dataRoles = column.roles;
+            if (layer.getAxisLocationForRole && dataRoles) {
+                for (let roleName in dataRoles) {
+                    if (dataRoles[roleName])
+                        return layer.getAxisLocationForRole(roleName);
+                }
+            }
+
+            return AxisLocation.Y1;
         }
 
         private updateInternal(options: VisualUpdateOptions, operationKind?: VisualDataChangeOperationKind): void {
             let dataViews = this.dataViews = options.dataViews;
             this.currentViewport = options.viewport;
-            
+
             if (!dataViews) return;
 
             if (this.layers.length === 0) {
@@ -516,7 +573,7 @@ module powerbi.visuals {
             if (operationKind != null) {
                 if (!_.isEmpty(dataViews)) {
                     this.populateObjectProperties(dataViews);
-                    this.axes.update(dataViews);
+                    this.axes.update(this.categoryAxisProperties, this.valueAxisProperties);
                     this.svgAxes.update(this.categoryAxisProperties, this.valueAxisProperties);
                     let dataView = dataViews[0];
                     if (dataView.metadata) {
@@ -526,19 +583,20 @@ module powerbi.visuals {
                             transparency: DataViewObjects.getValue(dataView.metadata.objects, scatterChartProps.plotArea.transparency, visualBackgroundHelper.getDefaultTransparency()),
                         };
                         
-                        let isScalar = true;
+                        this.isScalar = true;
                         let categoryColumn = dataView && dataView.categorical && _.first(dataView.categorical.categories);
 
                         if (categoryColumn && categoryColumn.source) {
-                            isScalar = visuals.CartesianChart.getIsScalar(dataView.metadata.objects, visuals.columnChartProps.categoryAxis.axisType, categoryColumn.source.type);
+                            let scalarKeys = CartesianChart.getScalarKeys(categoryColumn);
+                            this.isScalar = visuals.CartesianChart.getIsScalar(dataView.metadata.objects, visuals.columnChartProps.categoryAxis.axisType, categoryColumn.source.type, scalarKeys);
                         }
 
                         // Clear the load more handler if we're scalar and there's an existing handler. 
                         // Setup a handler if we're categorical and don't have one.
-                        if (isScalar && this.loadMoreDataHandler) {
+                        if (this.isScalar && this.loadMoreDataHandler) {
                             this.loadMoreDataHandler = null;
                         }
-                        else if (!isScalar && !this.loadMoreDataHandler) {
+                        else if (!this.isScalar && !this.loadMoreDataHandler) {
                             this.loadMoreDataHandler = new CartesianLoadMoreDataHandler(null, this.hostServices.loadMoreData, CartesianChart.LoadMoreThreshold);
                         }
                     }
@@ -549,11 +607,13 @@ module powerbi.visuals {
                 let trendLineDataViews = _.filter(dataViews, TrendLineHelper.isDataViewForRegression);
                 this.trendLines = [];
                 let forecastDataViews = _.filter(dataViews, ForecastHelper.isDataViewForForecast);
-                this.forecastLine = null;
+                this.forecastLines = [];
 
                 for (let i = 0, layerCount = layers.length; i < layerCount; i++) {
                     let layerDataView = layerDataViews[i];
                     layers[i].setData(layerDataView ? [layerDataView] : []);
+
+                    this.referenceLines.push(...this.getDataBoundReferenceLines(layerDataView, layers[i]));
 
                     if (this.supportsTrendLines(i)) {
                         let trendLineDataView = trendLineDataViews[i];
@@ -567,8 +627,8 @@ module powerbi.visuals {
                     if (this.supportsForecast(i)) {
                         let forecastDataView = forecastDataViews[i];
                         if (forecastDataView) {
-                            let forecastLine = ForecastHelper.readDataView(forecastDataView, layerDataView, this.sharedColorPalette);
-                            this.forecastLine = forecastLine;
+                            let forecastLines = ForecastHelper.readDataView(forecastDataView, layerDataView, this.sharedColorPalette);
+                            this.forecastLines.push(...forecastLines);
                         }
                     }
 
@@ -658,18 +718,12 @@ module powerbi.visuals {
             else if (options.objectName === 'valueAxis') {
                 this.getValueAxisValues(enumeration);
             }
-            else if (options.objectName === 'y1AxisReferenceLine') {
-                let refLinedefaultColor = this.sharedColorPalette.getColorByIndex(0).value;
-                ReferenceLineHelper.enumerateObjectInstances(enumeration, this.y1AxisReferenceLines, refLinedefaultColor, options.objectName);
-            }
-            else if (options.objectName === 'xAxisReferenceLine') {
-                let refLinedefaultColor = this.sharedColorPalette.getColorByIndex(0).value;
-                ReferenceLineHelper.enumerateObjectInstances(enumeration, this.xAxisReferenceLines, refLinedefaultColor, options.objectName);
+            else if (options.objectName === 'y1AxisReferenceLine' || options.objectName === 'xAxisReferenceLine') {
+                this.enumerateReferenceLines(enumeration, options.objectName);
             }
             else if (options.objectName === 'referenceLine') {
                 if (this.supportsDataBoundReferenceLines()) {
-                    let refLinedefaultColor = this.sharedColorPalette.getColorByIndex(0).value;
-                    ReferenceLineHelper.enumerateObjectInstances(enumeration, this.referenceLines, refLinedefaultColor, options.objectName);
+                    this.enumerateReferenceLines(enumeration, options.objectName);
                 }
             }
             else if (options.objectName === 'trend') {
@@ -679,7 +733,7 @@ module powerbi.visuals {
             }
             else if (options.objectName === 'forecast' && this.forecastEnabled) {
                 if (this.supportsForecast()) {
-                    ForecastHelper.enumerateObjectInstances(enumeration, this.forecastLine);
+                    ForecastHelper.enumerateObjectInstances(enumeration, this.forecastLines);
                 }
             }
             else if (options.objectName === 'plotArea') {
@@ -700,6 +754,12 @@ module powerbi.visuals {
             }
 
             return enumeration.complete();
+        }
+
+        private enumerateReferenceLines(enumeration: ObjectEnumerationBuilder, type: string) {
+            let refLinedefaultColor = this.sharedColorPalette.getColorByIndex(0).value;
+            let refLines = _.filter(this.referenceLines, (refLine) => refLine.type === type);
+            ReferenceLineHelper.enumerateObjectInstances(enumeration, refLines, refLinedefaultColor, type);
         }
 
         private supportsTrendLines(layerIndex?: number): boolean {
@@ -779,6 +839,10 @@ module powerbi.visuals {
                 }
                 else {
                     isScalar = CartesianHelper.isScalar(supportedType === axisType.both, this.categoryAxisProperties);
+
+                    // If the axis type property is set to scalar, check if we can actually render scalar (type supports it or scalar keys are available)
+                    if (isScalar)
+                        isScalar = this.isScalar;
                 }
             }
 
@@ -912,7 +976,6 @@ module powerbi.visuals {
                 this.animator,
                 this.axes.isScrollable,
                 this.tooltipsEnabled,
-                this.tooltipBucketEnabled,
                 this.advancedLineLabelsEnabled);
 
             // Initialize the layers
@@ -925,6 +988,9 @@ module powerbi.visuals {
                 triggerRender: (suppressAnimations: boolean) => this.render(suppressAnimations),
             };
             cartesianOptions.chartType = this.type;
+            cartesianOptions.services = {
+                tooltips: this.tooltipService,
+            };
 
             for (let i = 0, len = layers.length; i < len; i++)
                 layers[i].init(cartesianOptions);
@@ -1055,12 +1121,12 @@ module powerbi.visuals {
                 suppressAnimations,
                 (layers, axesLayout, suppressAnimations) => this.renderPlotArea(layers, axesLayout, suppressAnimations, legendMargins, resizeMode),
                 this.loadMoreDataHandler,
-                operationKind === VisualDataChangeOperationKind.Append /* preserveScrollbar */);
+                operationKind === VisualDataChangeOperationKind.Append || resizeMode != null /* preserveScrollbar */);
 
             // attach scroll event
             this.chartAreaSvg.on('wheel', () => {
                 if (!(this.axes.isXScrollBarVisible || this.axes.isYScrollBarVisible)) return;
-                TooltipManager.ToolTipInstance.hide();
+                this.tooltipService.hide();
                 let wheelEvent: any = d3.event;
                 let dy = wheelEvent.deltaY;
                 this.scrollableAxes.scrollDelta(dy);
@@ -1078,25 +1144,27 @@ module powerbi.visuals {
             let xs: number[] = [];
             let ys: number[] = [];
 
-            if (!_.isEmpty(this.xAxisReferenceLines)) {
-                let xAxisReferenceLineProperties: DataViewObject = this.xAxisReferenceLines[0].object;
-                let value = ReferenceLineHelper.extractReferenceLineValue(xAxisReferenceLineProperties);
-                xs.push(value);
+            if (this.referenceLines) {
+                for (let referenceLine of this.referenceLines) {
+                    let value = referenceLine.value;
+                    if (referenceLine.axis === AxisLocation.X)
+                        xs.push(value);
+                    else
+                        ys.push(value);
+                }
             }
 
-            if (!_.isEmpty(this.y1AxisReferenceLines)) {
-                let y1AxisReferenceLineProperties: DataViewObject = this.y1AxisReferenceLines[0].object;
-                let value = ReferenceLineHelper.extractReferenceLineValue(y1AxisReferenceLineProperties);
-                ys.push(value);
-            }
-
-            if (this.forecastLine && !_.isEmpty(this.forecastLine.points)) {
-                xs.push(..._.map(this.forecastLine.points, p => p.point.x));
-                ys.push(..._.map(this.forecastLine.points, p => p.point.y));
-                xs.push(..._.map(this.forecastLine.points, p => p.upperBound.x));
-                ys.push(..._.map(this.forecastLine.points, p => p.upperBound.y));
-                xs.push(..._.map(this.forecastLine.points, p => p.lowerBound.x));
-                ys.push(..._.map(this.forecastLine.points, p => p.lowerBound.y));
+            if (!_.isEmpty(this.forecastLines)) {
+                for (let forecastLine of this.forecastLines) {
+                    if (!_.isEmpty(forecastLine.points)) {
+                        xs.push(..._.map(forecastLine.points, p => p.point.x));
+                        ys.push(..._.map(forecastLine.points, p => p.point.y));
+                        xs.push(..._.map(forecastLine.points, p => p.upperBound.x));
+                        ys.push(..._.map(forecastLine.points, p => p.upperBound.y));
+                        xs.push(..._.map(forecastLine.points, p => p.lowerBound.x));
+                        ys.push(..._.map(forecastLine.points, p => p.lowerBound.y));
+                    }
+                }
             }
 
             let ensureXDomain: NumberRange = {
@@ -1200,117 +1268,28 @@ module powerbi.visuals {
 
         private renderForecast(axesLayout: CartesianAxesLayout, suppressAnimations: boolean): void {
             let scrollableRegion = this.svgAxes.getScrollableRegion();
-            ForecastHelper.render(this.forecastLine, scrollableRegion, axesLayout.axes, axesLayout.plotArea, this.animator, suppressAnimations);
+            ForecastHelper.render(this.forecastLines, scrollableRegion, axesLayout.axes, axesLayout.plotArea, this.animator, suppressAnimations);
         }
 
         private renderReferenceLines(axesLayout: CartesianAxesLayout): void {
-            let axes = axesLayout.axes;
-            let plotArea = axesLayout.plotArea;
-            let scrollableRegion = this.svgAxes.getScrollableRegion();
-            let refLineDefaultColor = this.sharedColorPalette.getColorByIndex(0).value;
-
-            let showY1ReferenceLines = false;
-            if (this.y1AxisReferenceLines) {
-                for (let referenceLineProperties of this.y1AxisReferenceLines) {
-                    let object: DataViewObject = referenceLineProperties.object;
-                    if (object[ReferenceLineHelper.referenceLineProps.show]) {
-
-                        let isHorizontal = !axes.y1.isCategoryAxis;
-                        let y1RefLineOptions = {
-                            graphicContext: scrollableRegion,
-                            referenceLineProperties: object,
-                            axes: axes,
-                            viewport: plotArea,
-                            classAndSelector: this.y1RefLine,
-                            defaultColor: refLineDefaultColor,
-                            isHorizontal: isHorizontal
-                        };
-
-                        ReferenceLineHelper.render(y1RefLineOptions);
-                        showY1ReferenceLines = true;
-                    }
-                }
-            }
-
-            if (!showY1ReferenceLines) {
-                scrollableRegion.selectAll(this.y1RefLine.selector).remove();
-            }
-
-            let showXReferenceLines = false;
-            if (this.xAxisReferenceLines) {
-                for (let referenceLineProperties of this.xAxisReferenceLines) {
-                    let object: DataViewObject = referenceLineProperties.object;
-                    if (object[ReferenceLineHelper.referenceLineProps.show]) {
-                        let isHorizontal = false;
-                        let xRefLineOptions = {
-                            graphicContext: scrollableRegion,
-                            referenceLineProperties: object,
-                            axes: axes,
-                            viewport: plotArea,
-                            classAndSelector: this.xRefLine,
-                            defaultColor: refLineDefaultColor,
-                            isHorizontal: isHorizontal
-                        };
-
-                        ReferenceLineHelper.render(xRefLineOptions);
-                        showXReferenceLines = true;
-                    }
-                }
-            }
-
-            if (!showXReferenceLines) {
-                scrollableRegion.selectAll(this.xRefLine.selector).remove();
-            }
+            let refLineOptions: ReferenceLineOptions = {
+                graphicContext: this.svgAxes.getScrollableRegion(),
+                axes: axesLayout.axes,
+                viewport: axesLayout.plotArea,
+                referenceLines: this.referenceLines,
+            };
+            ReferenceLineHelper.render(refLineOptions);
         }
 
         private getReferenceLineLabels(axes: CartesianAxisProperties, plotArea: IViewport): LabelDataPoint[] {
-            let refLineDefaultColor = this.sharedColorPalette.getColorByIndex(0).value;
-            let referenceLineLabels: LabelDataPoint[] = [];
-            if (this.y1AxisReferenceLines) {
-                for (let referenceLineProperties of this.y1AxisReferenceLines) {
-                    let object: DataViewObject = referenceLineProperties.object;
-                    if (object[ReferenceLineHelper.referenceLineProps.show] && object[ReferenceLineHelper.referenceLineProps.dataLabelShow]) {
-                        let isHorizontal = !axes.y1.isCategoryAxis;
-                        let y1RefLineLabelOptions: ReferenceLineDataLabelOptions = {
-                            referenceLineProperties: object,
-                            axes: axes,
-                            viewport: plotArea,
-                            defaultColor: refLineDefaultColor,
-                            isHorizontal: isHorizontal,
-                            key: JSON.stringify({
-                                type: 'y1AxisReferenceLine',
-                                id: referenceLineProperties.id,
-                            }),
-                        };
+            let dataLabelOptions: ReferenceLineDataLabelOptions = {
+                axes: axes,
+                viewport: plotArea,
+                referenceLines: this.referenceLines,
+                hostServices: this.hostServices,
+            };
 
-                        referenceLineLabels.push(ReferenceLineHelper.createLabelDataPoint(y1RefLineLabelOptions));
-                    }
-                }
-            }
-
-            if (this.xAxisReferenceLines) {
-                for (let referenceLineProperties of this.xAxisReferenceLines) {
-                    let object: DataViewObject = referenceLineProperties.object;
-                    if (object[ReferenceLineHelper.referenceLineProps.show] && object[ReferenceLineHelper.referenceLineProps.dataLabelShow]) {
-                        let isHorizontal = false;
-                        let xRefLineLabelOptions: ReferenceLineDataLabelOptions = {
-                            referenceLineProperties: object,
-                            axes: axes,
-                            viewport: plotArea,
-                            defaultColor: refLineDefaultColor,
-                            isHorizontal: isHorizontal,
-                            key: JSON.stringify({
-                                type: 'xAxisReferenceLine',
-                                id: referenceLineProperties.id,
-                            }),
-                        };
-
-                        referenceLineLabels.push(ReferenceLineHelper.createLabelDataPoint(xRefLineLabelOptions));
-                    }
-                }
-            }
-
-            return referenceLineLabels;
+            return ReferenceLineHelper.createLabelDataPoint(dataLabelOptions);
         }
 
         private renderDataLabels(labelDataPointGroups: LabelDataPointGroup[], labelsAreNumeric: boolean, plotArea: IViewport, suppressAnimations: boolean, isCombo: boolean): void {
@@ -1741,158 +1720,19 @@ module powerbi.visuals {
         rotateXTickLabels90?: boolean;
     }
 
-    class SvgBrush {
-        private element: D3.Selection;
-        private brushGraphicsContext: D3.Selection;
-        private brush: D3.Svg.Brush;
-        private brushWidth: number;
-        private scrollCallback: () => void;
-        private isHorizontal: boolean;
-        private brushStartExtent: number[];
-
-        private static events = {
-            brushStart: 'brushstart',
-            brush: 'brush',
-            brushEnd: 'brushend'
-        };
-
-        private static Brush = createClassAndSelector('brush');
-
-        constructor(brushWidth: number) {
-            this.brush = d3.svg.brush();
-            this.brushWidth = brushWidth;
-        }
-
-        public init(element: D3.Selection): void {
-            this.element = element;
-        }
-
-        public remove(): void {
-            this.element.selectAll(SvgBrush.Brush.selector).remove();
-            // Remove the listeners
-            this.brush
-                .on(SvgBrush.events.brushStart, null)
-                .on(SvgBrush.events.brush, null)
-                .on(SvgBrush.events.brushEnd, null);
-            this.brushGraphicsContext = undefined;
-        }
-
-        public getExtent(): number[] {
-            return this.brush.extent();
-        }
-
-        public setExtent(extent: number[]): void {
-            this.brush.extent(extent);
-        }
-
-        public setScale(scale: D3.Scale.OrdinalScale): void {
-            if (this.isHorizontal)
-                this.brush.x(scale);
-            else
-                this.brush.y(scale);
-        }
-
-        public setOrientation(isHorizontal: boolean): void {
-            this.isHorizontal = isHorizontal;
-        }
-
-        public renderBrush(
-            extentLength: number,
-            brushX: number,
-            brushY: number,
-            scrollCallback: () => void): void {
-
-            // create graphics context if it doesn't exist
-            if (!this.brushGraphicsContext) {
-                this.brushGraphicsContext = this.element.append("g")
-                    .classed(SvgBrush.Brush.class, true);
-            }
-
-            this.scrollCallback = scrollCallback;
-            
-            // events
-            this.brush
-                .on(SvgBrush.events.brushStart, () => this.brushStartExtent = this.brush.extent())
-                .on(SvgBrush.events.brush, () => {
-                    window.requestAnimationFrame(scrollCallback);
-                })
-                .on(SvgBrush.events.brushEnd, () => {
-                    this.resizeExtent(extentLength);
-                    this.updateExtentPosition(extentLength);
-                    this.brushStartExtent = null;
-                });
-
-            // position the graphics context
-            let brushContext = this.brushGraphicsContext
-                .attr({
-                    "transform": SVGUtil.translate(brushX, brushY),
-                    "drag-resize-disabled": "true" /* Disables resizing of the visual when dragging the scrollbar in edit mode */
-                })
-                .call(this.brush);
-              
-            // Disable the zooming feature by removing the resize elements
-            brushContext.selectAll(".resize")
-                .remove();
-
-            if (this.isHorizontal)
-                brushContext.selectAll("rect").attr("height", this.brushWidth);
-            else
-                brushContext.selectAll("rect").attr("width", this.brushWidth);
-        }
-
-        public scroll(scrollBarLength: number): void {
-            this.updateExtentPosition(scrollBarLength);
-            this.scrollCallback();
-        }
-
-        private updateExtentPosition(scrollBarLength: number): void {
-            let extent = this.brush.extent();
-            debug.assertNonEmpty(extent, 'updateExtentPosition, extent');
-            let newStartPos = extent[0];
-            let halfScrollBarLen = scrollBarLength / 2;
-
-            if (extent[0] === extent[1]) {
-                // user clicked on the brush background, width will be zero, offset x by half width
-                newStartPos = newStartPos - halfScrollBarLen;
-            }
-
-            if (extent[1] - extent[0] > scrollBarLength) {
-                // user is dragging one edge after mousedown in the background, figure out which side is moving
-                // also, center up on the new extent center
-                let halfDragLength = (extent[1] - extent[0]) / 2;
-                if (extent[0] < this.brushStartExtent[0])
-                    newStartPos = extent[0] + halfDragLength - halfScrollBarLen;
-                else
-                    newStartPos = extent[1] - halfDragLength - halfScrollBarLen;
-            }
-
-            if (this.isHorizontal)
-                this.brushGraphicsContext.select(".extent").attr('x', newStartPos);
-            else
-                this.brushGraphicsContext.select(".extent").attr('y', newStartPos);
-        }
-
-        private resizeExtent(extentLength: number): void {
-            if (this.isHorizontal)
-                this.brushGraphicsContext.select(".extent").attr("width", extentLength);
-            else
-                this.brushGraphicsContext.select(".extent").attr("height", extentLength);
-        }
-    }
-
     class ScrollableAxes {
         public static ScrollbarWidth = 10;
 
-        private brush: SvgBrush;
-        private brushMinExtent: number;
+        private scrollbar: SvgScrollbar;
+        private scrollbarMinExtent: number;
         private scrollScale: D3.Scale.OrdinalScale;
         private axisScale: D3.Scale.OrdinalScale;
 
         private axes: CartesianAxes;
 
-        constructor(axes: CartesianAxes, svgBrush: SvgBrush) {
+        constructor(axes: CartesianAxes, svgScrollbar: SvgScrollbar) {
             this.axes = axes;
-            this.brush = svgBrush;
+            this.scrollbar = svgScrollbar;
         }
 
         private filterDataToViewport(
@@ -1900,7 +1740,7 @@ module powerbi.visuals {
             layers: ICartesianVisual[],
             axes: CartesianAxisProperties,
             scrollScale: D3.Scale.OrdinalScale,
-            extent: number[],
+            extent: Extent,
             visibleCategoryCount: number): ViewportDataRange {
 
             if (!scrollScale) {
@@ -1911,13 +1751,13 @@ module powerbi.visuals {
             let data: CartesianData[] = [];
 
             // NOTE: using start + numVisibleCategories to make sure we don't have issues with exactness related to extent start/end
-            //      (don't use extent[1])
+            //      (don't use extent.end)
             /*
-             When extent[0] and extent[1] are very close to the boundary of a new index, due to floating point err,
+             When extent.start and extent.end are very close to the boundary of a new index, due to floating point err,
              the "start" might move to the next index but the "end" might not change until you slide one more pixel.
              It makes things really jittery during scrolling, sometimes you see N columns and sometimes you briefly see N+1.
             */
-            let startIndex = AxisHelper.lookupOrdinalIndex(scrollScale, extent[0]);
+            let startIndex = AxisHelper.invertOrdinalScale(scrollScale, extent.start);
             let endIndex = startIndex + visibleCategoryCount; // NOTE: intentionally 1 past end index
 
             let domain = scrollScale.domain();
@@ -1973,8 +1813,8 @@ module powerbi.visuals {
                 return; //do nothing - too small
 
             this.axisScale = null;
-            let brushX: number;
-            let brushY: number;
+            let scrollbarX: number;
+            let scrollbarY: number;
             let scrollbarLength: number;
             let numVisibleCategories: number;
             let categoryThickness: number;
@@ -1988,21 +1828,23 @@ module powerbi.visuals {
             if (loadMoreDataHandler || showingScrollBar) {
                 if (!this.axes.isYAxisCategorical()) {
                     this.axisScale = <D3.Scale.OrdinalScale>axesLayout.axes.x.scale;
-                    brushX = axesLayout.margin.left;
-                    brushY = axesLayout.viewport.height;
+                    scrollbarX = axesLayout.margin.left;
+                    scrollbarY = axesLayout.viewport.height;
                     categoryThickness = axesLayout.axes.x.categoryThickness;
                     let outerPadding = axesLayout.axes.x.outerPadding;
-                    numVisibleCategories = Double.floorWithPrecision((plotArea.width - outerPadding * 2) / categoryThickness);
+                    // Always have at least 1 category showing
+                    numVisibleCategories = Math.max(1, Double.floorWithPrecision((plotArea.width - outerPadding * 2) / categoryThickness));
                     scrollbarLength = (numVisibleCategories + 1) * categoryThickness;
                     newAxisLength = plotArea.width;
                 }
                 else {
                     this.axisScale = <D3.Scale.OrdinalScale>axesLayout.axes.y1.scale;
-                    brushX = axesLayout.viewport.width;
-                    brushY = axesLayout.margin.top;
+                    scrollbarX = axesLayout.viewport.width;
+                    scrollbarY = axesLayout.margin.top;
                     categoryThickness = axesLayout.axes.y1.categoryThickness;
                     let outerPadding = axesLayout.axes.y1.outerPadding;
-                    numVisibleCategories = Double.floorWithPrecision((plotArea.height - outerPadding * 2) / categoryThickness);
+                    // Always have at least 1 category showing
+                    numVisibleCategories = Math.max(1, Double.floorWithPrecision((plotArea.height - outerPadding * 2) / categoryThickness));
                     scrollbarLength = (numVisibleCategories + 1) * categoryThickness;
                     newAxisLength = plotArea.height;
                 }
@@ -2021,19 +1863,14 @@ module powerbi.visuals {
                     }
                 }
 
-                this.brush.remove();
+                this.scrollbar.remove();
                 renderDelegate(layers, axesLayout, suppressAnimations);
                 return;
             }
 
-            // viewport is REALLY small
-            if (numVisibleCategories < 1) {
-                return; // don't do anything
-            }
-
             this.scrollScale = this.axisScale.copy();
             this.scrollScale.rangeBands([0, scrollbarLength]); //no inner/outer padding, keep the math simple
-            this.brushMinExtent = this.scrollScale(numVisibleCategories - 1);
+            this.scrollbarMinExtent = this.scrollScale(numVisibleCategories);
 
             // Options: use newAxisLength to squeeze-pop and keep the chart balanced, 
             //          or use scrollbarLength to keep rects still - but it leaves unbalanced right edge
@@ -2045,12 +1882,22 @@ module powerbi.visuals {
             // we should consider using option 2 during resize, then switch to option 1 when resize ends.
             this.axisScale.rangeBands([0, newAxisLength], CartesianChart.InnerPaddingRatio, CartesianChart.OuterPaddingRatio);
 
-            this.brush.setOrientation(this.axes.isXScrollBarVisible);
-            this.brush.setScale(this.scrollScale);
-            this.brush.setExtent([0, this.brushMinExtent]);
+            this.scrollbar.setOrientation(this.axes.isXScrollBarVisible);
+            this.scrollbar.setScale(this.scrollScale);
+            this.scrollbar.scrollBarLength = scrollbarLength;
+            this.scrollbar.setExtentLength(this.scrollbarMinExtent);
 
+            if(!preserveScrollPosition){
+                // If we're not preserving the scroll position, move the scrollbar back to the start
+                this.scrollbar.setExtent({
+                    start: 0,
+                    end: null
+                });
+            }
+            
+            
             // This function will be called whenever we scroll.
-            let renderOnScroll = (extent: number[], suppressAnimations: boolean) => {
+            let renderOnScroll = (extent: Extent, suppressAnimations: boolean) => {
                 let dataRange = this.filterDataToViewport(this.axisScale, layers, axesLayout.axes, this.scrollScale, extent, numVisibleCategories);
                 if (dataRange == null)
                     return;
@@ -2066,21 +1913,18 @@ module powerbi.visuals {
                 renderDelegate(layers, axesLayout, suppressAnimations);
             };
 
-            let scrollCallback = () => this.onBrushed(scrollbarLength, renderOnScroll);
-            this.brush.renderBrush(this.brushMinExtent, brushX, brushY, scrollCallback);
+            let scrollCallback = () => this.onScroll(renderOnScroll);
+            this.scrollbar.render(scrollbarX, scrollbarY, scrollCallback);
 
             // Either scroll to the specified location or simply render the visual.
             if (preserveScrollPosition && loadMoreDataHandler) {
                 let startIndex = loadMoreDataHandler.viewportDataRange ? loadMoreDataHandler.viewportDataRange.startIndex : 0;
 
-                // Clamp 1st to update the size of the extent, then scroll to the new index
-                ScrollableAxes.clampBrushExtent(this.brush, scrollbarLength, this.brushMinExtent);
-
                 // ScrollTo takes care of the rendering
                 this.scrollTo(startIndex);
             }
             else {
-                renderOnScroll(this.brush.getExtent(), suppressAnimations);
+                renderOnScroll(this.scrollbar.getExtent(), suppressAnimations);
             }
         }
 
@@ -2099,57 +1943,19 @@ module powerbi.visuals {
 
             let lastIndex = _.last(this.scrollScale.domain());
             startIndex = Math.max(0, Math.min(startIndex, lastIndex));
+            let startPosition = this.scrollScale(startIndex);
+            let extent: Extent = {
+                start: startPosition,
+                end: null
+            };
 
-            let extent = this.brush.getExtent();
-            let extentLength = extent[1] - extent[0];
-            let halfCategoryThickness = (this.scrollScale(1) - this.scrollScale(0)) / 2;
-            extent[0] = this.scrollScale(startIndex) + halfCategoryThickness;
-            extent[1] = extent[0] + extentLength + halfCategoryThickness;
-            this.brush.setExtent(extent);
-
-            let scrollbarLength = this.scrollScale.rangeExtent()[1];
-            ScrollableAxes.clampBrushExtent(this.brush, scrollbarLength, this.brushMinExtent);
-            this.brush.scroll(scrollbarLength);
+            this.scrollbar.setExtent(extent);
+            this.scrollbar.refreshExtentAndVisual();
         }
 
-        private onBrushed(scrollbarLength: number, render: (extent: number[], suppressAnimations: boolean) => void): void {
-            let brush = this.brush;
-
-            ScrollableAxes.clampBrushExtent(this.brush, scrollbarLength, this.brushMinExtent);
-            let extent = brush.getExtent();
+        private onScroll(render: (extent: Extent, suppressAnimations: boolean) => void): void {
+            let extent = this.scrollbar.getExtent();
             render(extent, /*suppressAnimations*/ true);
-        }
-
-        private static clampBrushExtent(brush: SvgBrush, scrollbarLength: number, minExtent: number): void {
-            let extent = brush.getExtent();
-            let width = extent[1] - extent[0];
-
-            if (width === minExtent && extent[1] <= scrollbarLength && extent[0] >= 0)
-                return;
-
-            if (width > minExtent) {
-                let padding = (width - minExtent) / 2;
-                extent[0] += padding;
-                extent[1] -= padding;
-            }
-
-            else if (width < minExtent) {
-                let padding = (minExtent - width) / 2;
-                extent[0] -= padding;
-                extent[1] += padding;
-            }
-
-            if (extent[0] < 0) {
-                extent[0] = 0;
-                extent[1] = minExtent;
-            }
-
-            else if (extent[0] > scrollbarLength - minExtent) {
-                extent[0] = scrollbarLength - minExtent;
-                extent[1] = scrollbarLength;
-            }
-
-            brush.setExtent(extent);
         }
     }
 
@@ -2715,12 +2521,9 @@ module powerbi.visuals {
             this.maxMarginFactor = factor;
         }
 
-        public update(dataViews: DataView[]) {
-            if (dataViews && dataViews.length > 0) {
-                let dataViewMetadata = dataViews[0].metadata;
-                this.categoryAxisProperties = CartesianHelper.getCategoryAxisProperties(dataViewMetadata);
-                this.valueAxisProperties = CartesianHelper.getValueAxisProperties(dataViewMetadata);
-            }
+        public update(categoryAxisProperties: DataViewObject, valueAxisProperties: DataViewObject) {
+            this.categoryAxisProperties = categoryAxisProperties;
+            this.valueAxisProperties = valueAxisProperties;
 
             let axisPosition = this.valueAxisProperties['position'];
             this.yAxisOrientation = axisPosition ? axisPosition.toString() : yAxisPosition.left;
@@ -3256,7 +3059,6 @@ module powerbi.visuals {
             animator?: any,
             isScrollable: boolean = false,
             tooltipsEnabled?: boolean,
-            tooltipBucketEnabled?: boolean,
             advancedLineLabelsEnabled?: boolean): ICartesianVisual[] {
 
             let layers: ICartesianVisual[] = [];
@@ -3266,7 +3068,6 @@ module powerbi.visuals {
                 animator: animator,
                 interactivityService: interactivityService,
                 tooltipsEnabled: tooltipsEnabled,
-                tooltipBucketEnabled: tooltipBucketEnabled,
                 advancedLineLabelsEnabled: advancedLineLabelsEnabled
             };
 
@@ -3342,7 +3143,6 @@ module powerbi.visuals {
                 interactivityService: defaultOptions.interactivityService,
                 isScrollable: defaultOptions.isScrollable,
                 tooltipsEnabled: !isTrendLayer && defaultOptions.tooltipsEnabled,
-                tooltipBucketEnabled: defaultOptions.tooltipBucketEnabled,
                 chartType: type,
                 advancedLineLabelsEnabled: defaultOptions.advancedLineLabelsEnabled
             };
@@ -3373,7 +3173,6 @@ module powerbi.visuals {
                 interactivityService: defaultOptions.interactivityService,
                 isScrollable: defaultOptions.isScrollable,
                 tooltipsEnabled: defaultOptions.tooltipsEnabled,
-                tooltipBucketEnabled: defaultOptions.tooltipBucketEnabled,
                 chartType: type
             };
             return new ColumnChart(options);

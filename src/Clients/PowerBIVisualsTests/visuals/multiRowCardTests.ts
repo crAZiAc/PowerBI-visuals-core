@@ -27,11 +27,13 @@
 /// <reference path="../_references.ts"/>
 
 module powerbitests {
+    import CardData = powerbi.visuals.CardData;
+    import CardItemData = powerbi.visuals.CardItemData;
     import MultiRowCard = powerbi.visuals.MultiRowCard;
     import multiRowCardCapabilities = powerbi.visuals.multiRowCardCapabilities;
     import ValueType = powerbi.ValueType;
     import PrimitiveType = powerbi.PrimitiveType;
-
+    
     describe("MultiRowCard", () => {
         let dataTypeWebUrl = ValueType.fromPrimitiveTypeAndCategory(PrimitiveType.Text, "WebUrl");
 
@@ -88,6 +90,32 @@ module powerbitests {
             ]
         };
 
+        let dataViewMetadataWithEvenNumOfTitles: powerbi.DataViewMetadata = {
+            columns: [
+                { displayName: "value", type: ValueType.fromDescriptor({ numeric: true }), isMeasure: true },
+                { displayName: "genre1", type: ValueType.fromDescriptor({ text: true }) },
+                { displayName: "genre2", type: ValueType.fromDescriptor({ text: true }) },
+            ]
+        };
+
+        let dataViewMetadataWithOddNumOfTitles: powerbi.DataViewMetadata = {
+            columns: [
+                { displayName: "value", type: ValueType.fromDescriptor({ numeric: true }), isMeasure: true },
+                { displayName: "genre1", type: ValueType.fromDescriptor({ text: true }) },
+                { displayName: "genre2", type: ValueType.fromDescriptor({ text: true }) },
+                { displayName: "genre3", type: ValueType.fromDescriptor({ text: true }) },
+            ]
+        };
+
+        let dataViewMetadataWithTitleInMiddle: powerbi.DataViewMetadata = {
+            columns: [
+                { displayName: "value1", type: ValueType.fromDescriptor({ numeric: true }), isMeasure: true },
+                { displayName: "genre", type: ValueType.fromDescriptor({ text: true }) },
+                { displayName: "value2", type: ValueType.fromDescriptor({ numeric: true }), isMeasure: true },
+                { displayName: "value3", type: ValueType.fromDescriptor({ numeric: true }), isMeasure: true },
+            ]
+        };
+
         let dataViewMetadataWithTitleAndLongColumn: powerbi.DataViewMetadata = {
             columns: [
                 { displayName: "very long long long long column name", type: ValueType.fromDescriptor({ numeric: true }), isMeasure: true },
@@ -103,6 +131,39 @@ module powerbitests {
                     [12345, "Adventure"]
                 ],
                 columns: dataViewMetadataWithTitle.columns
+            }
+        };
+
+        let dataWithEvenNumOfTitles: powerbi.DataView = {
+            metadata: dataViewMetadataWithEvenNumOfTitles,
+            table: {
+                rows: [
+                    [123456.789, "Action", "Comedy"],
+                    [12345, "Adventure", "Romance"]
+                ],
+                columns: dataViewMetadataWithEvenNumOfTitles.columns
+            }
+        };
+
+        let dataWithOddNumOfTitles: powerbi.DataView = {
+            metadata: dataViewMetadataWithOddNumOfTitles,
+            table: {
+                rows: [
+                    [123456.789, "Action", "Comedy", "Thriller"],
+                    [12345, "Adventure", "Romance", "Sci-Fi"]
+                ],
+                columns: dataViewMetadataWithOddNumOfTitles.columns
+            }
+        };
+
+        let dataWithTitleInMiddle: powerbi.DataView = {
+            metadata: dataViewMetadataWithTitleInMiddle,
+            table: {
+                rows: [
+                    [123456.789, "Action", 9873.654, 748.145],
+                    [12345, "Adventure", 1547.479, 579.176]
+                ],
+                columns: dataViewMetadataWithTitleInMiddle.columns
             }
         };
 
@@ -555,46 +616,6 @@ module powerbitests {
                 });
             });
 
-            it("Validate multiRowCard converter without Title", () => {
-                let cardData = MultiRowCard.converter(data, data.metadata.columns.length, data.table.rows.length);
-
-                expect(cardData.dataModel.length).toBe(2);
-                expect(cardData.dataModel).toEqual([
-                    { title: undefined, showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "123,456.79", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }, { caption: "8/31/1999", details: "date", showURL: false, showImage: false, showKPI: false, columnIndex: 1 }, { caption: "category1", details: "category", showURL: false, showImage: false, showKPI: false, columnIndex: 2 }] },
-                    { title: undefined, showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "12,345.00", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }, { caption: "8/1/2014", details: "date", showURL: false, showImage: false, showKPI: false, columnIndex: 1 }, { caption: "category2", details: "category", showURL: false, showImage: false, showKPI: false, columnIndex: 2 }] }
-                ]);
-            });
-
-            it("Validate multiRowCard converter With Title", () => {
-                let cardData = MultiRowCard.converter(dataWithTitle, dataWithTitle.metadata.columns.length, dataWithTitle.table.rows.length);
-
-                expect(cardData.dataModel.length).toBe(2);
-                expect(cardData.dataModel).toEqual([
-                    { title: "Action", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "123,456.79", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }] },
-                    { title: "Adventure", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "12,345.00", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }] }
-                ]);
-            });
-
-            it("Validate multiRowCard converter null value", () => {
-                let cardData = MultiRowCard.converter(dataWithNullValue, dataWithNullValue.metadata.columns.length, dataWithNullValue.table.rows.length);
-
-                expect(cardData.dataModel.length).toBe(2);
-                expect(cardData.dataModel).toEqual([
-                    { title: "Action", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "(Blank)", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }] },
-                    { title: "Adventure", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "(Blank)", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }] }
-                ]);
-            });
-
-            it("Validate multiRowCard converter KPI", () => {
-                let cardData = MultiRowCard.converter(dataWithKPI, dataWithKPI.metadata.columns.length, dataWithKPI.table.rows.length);
-
-                expect(cardData.dataModel.length).toBe(2);
-                expect(cardData.dataModel).toEqual([
-                    { title: "test1", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "powervisuals-glyph bars-stacked bars-three", details: "KPI", showURL: false, showImage: false, showKPI: true, columnIndex: 0 }] },
-                    { title: "test2", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "powervisuals-glyph bars-stacked bars-four", details: "KPI", showURL: false, showImage: false, showKPI: true, columnIndex: 0 }] }
-                ]);
-            });
-
             it("Validate that multiRowCard displays title with Empty values", () => {
                 let dataWithEmptyTitle: powerbi.DataView = {
                     metadata: dataViewMetadataWithTitle,
@@ -939,6 +960,95 @@ module powerbitests {
                     expect(loadMoreSpy.calls.all().length).toBe(1);
 
                 });
+            });
+        });
+
+        describe('converter', () => {
+            it("without title generates correct data", () => {
+                let cardData = MultiRowCard.converter(data, data.metadata.columns.length, data.table.rows.length);
+
+                expect(cardData.dataModel.length).toBe(2);
+                expect(cardData.dataModel).toEqual([
+                    { title: undefined, showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "123,456.79", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }, { caption: "8/31/1999", details: "date", showURL: false, showImage: false, showKPI: false, columnIndex: 1 }, { caption: "category1", details: "category", showURL: false, showImage: false, showKPI: false, columnIndex: 2 }] },
+                    { title: undefined, showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "12,345.00", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }, { caption: "8/1/2014", details: "date", showURL: false, showImage: false, showKPI: false, columnIndex: 1 }, { caption: "category2", details: "category", showURL: false, showImage: false, showKPI: false, columnIndex: 2 }] }
+                ]);
+            });
+
+            it("with title correct data", () => {
+                let cardData = MultiRowCard.converter(dataWithTitle, dataWithTitle.metadata.columns.length, dataWithTitle.table.rows.length);
+
+                expect(cardData.dataModel.length).toBe(2);
+                expect(cardData.dataModel).toEqual([
+                    { title: "Action", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "123,456.79", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }] },
+                    { title: "Adventure", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "12,345.00", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }] }
+                ]);
+            });
+
+            it("with title in the middle column correct data sets correct column indexes", () => {
+                let cardData = MultiRowCard.converter(dataWithTitleInMiddle, dataWithTitleInMiddle.metadata.columns.length, dataWithTitleInMiddle.table.rows.length);
+                let dataViewRows = dataWithTitleInMiddle.table.rows;
+                // Make sure we have the right number of cards
+                expect(cardData.dataModel.length).toBe(dataViewRows.length);
+
+                for (let i = 0; i < dataViewRows.length; i++) {
+                    let cardItemsData = cardData.dataModel[i].cardItemsData;
+
+                    // Make sure we have the right number of items
+                    let expectedNumItems = dataViewRows[i].length - 1; // Minus 1 since we exclude the title
+                    let actualNumItems = cardItemsData.length;
+                    expect(actualNumItems).toEqual(expectedNumItems);
+
+                    let expectedColumnIndex = 0;
+                    cardItemsData.forEach((cardItemData: CardItemData) => {
+                        // Make sure the column indexes are in order
+                        expect(cardItemData.columnIndex).toEqual(expectedColumnIndex++);
+                    });
+                }
+            });
+
+            it('with even number of titles does not promote any items', () => {
+                let cardData = MultiRowCard.converter(dataWithEvenNumOfTitles, dataWithEvenNumOfTitles.metadata.columns.length, dataWithEvenNumOfTitles.table.rows.length);
+                let dataViewRows = dataWithEvenNumOfTitles.table.rows;
+                // Make sure we have the right number of cards
+                expect(cardData.dataModel.length).toBe(dataViewRows.length);
+
+                // Make sure none of the cards have a promoted title
+                cardData.dataModel.forEach((data: CardData) => {
+                    expect(data.title).toBeUndefined();
+                });
+            });
+
+            it('with odd number titles does not promote any items', () => {
+                // Added to catch the issue in #8187939 related to having an odd number of non-numeric items.
+                let cardData = MultiRowCard.converter(dataWithOddNumOfTitles, dataWithOddNumOfTitles.metadata.columns.length, dataWithOddNumOfTitles.table.rows.length);
+                let dataViewRows = dataWithOddNumOfTitles.table.rows;
+                // Make sure we have the right number of cards
+                expect(cardData.dataModel.length).toBe(dataViewRows.length);
+
+                // Make sure none of the cards have a promoted title
+                cardData.dataModel.forEach((data: CardData) => {
+                    expect(data.title).toBeUndefined();
+                });
+            });
+
+            it("with null value generates correct data", () => {
+                let cardData = MultiRowCard.converter(dataWithNullValue, dataWithNullValue.metadata.columns.length, dataWithNullValue.table.rows.length);
+
+                expect(cardData.dataModel.length).toBe(2);
+                expect(cardData.dataModel).toEqual([
+                    { title: "Action", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "(Blank)", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }] },
+                    { title: "Adventure", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "(Blank)", details: "value", showURL: false, showImage: false, showKPI: false, columnIndex: 0 }] }
+                ]);
+            });
+
+            it("with KPI generates correct data", () => {
+                let cardData = MultiRowCard.converter(dataWithKPI, dataWithKPI.metadata.columns.length, dataWithKPI.table.rows.length);
+
+                expect(cardData.dataModel.length).toBe(2);
+                expect(cardData.dataModel).toEqual([
+                    { title: "test1", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "powervisuals-glyph bars-stacked bars-three", details: "KPI", showURL: false, showImage: false, showKPI: true, columnIndex: 0 }] },
+                    { title: "test2", showTitleAsURL: false, showTitleAsImage: false, showTitleAsKPI: false, cardItemsData: [{ caption: "powervisuals-glyph bars-stacked bars-four", details: "KPI", showURL: false, showImage: false, showKPI: true, columnIndex: 0 }] }
+                ]);
             });
         });
 

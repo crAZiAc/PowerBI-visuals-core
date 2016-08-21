@@ -77,6 +77,19 @@ module powerbi.visuals {
         valueFormatted?: string;
     }
 
+    function isNodeGrandTotal(node: MatrixVisualNode): boolean {
+        if (node) {
+            let nodeRoot = node;
+            while (nodeRoot.parent)
+                nodeRoot = nodeRoot.parent;
+
+            return nodeRoot.isSubtotal;
+        }
+        else {
+            return false;
+        }
+    }
+
     export interface MatrixCornerItem {
         metadata: DataViewMetadataColumn;
         displayName: string;
@@ -85,6 +98,36 @@ module powerbi.visuals {
     }
 
     export class MatrixVisualBodyItem extends TablixUtils.TablixVisualCell {
+        constructor(dataPoint: any, rowItem: MatrixVisualNode, columnItem: MatrixVisualNode, columnMetadata: DataViewMetadataColumn, formatter: ICustomValueColumnFormatter, nullsAreBlank: boolean) {
+            let rowGreatestParent: MatrixVisualNode,
+                columnGreatestParent: MatrixVisualNode;
+            if (rowItem) {
+                rowGreatestParent = rowItem;
+                while (rowGreatestParent.parent)
+                    rowGreatestParent = rowGreatestParent.parent;
+            }
+            if (columnItem) {
+                columnGreatestParent = columnItem;
+                while (columnGreatestParent.parent)
+                    columnGreatestParent = columnGreatestParent.parent;
+            }
+
+            let isColumnGrandTotal = columnGreatestParent && !!columnGreatestParent.isSubtotal;
+            let isColumnSubtotal = !isColumnGrandTotal && columnItem && !!columnItem.isSubtotal;
+            let isRowGrandTotal = rowGreatestParent && !!rowGreatestParent.isSubtotal;
+            let isRowSubtotal = !isRowGrandTotal && rowItem && !!rowItem.isSubtotal;
+
+            super(
+                dataPoint,
+                isRowSubtotal,
+                isColumnSubtotal,
+                isRowGrandTotal,
+                isColumnGrandTotal,
+                columnMetadata,
+                formatter,
+                nullsAreBlank);
+        }
+
         public get isMeasure(): boolean {
             return true;
         };
@@ -367,7 +410,6 @@ module powerbi.visuals {
         public getIntersection(rowItem: MatrixVisualNode, columnItem: MatrixVisualNode): MatrixVisualBodyItem {
             debug.assertValue(rowItem, 'rowItem');
             debug.assertValue(columnItem, 'columnItem');
-            let isSubtotalItem = rowItem.isSubtotal === true || columnItem.isSubtotal === true;
 
             let node: DataViewMatrixNodeValue;
             let valueSource: DataViewMetadataColumn;
@@ -384,10 +426,10 @@ module powerbi.visuals {
 
             if (node) {
                 valueSource = this.matrix.valueSources[node.valueSourceIndex || 0];
-                bodyCell = new MatrixVisualBodyItem(node.value, isSubtotalItem, valueSource, this.formatter, false);
+                bodyCell = new MatrixVisualBodyItem(node.value, rowItem, columnItem, valueSource, this.formatter, false);
             }
             else {
-                bodyCell = new MatrixVisualBodyItem(undefined, isSubtotalItem, undefined, this.formatter, false);
+                bodyCell = new MatrixVisualBodyItem(undefined, rowItem, columnItem, undefined, this.formatter, false);
             }
 
             bodyCell.position.row.index = rowIndex;
@@ -678,16 +720,17 @@ module powerbi.visuals {
             if (this.options.onBindRowHeader)
                 this.options.onBindRowHeader(item);
 
-            this.setRowHeaderStyle(cell, cellStyle);
+            this.setRowHeaderStyle(cell, item, cellStyle);
 
             cell.applyStyle(cellStyle);
         }
 
-        private setRowHeaderStyle(cell: controls.ITablixCell, style: TablixUtils.CellStyle): void {
+        private setRowHeaderStyle(cell: controls.ITablixCell, item: MatrixVisualNode, style: TablixUtils.CellStyle): void {
             let propsGrid = this.formattingProperties.grid;
             let props = this.formattingProperties.rowHeaders;
             let propsValues = this.formattingProperties.values;
             let propsCols = this.formattingProperties.columnHeaders;
+            let propsGrandTotal = this.formattingProperties.grandTotal;
 
             style.borders.top = new EdgeSettings();
             if (cell.position.row.isFirst) {
@@ -727,8 +770,15 @@ module powerbi.visuals {
                 style.borders.right.applyParams(propsGrid.gridVertical, propsGrid.gridVerticalWeight, propsGrid.gridVerticalColor, EdgeType.Gridline);
             }
 
-            style.fontColor = props.fontColor;
-            style.backColor = props.backColor;
+            if (propsGrandTotal.applyToHeaders && isNodeGrandTotal(item)) {
+                style.fontColor = propsGrandTotal.fontColor || props.fontColor;
+                style.backColor = propsGrandTotal.backColor || props.backColor;
+            }
+            else {
+                style.fontColor = props.fontColor;
+                style.backColor = props.backColor;
+            }
+
             style.paddings.top = style.paddings.bottom = propsGrid.rowPadding;
         }
 
@@ -780,18 +830,25 @@ module powerbi.visuals {
             this.bindHeader(item, cell, cellElement, this.getColumnHeaderMetadata(item), cellStyle, overwriteTotalLabel);
             cell.contentWidth = Math.ceil(cell.contentWidth);
 
-            this.setColumnHeaderStyle(cell, cellStyle);
+            this.setColumnHeaderStyle(cell, item, cellStyle);
 
             cell.applyStyle(cellStyle);
         }
 
-        private setColumnHeaderStyle(cell: controls.ITablixCell, style: TablixUtils.CellStyle): void {
+        private setColumnHeaderStyle(cell: controls.ITablixCell, item: MatrixVisualNode, style: TablixUtils.CellStyle): void {
             let propsGrid = this.formattingProperties.grid;
             let props = this.formattingProperties.columnHeaders;
             let propsValues = this.formattingProperties.values;
+            let propsGrandTotal = this.formattingProperties.grandTotal;
 
-            style.fontColor = props.fontColor;
-            style.backColor = props.backColor;
+            if (propsGrandTotal.applyToHeaders && isNodeGrandTotal(item)) {
+                style.fontColor = propsGrandTotal.fontColor || props.fontColor;
+                style.backColor = propsGrandTotal.backColor || props.backColor;
+            }
+            else {
+                style.fontColor = props.fontColor;
+                style.backColor = props.backColor;
+            }
             style.paddings.top = style.paddings.bottom = propsGrid.rowPadding;
 
             style.borders.top = new EdgeSettings();
@@ -964,12 +1021,14 @@ module powerbi.visuals {
         private setBodyCellStyle(cell: controls.ITablixCell, item: MatrixVisualBodyItem, style: TablixUtils.CellStyle): void {
             let propsGrid = this.formattingProperties.grid;
             let props = this.formattingProperties.values;
-            let propsTotal = this.formattingProperties.subtotals;
+            let propsSubTotal = this.formattingProperties.subtotals;
+            let propsGrandTotal = this.formattingProperties.grandTotal;
             let propsRows = this.formattingProperties.rowHeaders;
             let propsColumns = this.formattingProperties.columnHeaders;
 
             style.paddings.top = style.paddings.bottom = propsGrid.rowPadding;
 
+            // #region Top Border
             style.borders.top = new EdgeSettings();
             if (cell.position.row.isFirst) { // First Row
                 style.borders.top.applyParams(outline.showTop(props.outline), propsGrid.outlineWeight, propsGrid.outlineColor, EdgeType.Outline);
@@ -979,7 +1038,9 @@ module powerbi.visuals {
                     style.paddings.top += propsGrid.outlineWeight;
 
             } // else: do nothing
+            // #endregion
 
+            // #region Bottom Border
             style.borders.bottom = new EdgeSettings();
             if (cell.position.row.isLast) { // Last Row
                 style.borders.bottom.applyParams(outline.showBottom(props.outline), propsGrid.outlineWeight, propsGrid.outlineColor, EdgeType.Outline);
@@ -991,12 +1052,16 @@ module powerbi.visuals {
             else {
                 style.borders.bottom.applyParams(propsGrid.gridHorizontal, propsGrid.gridHorizontalWeight, propsGrid.gridHorizontalColor);
             }
+            // #endregion
 
+            // #region Left Border
             style.borders.left = new EdgeSettings();
             if (cell.position.column.isFirst) { // First Column 
                 style.borders.left.applyParams(outline.showLeft(props.outline), propsGrid.outlineWeight, propsGrid.outlineColor, EdgeType.Outline);
             } // else: do nothing
+            // #endregion
 
+            // #region Right Border
             style.borders.right = new EdgeSettings();
             if (cell.position.column.isLast) { // Last Column
                 style.borders.right.applyParams(outline.showRight(props.outline), propsGrid.outlineWeight, propsGrid.outlineColor, EdgeType.Outline);
@@ -1008,26 +1073,32 @@ module powerbi.visuals {
             else {
                 style.borders.right.applyParams(propsGrid.gridVertical, propsGrid.gridVerticalWeight, propsGrid.gridVerticalColor, EdgeType.Gridline);
             }
+            // #endregion
 
+            // #region Font/Back Colors
             let rowBandingIndex: number;
-            if (this.formattingProperties.general.rowSubtotals && propsTotal.backColor) // Totals breaking banding sequence
+            if (this.formattingProperties.general.rowSubtotals && propsSubTotal.backColor) // Totals breaking banding sequence
                 rowBandingIndex = item.position.row.indexInSiblings;
             else
                 rowBandingIndex = item.position.row.index;
 
-            if (item.isTotal && propsTotal.fontColor) {
-                style.fontColor = propsTotal.fontColor;
-            }
-            else {
-                style.fontColor = rowBandingIndex % 2 === 0 ? props.fontColorPrimary : props.fontColorSecondary;
-            }
+            let bandingFontColor = rowBandingIndex % 2 === 0 ? props.fontColorPrimary : props.fontColorSecondary;
+            let bandingBackColor = rowBandingIndex % 2 === 0 ? props.backColorPrimary : props.backColorSecondary;
 
-            if (item.isTotal && propsTotal.backColor) {
-                style.backColor = propsTotal.backColor;
+            if (item.isGrandTotal) {
+                // Use Grand total style if it exists, else subtotals format, else values (to match saved reports styles)
+                style.fontColor = propsGrandTotal.fontColor || propsSubTotal.fontColor || bandingFontColor;
+                style.backColor = propsGrandTotal.backColor || propsSubTotal.backColor || bandingBackColor;
+            }
+            else if (item.isSubtotal) {
+                style.fontColor = propsSubTotal.fontColor || bandingFontColor;
+                style.backColor = propsSubTotal.backColor || bandingBackColor;
             }
             else {
-                style.backColor = rowBandingIndex % 2 === 0 ? props.backColorPrimary : props.backColorSecondary;
+                style.fontColor = bandingFontColor;
+                style.backColor = bandingBackColor;
             }
+            // #endregion
         }
 
         public unbindBodyCell(item: MatrixVisualBodyItem, cell: controls.ITablixCell): void {
@@ -1273,10 +1344,6 @@ module powerbi.visuals {
         }
     }
 
-    export interface MatrixConstructorOptions {
-        isTouchEnabled?: boolean;
-    }
-
     export class Matrix implements IVisual {
         private static preferredLoadMoreThreshold: number = 0.8;
         
@@ -1291,7 +1358,7 @@ module powerbi.visuals {
         private dataView: DataView;
         private formatter: ICustomValueColumnFormatter;
         private isInteractive: boolean;
-        private isTouchEnabled: boolean;
+        private isTouchDisabled: boolean;
         private hostServices: IVisualHostServices;
         private hierarchyNavigator: IMatrixHierarchyNavigator;
         private waitingForData: boolean;
@@ -1305,10 +1372,8 @@ module powerbi.visuals {
         */
         public persistingObjects: boolean;
 
-        constructor(options?: MatrixConstructorOptions) {
-            if (options) {
-                this.isTouchEnabled = options.isTouchEnabled;
-            }
+        constructor(options?: TablixUtils.TablixConstructorOptions) {
+            this.isTouchDisabled = options && options.isTouchDisabled;
         }
 
         public static customizeQuery(options: CustomizeQueryOptions): void {
@@ -1478,7 +1543,7 @@ module powerbi.visuals {
 
             let tablixOptions: controls.TablixOptions = {
                 interactive: this.isInteractive,
-                enableTouchSupport: this.isTouchEnabled,
+                enableTouchSupport: !this.isTouchDisabled,
                 layoutKind: layoutKind,
                 fontSize: TablixObjects.getTextSizeInPx(textSize),
             };
@@ -1570,6 +1635,9 @@ module powerbi.visuals {
         }
 
         public onViewModeChanged(viewMode: ViewMode): void {
+            /* On Edit mode, we need to disable touch bindings to allow touch 
+             * to control visual container position and not causing scrolling */
+            this.tablixControl.toggleTouchBindings(viewMode !== ViewMode.Edit);
             /* Refreshes the column headers to enable/disable Column resizing */
             this.updateViewport(this.currentViewport);
         }

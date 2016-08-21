@@ -89,6 +89,11 @@ module powerbi.visuals {
             description: data.createDisplayNameGetter('Visual_Reference_Line_Data_Label_Horizontal_Position_Description'),
             type: { enumeration: referenceLineDataLabelHorizontalPosition.type }
         },
+        dataLabelText: {
+            displayName: data.createDisplayNameGetter("Visual_Reference_Line_Data_Label_Text"),
+            description: data.createDisplayNameGetter('Visual_Reference_Line_Data_Label_Text_Description'),
+            type: { enumeration: labelText.type }
+        },
         dataLabelShow: {
             displayName: data.createDisplayNameGetter("Visual_Reference_Line_Data_Label"),
             description: data.createDisplayNameGetter('Visual_Reference_Line_Data_Label_Show_Description'),

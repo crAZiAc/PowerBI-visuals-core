@@ -32,7 +32,7 @@ module powerbi {
     export interface ValueTypeDescriptor {
         extendedType?: ExtendedType;
     }
-    
+
     /** Describes a data value type, including a primitive type and extended type if any (derived from data category). */
     export class ValueType implements ValueTypeDescriptor {
         private static typeCache: { [id: string]: ValueType } = {};
@@ -191,7 +191,10 @@ module powerbi {
             let otherPrimitiveType = other.primitiveType;
             if (this === other ||
                 this.primitiveType === otherPrimitiveType ||
-                otherPrimitiveType === PrimitiveType.Null)
+                otherPrimitiveType === PrimitiveType.Null ||
+                // Return true if both types are numbers
+                (this.numeric && other.numeric)
+            )
                 return true;
             return false;
         }
@@ -452,7 +455,7 @@ module powerbi {
         Geography = 1 << 10,
         Miscellaneous = 1 << 11,
         Formatting = 1 << 12,
-        Scripting = 1 << 13,        
+        Scripting = 1 << 13,
 
         // Primitive types (0-255 range [0xFF] | flags)
         // The member names and base values must match those in PrimitiveType.
@@ -505,7 +508,7 @@ module powerbi {
         Image = Binary | Miscellaneous | (200 << 16),
         ImageUrl = Text | Miscellaneous | (201 << 16),
         WebUrl = Text | Miscellaneous | (202 << 16),
-        Barcode =  Miscellaneous | (203 << 16),
+        Barcode = Miscellaneous | (203 << 16),
         Barcode_Text = Barcode | Text,
         Barcode_Integer = Barcode | Integer,
 
@@ -519,7 +522,7 @@ module powerbi {
         // Enumeration
         Enumeration = Text | 400 << 16,
         // Scripting
-        ScriptSource = Text | Scripting | (500 << 16),        
+        ScriptSource = Text | Scripting | (500 << 16),
         // NOTE: To avoid confusion, underscores should be used only to delimit primitive type variants of an extended type
         // (e.g. Year_Integer or Latitude_Double above)
 

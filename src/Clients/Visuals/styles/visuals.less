@@ -38,8 +38,21 @@
 @import (optional) "sunburstChart.less";
 
 @defaultShapeRendering: crispEdges;
-
 .visual {
+    .flex-row {
+        display: flex;
+        display: -webkit-flex;
+        flex-direction: row;
+        -webkit-flex-direction: row;
+    }
+
+    .flex-column {
+        display: flex;
+        display: -webkit-flex;
+        flex-direction: column;
+        -webkit-flex-direction: column;
+    }
+
     a:link {
         color: @defaultLinkColor;
         text-decoration: underline;
@@ -65,87 +78,79 @@
         pointer-events: none;
     }
 
-    .slicerHeader {
-        margin: 0 0 0 8px;
-        box-sizing: border-box;
-        .titleHeader {
-            margin: 0 8px 0 0;
+    .slicer-container {     
+        .flex-column;
 
-            .headerText {
-                color: @neutralPrimaryColor;
-                font-size: 14px;
-                text-overflow: ellipsis;
-                display: block;
+        .slicer-header-wrapper {
+            .flex-column;
+            flex: 0 0 auto;
+            -webkit-flex: 0 0 auto;
+        }
+
+        .slicer-content-wrapper {
+            .flex-column;
+            -webkit-flex: 1 0 0px;
+            flex: 1 0 0px;
+
+            .scroll-wrapper {
+                .flex-column;
+                flex: 1 0 0px;
+                -webkit-flex: 1 0 0px;
+            }
+                    
+            .searchHeader {
                 overflow: hidden;
-                white-space: nowrap;
-                width: auto;
-                margin:2px 0;
-            }
+                &.collapsed {
+                    display: none;
+                }
 
-            .clear {
-                .sprite(@slicer-reset);
-                margin: 4px 8px 4px 2px;
-                float: right;
-                cursor: pointer;
-                display: block;
-                visibility: hidden;
-            }
-        }
+                &.show {
+                    display: -webkit-box; // IOS 6-, Safari
+                    display: flex; // Opera, Firefox
+                    justify-content: space-between;
+                    align-items: center;
+                    border: 1px solid @neutralDarkColor;
+                    height: 20px;
+                    margin: 0px 8px 0 8px;
+                }
 
-        .searchHeader {
-             overflow: hidden;
+                .search {
+                    cursor: pointer;
+                    margin: 0 4px;
+                    flex: 0 0 auto;
+                    -webkit-flex: 0 0 auto;
+                    color: @neutralDarkColor;
+                }
 
-             &.collapsed {
-                display: none;
-            }
-
-            &.show {
-                display: -webkit-box; // IOS 6-, Safari
-                display: flex; // Opera, Firefox
-                justify-content: space-between;
-                -webkit-align-items: center;
-                width: ~"calc(100% - 10px)";
-                border: 1px solid @neutralDarkColor;
-                height: 20px;
-            }
-
-            .search {
-                cursor: pointer;
-                margin: 0 4px;
-                flex: 0 0 auto;
-                -webkit-flex: 0 0 auto;
-                color: @neutralDarkColor;
-            }
-
-            input {
-                color: @neutralPrimaryColor;
-                cursor: auto;
-                align-self: center;
-                flex: 1 1 0px;
-                -webkit-flex: 1 1 0px;
-                border-style:none;
-                padding: 0; // Override parent style
-            }
-        }
-    }
-
-    .slicerContainer, .horizontalSlicerContainer {
-        &.hasSelection {
-            &:hover {
-                .clear {
-                    visibility: visible;
+                input {
+                    color: @neutralPrimaryColor;
+                    cursor: auto;
+                    align-self: center;
+                    flex: 1 1 0px;
+                    -webkit-flex: 1 1 0px;
+                    border-style:none;
+                    padding: 0; // Override parent style
                 }
             }
         }
     }
 
     .slicerContainer {
+        .flex-column;
         cursor: pointer;
         font-size: 14px;
+        flex: 1 0 0px;
+        -webkit-flex: 1 0 0px;
 
         ul {
             padding: 0;
             margin: 0;
+        }
+
+        .slicerBody {
+            .flex-column;
+            flex: 1 0 0px;
+            -webkit-flex: 1 0 0px;
         }
 
         .slicerItemContainer {
@@ -271,21 +276,29 @@
     }
 
     .horizontalSlicerContainer {
+        .flex-column;
+        flex: 1 0 auto;
+        -webkit-flex: 1 0 auto;
+
         &.canScrollRight {
             .navigationArrow.right {
                 visibility: visible;
+                flex-shrink: 0;
             }
         }
 
         &.canScrollLeft {
             .navigationArrow.left {
                 visibility: visible;
+                flex-shrink: 0;
             }
         }
 
         .navigationArrow {
             visibility: hidden;
             background-color: white;
+            flex: 0 0 auto;
+            -webkit-flex: 0 0 auto;
 
             &.right {
                 .sprite(@horizontal-slicer-right-arrow);
@@ -304,30 +317,32 @@
         }
 
         .slicerBody {
+            .flex-row;
             align-items: center;
+            flex: 1 0 auto;
+            -webkit-flex: 1 0 auto;
             justify-content: space-between;
-            flex-direction: row;
         }
 
         .slicerItemsContainer {
             vertical-align: top;
-            width: 100%;
-            height: 100%;
-            -webkit-flex: 1; /* Chrome */
-            flex: 1;
+            flex-direction: row;
+            align-self: stretch;
+            flex: 1 0 0px;
+            -webkit-flex: 1 0 0px;
+            min-width: 0px;
         }
 
         .slicerText {
-            -webkit-flex-direction: column;
             flex-direction: column;
-            -webkit-justify-content: center;
             justify-content: center;
-            -webkit-align-items: center;
             align-items: center;
-            width: 100%;
-            height: 100%;
+            align-self: stretch;
             box-sizing: border-box;
             padding: 4px 0;
+            flex: 1 1 0px;
+            -webkit-flex: 1 1 0px;
+            min-width: 0px;
 
             &.selected, &.partiallySelected {
                 color: @whiteColor !important;
@@ -355,11 +370,8 @@
         }
 
         .slicerImage {
-            -webkit-flex-direction: column;
             flex-direction: column;
-            -webkit-justify-content: center;
             justify-content: center;
-            -webkit-align-items: center;
             align-items: center;
             width: 100%;
             height: 100%;
@@ -370,9 +382,9 @@
     
     /* Adding custom styles to the listView jQuery Scrollbar. */
     .scroll-wrapper {
+        display: block;
         width: 100%;
         height: 100%;
-        display: block;
 
         .scroll-content {
             height: inherit;
@@ -452,13 +464,7 @@
                 display: none;
             }
         }
-
-        .x-ref-line {
-            stroke-width: 3px;
-            stroke-opacity: 0.5;
-        }
-
-        .y1-ref-line {
+        .reference-line-front, .reference-line-back {
             stroke-width: 3px;
             stroke-opacity: 0.5;
         }
@@ -554,7 +560,7 @@
         }
     }
 
-    .lineChart {
+    .lineChart, .realTimeLineChart {
         .mainGraphicsContext {
             path {
                 fill: none;
@@ -1364,39 +1370,291 @@
     }
 
     .kpiVisual {
-        .goalText {
-            margin-top: -6px;
-            color: #333333;
-            font-family: Segoe UI Semibold,wf_segoe-ui_semibold,helvetica,arial,sans-serif;
-            font-size: 11px;
-        }
-
-        .textContainer {
+        .lastTrendAxisPointSummaryContainer {
             display: block;
             align-items: center;
             position: absolute;
             text-align: center;
-        }
 
-        .indicatorText {
-            font-family: wf_standard-font_light,helvetica,arial,sans-serif;
-            font-size: 60px;
-            display: flex;
-            align-items: center;
-            flex-direction: row;
-            justify-content: center;
+            .indicatorContainer {
+                font-family: wf_standard-font_light,helvetica,arial,sans-serif;
+                font-size: 60px;
+                display: flex;
+                align-items: center;
+                flex-direction: row;
+                justify-content: center;
+
+                .indicatorText {
+                    text-anchor: middle;
+                }
+
+                .powervisuals-glyph {
+                    font-size: 12px;
+                }
+            }
+
+            .goalText {
+                margin-top: -6px;
+                color: #333333;
+                font-family: Segoe UI Semibold,wf_segoe-ui_semibold,helvetica,arial,sans-serif;
+                font-size: 11px;
+                text-anchor: middle;
+            }
         }
     }
+    
+    .date-slicer {
+        width: 100%;
+        position: relative;
+        box-sizing: border-box;
+
+        .date-slicer-head {
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            margin-bottom: 12px;
+            
+            .date-slicer-select {
+                width: 100px;
+                margin-top: 5px;
+                margin-bottom: 10px;
+                outline: none;
+            }
+            
+            .date-slicer-range {
+                display: flex;
+                flex-grow: 0;
+                flex-direction: row;
+                justify-content: flex-start;
+                flex-wrap: wrap;
+
+                .date-slicer-control {
+                    position: relative;
+                    margin-right: 6px;
+                    margin-bottom: 6px;
+
+                    .date-slicer-input  {
+                        box-sizing: border-box;
+                        padding-left: 8px;
+                        width: 130px;
+                        height: 30px;
+                        border: 1px solid @neutralLightColor;
+                    }
+                
+                    .date-slicer-input[disabled] {
+                        background-color: white;
+                        color: @neutralTertiaryAltColor;
+                    }
+
+                    .date-slicer-icon::after {
+                        position: absolute;
+                        font-family: PowrMDL2;
+                        content: "\E787";
+                        font-size: 12px;
+                        height: 12px;
+                        width: 12px;
+                        right: 8px;
+                        top: 9px;
+                        cursor: pointer;
+                    }
+                }
+            } 
+        }
+
+        .date-slicer-slider {
+            margin: 8px;
+        }
+
+        .noUi-target {
+            box-shadow: none;
+            border: none;
+        }
+
+        .noUi-connect {
+            background-color:  @neutralColor;
+            box-shadow: none;
+            border: none;
+        }
+
+        .noUi-background {
+            background-color: @neutralLightColor;
+            box-shadow: none;
+            border-radius: 0px;
+            border: none;
+        }
+
+        .noUi-horizontal {
+            height: 6px;
+        }
+
+        .noUi-base {
+            left: 2px;
+        }
+
+        .noUi-handle {
+            width: 4px;
+            height: 17px;
+            background-color: @neutralPrimaryColor;
+            z-index: 1;
+            border: none;
+            box-shadow: none;
+        }
+        
+        // creates invisible touch area.
+        .noUi-handle::after {
+            height: 21px;
+            width: 16px;
+            background-color: transparent;
+            left: -6px;
+            top: -2px;
+            position: absolute;
+            content: "";
+        }
+
+        .ui-selectmenu-button {
+            outline: none;
+        }
+    }
+
+    .slicer-header {
+        margin: 0 0 0 8px;
+        box-sizing: border-box;
+        .flex-column;
+        flex: 0 0 auto;
+        
+        
+        .slicer-header-title {
+            margin: 0 8px 0 0;
+
+            .slicer-header-text {
+                color: @neutralPrimaryColor;
+                text-overflow: ellipsis;
+                font-size: 14px;
+                display: block;
+                overflow: hidden;
+                white-space: nowrap;
+                width: auto;
+                margin:2px 0;
+            }
+            
+            .slicer-header-clear {
+                .sprite(@slicer-reset);
+                margin: 4px 8px 4px 2px;
+                float: right;
+                cursor: pointer;
+                display: block;
+            }
+        }
+
+        .slicer-header-selectmenu {
+
+            .ui-selectmenu-button {
+                background: none;
+                border: none;
+                position: relative;
+                margin-bottom: 10px;
+                cursor: pointer;
+                outline: none;
+
+                .ui-icon::before {
+                    content: "\E972";
+                    font-family: PowrMDL2;
+                    font-style: normal;
+                    position: absolute;
+                    font-size: 9px;
+                }
+
+                .ui-icon {
+                    right: auto; 
+                    left: 50px;
+                    position: absolute;
+                    top: 50%;
+                    margin-top: -4px;
+                    text-indent: 0;
+                    background: none;
+                }
+
+                .ui-widget {
+                    font-size: inherit;
+                    font-family: inherit;
+                }
+            }
+
+            .ui-selectmenu-menu .ui-menu {
+                color: @neutralPrimaryColor;
+                width: auto !important;
+                border: none;
+                background: @whiteColor;
+                box-shadow: 0px 0px 3px 0px rgba(0,0,0,0.28);
+                border-radius: 0px;
+                font-family: inherit;
+                font-size: inherit;
+                font-weight: inherit;
+                margin: 0;
+                padding: 0;
+                list-style: none;
+                
+                .ui-state-default {
+                    border: none;
+                    background: none;
+                }
+
+                .ui-menu-item.ui-state-focus {
+                    border: none;
+                    background: @neutralLightColor;
+                }
+
+                .ui-menu-item {
+                    padding: 10px 28px 10px 12px;
+                    cursor: pointer;
+                }
+            }
+        }
+    }
+
+    .debugVisualContainer {
+        height: 100%;
+        overflow: hidden;
+        color: @neutralDarkColor;
+
+        &>div {
+            overflow: hidden;
+        }
+
+        .errorContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: @neutralDarkColor;
+            font-family: @regularFontFamily;
+            font-size: @mediumFontSize;
+            display: table;
+            background-color: @neutralLighterColor;
+            width: 100%;
+            height: 100%;
+
+            .errorMessage {
+                display: table-cell;
+                line-height: normal;
+                vertical-align: middle;
+                padding: 0px 20px;
+                margin: 4px 4px;
+                text-align: center;
+
+                .errorSpan {
+                    margin-right: 4px;
+                }
+
+            }
+        }
+    }      
 }
 
-// TODO: remove
+// Disables border on sandbox iFrame
 .visual-sandbox {
     border: none;
     overflow: hidden;
-    //adding this because cors block fonts for sandboxed visuals.
-    .tooltip-container .tooltip-row {
-        font-size: 9px;
-    }
 }
 
 // TODO: Get redlined by design

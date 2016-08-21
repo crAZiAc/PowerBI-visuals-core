@@ -2,7 +2,7 @@
  *  Power BI Visualizations
  *
  *  Copyright (c) Microsoft Corporation
- *  All rights reserved. 
+ *  All rights reserved.
  *  MIT License
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -11,14 +11,14 @@
  *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  *  copies of the Software, and to permit persons to whom the Software is
  *  furnished to do so, subject to the following conditions:
- *   
- *  The above copyright notice and this permission notice shall be included in 
+ *
+ *  The above copyright notice and this permission notice shall be included in
  *  all copies or substantial portions of the Software.
- *   
- *  THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
- *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
- *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
- *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ *
+ *  THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
@@ -46,6 +46,7 @@ module powerbi.visuals.samples {
         tooltipInfo?: TooltipDataItem[];
         labelFormatString?: string;
         labelFontSize?: string;
+        highlight?: boolean;
     }
 
     export interface RadarChartData {
@@ -58,17 +59,22 @@ module powerbi.visuals.samples {
     export interface RadarChartSeries {
         fill: string;
         name: string;
-        data: RadarChartDatapoint[];
+        dataPoints: RadarChartDatapoint[];
         identity: SelectionId;
+        hasHighlights?: boolean;
     }
 
     export interface RadarChartSettings {
         showLegend?: boolean;
+        line: boolean;
+        lineWidth: number;
     }
 
     export interface RadarChartBehaviorOptions {
         selection: D3.Selection;
         clearCatcher: D3.Selection;
+        interactivityService: IInteractivityService;
+        hasHighlights: boolean;
     }
 
     /**
@@ -76,10 +82,14 @@ module powerbi.visuals.samples {
      */
     export class RadarChartWebBehavior implements IInteractiveBehavior {
         private selection: D3.Selection;
+        private interactivityService: IInteractivityService;
+        private hasHighlights: boolean;
 
         public bindEvents(options: RadarChartBehaviorOptions, selectionHandler: ISelectionHandler): void {
             var selection = this.selection = options.selection;
             var clearCatcher = options.clearCatcher;
+            this.interactivityService = options.interactivityService;
+            this.hasHighlights = options.hasHighlights;
 
             selection.on('click', function (d: SelectableDataPoint) {
                 selectionHandler.handleSelection(d, d3.event.ctrlKey);
@@ -92,7 +102,11 @@ module powerbi.visuals.samples {
         }
 
         public renderSelection(hasSelection: boolean): void {
-            this.selection.style("opacity", (d: SelectableDataPoint) => (hasSelection && !d.selected) ? RadarChart.DimmedAreaFillOpacity : RadarChart.NodeFillOpacity);
+            var hasHighlights: boolean = this.hasHighlights;
+
+            this.selection.style("opacity", (d: RadarChartDatapoint) => {
+                return radarChartUtils.getFillOpacity(d.selected, d.highlight, !d.highlight && hasSelection, !d.selected && hasHighlights);
+            });
         }
     }
 
@@ -117,14 +131,20 @@ module powerbi.visuals.samples {
                         for: { in: 'Category' },
                         dataReductionAlgorithm: { top: {} }
                     },
-                    values: {
-                        select: [{ bind: { to: 'Y' } }]
+                     values: {
+                    group: {
+                        by: 'Series',
+                        select: [{ bind: { to: 'Y' } }],
+                        dataReductionAlgorithm: { top: {} }
                     }
+                },
+                rowCount: { preferred: { min: 2 }, supported: { min: 1 } }
                 }
             }],
+            supportsHighlight: true,
             objects: {
                 general: {
-                    displayName: data.createDisplayNameGetter('Visual_General'),
+                    displayName: 'General',
                     properties: {
                         formatString: {
                             type: { formatting: { formatString: true } },
@@ -132,77 +152,90 @@ module powerbi.visuals.samples {
                     },
                 },
                 legend: {
-                    displayName: data.createDisplayNameGetter('Visual_Legend'),
-                    description: data.createDisplayNameGetter('Visual_LegendDescription'),
+                    displayName: 'Legend',
+                    description: 'Display Legend Options',
                     properties: {
                         show: {
-                            displayName: data.createDisplayNameGetter('Visual_Show'),
+                            displayName: 'Show',
                             type: { bool: true }
                         },
                         position: {
-                            displayName: data.createDisplayNameGetter('Visual_LegendPosition'),
-                            description: data.createDisplayNameGetter('Visual_LegendPositionDescription'),
+                            displayName: 'Position',
+                            description: 'Select the location for the legend',
                             type: { enumeration: legendPosition.type }
                         },
                         showTitle: {
-                            displayName: data.createDisplayNameGetter('Visual_LegendShowTitle'),
-                            description: data.createDisplayNameGetter('Visual_LegendShowTitleDescription'),
+                            displayName: 'Title',
+                            description: 'Display a title for legend symbols',
                             type: { bool: true }
                         },
                         titleText: {
-                            displayName: data.createDisplayNameGetter('Visual_LegendName'),
-                            description: data.createDisplayNameGetter('Visual_LegendNameDescription'),
+                            displayName: 'Name',
+                            description: 'Title Text',
                             type: { text: true },
                             suppressFormatPainterCopy: true
                         },
                         labelColor: {
-                            displayName: data.createDisplayNameGetter('Visual_LegendTitleColor'),
+                            displayName: 'Color',
                             type: { fill: { solid: { color: true } } }
                         },
                         fontSize: {
-                            displayName: data.createDisplayNameGetter('Visual_TextSize'),
+                            displayName: 'Text Size',
                             type: { formatting: { fontSize: true } }
                         }
                     }
                 },
                 dataPoint: {
-                    displayName: data.createDisplayNameGetter('Visual_DataPoint'),
-                    description: data.createDisplayNameGetter('Visual_DataPointDescription'),
+                    displayName: 'Data colors',
+                    description: 'Display data color options',
                     properties: {
                         fill: {
-                            displayName: data.createDisplayNameGetter('Visual_Fill'),
+                            displayName: 'Fill',
                             type: { fill: { solid: { color: true } } }
                         }
                     }
                 },
-                labels: {
-                    displayName: data.createDisplayNameGetter('Visual_DataPointsLabels'),
-                    description: data.createDisplayNameGetter('Visual_DataPointsLabelsDescription'),
+                line: {
+                    displayName: 'Draw Lines',
                     properties: {
                         show: {
-                            displayName: data.createDisplayNameGetter('Visual_Show'),
+                            displayName: 'Draw Lines',
+                            type: { bool: true }
+                        },
+                        lineWidth: {
+                            displayName: 'Line Width',
+                            type: { numeric: true },
+                        },
+                    }
+                },
+                labels: {
+                    displayName: 'Data Labels',
+                    description: 'Display data label options',
+                    properties: {
+                        show: {
+                            displayName: 'Show',
                             type: { bool: true }
                         },
                         color: {
-                            displayName: data.createDisplayNameGetter('Visual_LabelsFill'),
-                            description: data.createDisplayNameGetter('Visual_LabelsFillDescription'),
+                            displayName: 'Color',
+                            description: 'Select color for data labels',
                             type: { fill: { solid: { color: true } } }
                         },
                         labelDisplayUnits: {
-                            displayName: data.createDisplayNameGetter('Visual_DisplayUnits'),
-                            description: data.createDisplayNameGetter('Visual_DisplayUnitsDescription'),
+                            displayName: 'Display Units',
+                            description: 'Select the units (millions, billions, etc.)',
                             type: { formatting: { labelDisplayUnits: true } },
                             suppressFormatPainterCopy: true,
                         },
                         labelPrecision: {
-                            displayName: data.createDisplayNameGetter('Visual_Precision'),
-                            description: data.createDisplayNameGetter('Visual_PrecisionDescription'),
-                            placeHolderText: data.createDisplayNameGetter('Visual_Precision_Auto'),
+                            displayName: 'Decimal Places',
+                            description: 'Select the number of decimal places to display',
+                            placeHolderText: 'Auto',
                             type: { numeric: true },
                             suppressFormatPainterCopy: true,
                         },
                         fontSize: {
-                            displayName: data.createDisplayNameGetter('Visual_TextSize'),
+                            displayName: 'Text Size',
                             type: { formatting: { fontSize: true } }
                         },
                     }
@@ -219,6 +252,10 @@ module powerbi.visuals.samples {
         private static Properties: any = {
             legend: {
                 show: <DataViewObjectPropertyIdentifier>{ objectName: 'legend', propertyName: 'show' }
+            },
+            line: {
+                show: <DataViewObjectPropertyIdentifier>{ objectName: 'line', propertyName: 'show' },
+                lineWidth: <DataViewObjectPropertyIdentifier>{ objectName: 'line', propertyName: 'lineWidth' }
             },
             dataPoint: {
                 fill: <DataViewObjectPropertyIdentifier>{ objectName: 'dataPoint', propertyName: 'fill' }
@@ -249,6 +286,10 @@ module powerbi.visuals.samples {
         private static MaxPrecision: number = 17;
         private static MinPrecision: number = 0;
 
+        private static MaxLineWidth: number = 10;
+        private static MinLineWidth: number = 1;
+        private static DefaultLineWidth: number = 5;
+
         private svg: D3.Selection;
         private segments: D3.Selection;
         private zeroSegment: D3.Selection;
@@ -259,6 +300,7 @@ module powerbi.visuals.samples {
         private colors: IDataColorPalette;
         private viewport: IViewport;
         private interactivityService: IInteractivityService;
+        private behavior: IInteractiveBehavior;
 
         private animator: IGenericAnimator;
         private margin: IMargin;
@@ -275,8 +317,8 @@ module powerbi.visuals.samples {
             left: 100
         };
 
-        private static SegmentLevels: number = 6;
-        private static SegmentFactor: number = 1;
+        private static SegmentLevels: number = 5;
+        private static SegmentFactor: number = .9;
         private static Radians: number = 2 * Math.PI;
         private static Scale: number = 1;
         public static NodeFillOpacity = 1;
@@ -289,7 +331,7 @@ module powerbi.visuals.samples {
         public static AxesLabelsfontSize: string = "11px";
         public static AxesLabelsMaxWidth: number = 200;
 
-        public static converter(dataView: DataView, colors: IDataColorPalette): RadarChartData {
+        public static converter(dataView: DataView, colors: IDataColorPalette, interactivityService?: IInteractivityService): RadarChartData {
             if (!dataView ||
                 !dataView.categorical ||
                 !dataView.categorical.categories ||
@@ -303,7 +345,9 @@ module powerbi.visuals.samples {
                         dataPoints: []
                     },
                     settings: {
-                        showLegend: true
+                        showLegend: true,
+                        line: true,
+                        lineWidth: 4
                     },
                     series: [],
                     dataLabelsSettings: dataLabelUtils.getDefaultPointLabelSettings(),
@@ -316,13 +360,15 @@ module powerbi.visuals.samples {
                 series: RadarChartSeries[] = [],
                 colorHelper = new ColorHelper(colors, RadarChart.Properties.dataPoint.fill);
 
+            var hasHighlights: boolean = !!(values.length > 0 && values[0].highlights);
+
             var legendData: LegendData = {
                 fontSize: 8.25,
                 dataPoints: [],
                 title: ""
             };
 
-            //Parse legend settings          
+            //Parse legend settings
             var legendSettings: RadarChartSettings = RadarChart.parseSettings(dataView);
             var dataLabelsSettings: PointDataLabelsSettings = RadarChart.parseLabelSettings(dataView);
 
@@ -334,7 +380,7 @@ module powerbi.visuals.samples {
                     dataPoints: RadarChartDatapoint[] = [];
 
                 var columnGroup: DataViewValueColumnGroup = grouped
-                    && grouped.length > i && grouped[i].values? grouped[i] : null;
+                    && grouped.length > i && grouped[i].values ? grouped[i] : null;
 
                 if (values[i].source) {
                     var source = values[i].source;
@@ -390,36 +436,46 @@ module powerbi.visuals.samples {
                         value: <number>values[i].values[k],
                         labelFormatString: labelFormatString,
                         labelFontSize: fontSizeInPx,
+                        highlight: hasHighlights && !!(values[0].highlights[k])
                     });
                 }
 
-                if (dataPoints.length > 0)
+                if (dataPoints.length > 0) {
+                    if (interactivityService && !hasHighlights) {
+                        interactivityService.applySelectionStateToData(dataPoints);
+                    }
+
                     series.push({
                         fill: color,
                         name: displayName,
-                        data: dataPoints,
+                        dataPoints: dataPoints,
                         identity: serieIdentity,
+                        hasHighlights: hasHighlights
                     });
+                }
             }
 
             return {
                 legendData: legendData,
                 settings: legendSettings,
                 series: series,
-                dataLabelsSettings: dataLabelsSettings,
+                dataLabelsSettings: dataLabelsSettings
             };
         }
 
         public constructor(options?: RadarChartConstructorOptions) {
             if (options) {
-                if (options.svg)
+                if (options.svg) {
                     this.svg = options.svg;
+                }
 
-                if (options.animator)
+                if (options.animator) {
                     this.animator = options.animator;
+                }
 
-                if (options.margin)
+                if (options.margin) {
                     this.margin = options.margin;
+                }
             }
         }
 
@@ -431,11 +487,14 @@ module powerbi.visuals.samples {
                 this.svg.style('position', 'absolute');
             }
 
-            if (!this.margin)
+            if (!this.margin) {
                 this.margin = RadarChart.DefaultMargin;
+            }
 
             this.svg.classed(RadarChart.VisualClassName, true);
             this.interactivityService = visuals.createInteractivityService(options.host);
+            this.behavior = new RadarChartWebBehavior();
+
             this.isInteractiveChart = options.interactivity && options.interactivity.isInteractiveLegend;
             this.legend = createLegend(element,
                 this.isInteractiveChart,
@@ -463,11 +522,13 @@ module powerbi.visuals.samples {
         }
 
         public update(options: VisualUpdateOptions): void {
-            if (!options.dataViews || !options.dataViews[0])
+            if (!options.dataViews || !options.dataViews[0]) {
                 return;
+            }
 
             var dataView = options.dataViews[0];
-            this.radarChartData = RadarChart.converter(dataView, this.colors);
+            this.radarChartData = RadarChart.converter(dataView, this.colors, this.interactivityService);
+
             var categories: any[] = [],
                 series = this.radarChartData.series,
                 dataViewMetadataColumn: DataViewMetadataColumn,
@@ -476,11 +537,13 @@ module powerbi.visuals.samples {
             if (dataView.categorical &&
                 dataView.categorical.categories &&
                 dataView.categorical.categories[0] &&
-                dataView.categorical.categories[0].values)
-                categories = dataView.categorical.categories[0].values;
+                dataView.categorical.categories[0].values) {
+                    categories = dataView.categorical.categories[0].values;
+                }
 
-            if (dataView.metadata && dataView.metadata.columns && dataView.metadata.columns.length > 0)
+            if (dataView.metadata && dataView.metadata.columns && dataView.metadata.columns.length > 0) {
                 dataViewMetadataColumn = dataView.metadata.columns[0];
+            }
 
             this.viewport = {
                 height: options.viewport.height > 0 ? options.viewport.height : 0,
@@ -488,6 +551,7 @@ module powerbi.visuals.samples {
             };
 
             this.parseLegendProperties(dataView);
+            this.parseLineWidth();
             this.renderLegend(this.radarChartData);
             this.updateViewport();
 
@@ -513,10 +577,11 @@ module powerbi.visuals.samples {
             this.drawDataLabels(series);
             this.drawZeroCircularSegment(categories);
 
-            if (this.zeroPointRadius !== 0)
+            if (this.zeroPointRadius !== 0) {
                 this.drawZeroLabel();
-            else
+            } else {
                 this.mainGroupElement.selectAll(RadarChart.ZeroLabel.selector).remove();
+            }
         }
 
         private getRadarChartLabelLayout(labelSettings: PointDataLabelsSettings, allDataPoints: RadarChartDatapoint[]): ILabelLayout {
@@ -530,15 +595,15 @@ module powerbi.visuals.samples {
             return {
                 labelText: (d: RadarChartDatapoint) => {
 
-                    var formmater = formattersCache.getOrCreate(d.labelFormatString, labelSettings);
+                    var formatter: IValueFormatter = formattersCache.getOrCreate(d.labelFormatString, labelSettings);
 
                     if (labelSettings.displayUnits === 0) {
                         var maxDataPoint: RadarChartDatapoint = _.max(allDataPoints, d => d.value);
                         var maxValue = maxDataPoint.value > 0 ? maxDataPoint.value : 0;
 
-                        formmater = formattersCache.getOrCreate(d.labelFormatString, labelSettings, maxValue);
+                        formatter = formattersCache.getOrCreate(d.labelFormatString, labelSettings, maxValue);
                     }
-                    return dataLabelUtils.getLabelFormattedText({ label: formmater.format(d.value), maxWidth: viewport.width, fontSize: labelSettings.fontSize });
+                    return dataLabelUtils.getLabelFormattedText({ label: formatter.format(d.value), maxWidth: viewport.width, fontSize: labelSettings.fontSize });
                 },
                 labelLayout: {
                     x: (d: RadarChartDatapoint) => -1 * y(d.y) * Math.sin(d.x * angle) + halfWidth,
@@ -561,7 +626,7 @@ module powerbi.visuals.samples {
                 levels: number = RadarChart.SegmentLevels,
                 radius: number = this.radius;
 
-            for (var level = 0; level < levels - 1; level++) {
+            for (var level: number = 0; level < levels; level++) {
                 var levelFactor: number = radius * ((level + 1) / levels);
                 var transform: number = -1 * levelFactor;
 
@@ -605,9 +670,9 @@ module powerbi.visuals.samples {
 
                 var labels = dataLabelUtils.drawDefaultLabelsForDataPointChart(allDataPoints, this.mainGroupElement, layout, viewport);
                 labels.attr('transform', SVGUtil.translate(-(viewport.width / 2), -(viewport.height / 2)));
-            }
-            else
+            } else {
                 dataLabelUtils.cleanDataLabels(this.mainGroupElement);
+            }
         }
 
         private drawAxes(values: string[]): void {
@@ -657,12 +722,23 @@ module powerbi.visuals.samples {
                 .append('svg:text');
 
             labels
-                .attr({
-                    'text-anchor': 'middle',
-                    'dy': '1.5em',
-                    'transform': SVGUtil.translate(0, -10),
-                    'x': (name, i) => { return (radius - 30) * Math.sin(i * angle); },
-                    'y': (name, i) => { return (radius - 20) * Math.cos(i * angle); }
+                .attr('text-anchor', (name, i) => {
+                    return (i * angle) > Math.PI ? 'start' : 'end';
+                })
+                .attr('dy', '1.5em')
+                .attr('transform', (name, i) => {
+                    var angleInDegrees: number = i * angle * 180 / Math.PI;
+                    var labelAngle: number = 90 - angleInDegrees;
+                    if (labelAngle < -90) {
+                        labelAngle = labelAngle + 180;
+                        angleInDegrees += 2.5;
+                    } else {
+                        angleInDegrees -= 3;
+                    }
+                    var angleInRadian: number = angleInDegrees / 180 * Math.PI;
+                    var x: number = (radius - 8) * Math.sin(angleInRadian);
+                    var y: number = (radius - 7) * Math.cos(angleInRadian);
+                    return SVGUtil.translate(x, y) + " rotate(" + (labelAngle) + ") ";
                 })
                 .text(item => {
                     var properties: TextProperties = {
@@ -712,8 +788,20 @@ module powerbi.visuals.samples {
                 .enter()
                 .append('polygon')
                 .classed(RadarChart.ChartPolygon.class, true);
+
+            var settings = this.radarChartData.settings;
+            if (settings.line) {
+                polygon
+                    .style('fill', 'none')
+                    .style('stroke', d => d[0].color)
+                    .style('stroke-width', settings.lineWidth);
+            } else {
+                polygon
+                    .style('fill', d => d[0].color)
+                    .style('stroke-width', 0);
+            }
+
             polygon
-                .style('fill', d => d[0].color)
                 .style('opacity', RadarChart.DimmedAreaFillOpacity)
                 .on('mouseover', function (d) {
                     d3.select(this).transition()
@@ -736,6 +824,9 @@ module powerbi.visuals.samples {
                 .append('g')
                 .classed(RadarChart.ChartNode.class, true);
 
+            var hasHighlights: boolean = (series.length > 0) && series[0].hasHighlights;
+            var hasSelection: boolean = this.interactivityService && this.interactivityService.hasSelection();
+
             var dots = selection.selectAll(RadarChart.ChartDot.selector)
                 .data((d: RadarChartDatapoint[]) => { return d.filter(d => d.y != null); });
 
@@ -747,7 +838,10 @@ module powerbi.visuals.samples {
                     'cx': (value) => -1 * y(value.y) * Math.sin(value.x * angle),
                     'cy': (value) => -1 * y(value.y) * Math.cos(value.x * angle)
                 })
-                .style('fill', d => d.color);
+                .style('fill', d => d.color)
+                .style("opacity", (d: RadarChartDatapoint) => {
+                    return radarChartUtils.getFillOpacity(d.selected, d.highlight, !d.highlight && hasSelection, !d.selected && hasHighlights);
+                });
 
             dots.exit().remove();
             TooltipManager.addTooltip(dots, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo, true);
@@ -759,13 +853,24 @@ module powerbi.visuals.samples {
                 // Register interactivity
                 var dataPointsToBind = this.getAllDataPointsList(series);
 
-                behaviorOptions = { selection: dots, clearCatcher: this.svg };
-                this.interactivityService.bind(dataPointsToBind, new RadarChartWebBehavior(), behaviorOptions);
+                behaviorOptions = {
+                    selection: dots,
+                    clearCatcher: this.svg,
+                    interactivityService: this.interactivityService,
+                    hasHighlights: hasHighlights
+                };
+                this.interactivityService.bind(dataPointsToBind, this.behavior, behaviorOptions);
+            }
+        }
+
+        public onClearSelection(): void {
+            if (this.interactivityService) {
+                this.interactivityService.clearSelection();
             }
         }
 
         private calculateChartDomain(series: RadarChartSeries[]): any {
-            var radius: number = this.radius,
+            var radius: number = this.radius * RadarChart.SegmentFactor,
                 dataPointsList: RadarChartDatapoint[] = this.getAllDataPointsList(series);
 
             var minValue: number = d3.min(dataPointsList, (d) => { return d.y; });
@@ -786,8 +891,9 @@ module powerbi.visuals.samples {
         }
 
         private renderLegend(radarChartData: RadarChartData): void {
-            if (!radarChartData.legendData)
+            if (!radarChartData.legendData) {
                 return;
+            }
 
             var legendData: LegendData = radarChartData.legendData;
 
@@ -795,11 +901,12 @@ module powerbi.visuals.samples {
                 LegendData.update(legendData, this.legendObjectProperties);
                 var position = <string>this.legendObjectProperties[legendProps.position];
 
-                if (position)
+                if (position) {
                     this.legend.changeOrientation(LegendPosition[position]);
-            }
-            else
+                }
+            } else {
                 this.legend.changeOrientation(LegendPosition.Top);
+            }
 
             var viewport = this.viewport;
             this.legend.drawLegend(legendData, { height: viewport.height, width: viewport.width });
@@ -869,7 +976,7 @@ module powerbi.visuals.samples {
             var dataPoints: RadarChartDatapoint[][] = [];
 
             for (var i: number = 0; i < series.length; i++) {
-                dataPoints.push(series[i].data);
+                dataPoints.push(series[i].dataPoints);
             }
 
             return dataPoints;
@@ -879,7 +986,7 @@ module powerbi.visuals.samples {
             var dataPoints: RadarChartDatapoint[] = [];
 
             for (var i: number = 0; i < series.length; i++) {
-                dataPoints = dataPoints.concat(series[i].data);
+                dataPoints = dataPoints.concat(series[i].dataPoints);
             }
 
             return dataPoints;
@@ -913,7 +1020,9 @@ module powerbi.visuals.samples {
                 objects = dataView.metadata.objects;
 
             return {
-                showLegend: DataViewObjects.getValue(objects, RadarChart.Properties.legend.show, true)
+                showLegend: DataViewObjects.getValue(objects, RadarChart.Properties.legend.show, true),
+                line: DataViewObjects.getValue(objects, RadarChart.Properties.line.show, false),
+                lineWidth: DataViewObjects.getValue(objects, RadarChart.Properties.line.lineWidth, RadarChart.DefaultLineWidth)
             };
         }
 
@@ -924,10 +1033,11 @@ module powerbi.visuals.samples {
         private static parseLabelSettings(dataView: DataView): PointDataLabelsSettings {
             var objects: DataViewObjects;
 
-            if (!dataView || !dataView.metadata || !dataView.metadata.objects)
+            if (!dataView || !dataView.metadata || !dataView.metadata.objects) {
                 objects = null;
-            else
+            } else {
                 objects = dataView.metadata.objects;
+            }
 
             var dataLabelsSettings: PointDataLabelsSettings = dataLabelUtils.getDefaultPointLabelSettings();
 
@@ -950,8 +1060,9 @@ module powerbi.visuals.samples {
             var enumeration = new ObjectEnumerationBuilder();
             var settings: RadarChartSettings;
 
-            if (!this.radarChartData || !this.radarChartData.settings)
+            if (!this.radarChartData || !this.radarChartData.settings) {
                 return [];
+            }
 
             settings = this.radarChartData.settings;
 
@@ -961,6 +1072,9 @@ module powerbi.visuals.samples {
                     break;
                 case "dataPoint":
                     this.enumerateDataPoint(enumeration);
+                    break;
+                case "line":
+                    enumeration.pushInstance(this.enumerateLine(settings));
                     break;
                 case 'labels':
                     this.enumerateDataLabels(enumeration);
@@ -993,19 +1107,22 @@ module powerbi.visuals.samples {
                 titleText: string = "",
                 legend: VisualObjectInstance,
                 labelColor: DataColorPalette,
-                fontSize: number = 8;
+                fontSize: number = 8,
+                position;
 
             showTitle = DataViewObject.getValue(this.legendObjectProperties, legendProps.showTitle, showTitle);
             titleText = DataViewObject.getValue(this.legendObjectProperties, legendProps.titleText, titleText);
             labelColor = DataViewObject.getValue(this.legendObjectProperties, legendProps.labelColor, labelColor);
             fontSize = DataViewObject.getValue(this.legendObjectProperties, legendProps.fontSize, fontSize);
+            position = DataViewObject.getValue(this.legendObjectProperties, legendProps.position, legendPosition.top);
+
             legend = {
                 objectName: "legend",
                 displayName: "legend",
                 selector: null,
                 properties: {
                     show: settings.showLegend,
-                    position: LegendPosition[this.legend.getOrientation()],
+                    position: position/*LegendPosition[this.legend.getOrientation()]*/,
                     showTitle: showTitle,
                     titleText: titleText,
                     labelColor: labelColor,
@@ -1016,9 +1133,22 @@ module powerbi.visuals.samples {
             return legend;
         }
 
+        private enumerateLine(settings: RadarChartSettings): VisualObjectInstance {
+            return {
+                objectName: RadarChart.Properties.line.show.objectName,
+                displayName: 'Draw Lines',
+                selector: null,
+                properties: {
+                    show: settings.line,
+                    lineWidth: settings.lineWidth
+                }
+            };
+        }
+
         private enumerateDataPoint(enumeration: ObjectEnumerationBuilder): void {
-            if (!this.radarChartData || !this.radarChartData.series)
+            if (!this.radarChartData || !this.radarChartData.series) {
                 return;
+            }
 
             var series: RadarChartSeries[] = this.radarChartData.series;
 
@@ -1047,16 +1177,33 @@ module powerbi.visuals.samples {
                 case LegendPosition.TopCenter:
                 case LegendPosition.Bottom:
                 case LegendPosition.BottomCenter:
-                    this.viewport.height -= legendMargins.height;
+                    this.viewport.height = Math.max(this.viewport.height - legendMargins.height, 0);
                     break;
 
                 case LegendPosition.Left:
                 case LegendPosition.LeftCenter:
                 case LegendPosition.Right:
                 case LegendPosition.RightCenter:
-                    this.viewport.width -= legendMargins.width;
+                    this.viewport.width = Math.max(this.viewport.width - legendMargins.width, 0);
                     break;
             }
+        }
+
+        private parseLineWidth(): void {
+            var settings = this.radarChartData.settings;
+            settings.lineWidth = Math.max(RadarChart.MinLineWidth, Math.min(RadarChart.MaxLineWidth, settings.lineWidth));
+        }
+    }
+
+    export module radarChartUtils {
+        export var DimmedOpacity: number = 0.4;
+        export var DefaultOpacity: number = 1.0;
+
+        export function getFillOpacity(selected: boolean, highlight: boolean, hasSelection: boolean, hasPartialHighlights: boolean): number {
+            if ((hasPartialHighlights && !highlight) || (hasSelection && !selected)) {
+                return DimmedOpacity;
+            }
+            return DefaultOpacity;
         }
     }
 }

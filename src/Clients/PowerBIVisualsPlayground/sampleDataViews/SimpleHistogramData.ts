@@ -63,7 +63,7 @@ module powerbi.visuals.sampleDataViews {
                         displayName: "Age",
                         queryName: "Age",
                         type: ValueType.fromDescriptor({
-                            text: true
+                            numeric: true
                         }),
                         objects: {
                             dataPoint: {

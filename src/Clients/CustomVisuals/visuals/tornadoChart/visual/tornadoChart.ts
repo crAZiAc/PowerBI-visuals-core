@@ -410,15 +410,15 @@ module powerbi.visuals.samples {
             dataRoles: [{
                 name: "Category",
                 kind: VisualDataRoleKind.Grouping,
-                displayName: createDisplayNameGetter("Role_DisplayName_Group")
+                displayName: "Group"
             }, {
                 name: "Series",
                 kind: VisualDataRoleKind.Grouping,
-                displayName: createDisplayNameGetter('Role_DisplayName_Legend')
+                displayName: "Legend"
             }, {
                 name: "Values",
                 kind: VisualDataRoleKind.Measure,
-                displayName: createDisplayNameGetter("Role_DisplayName_Values")
+                displayName: "Values"
             }],
             dataViewMappings: [{
                 conditions: [
@@ -723,7 +723,10 @@ module powerbi.visuals.samples {
                     tooltipInfo = TooltipBuilder.createTooltipInfo(formatStringProp, categorical, formattedCategoryValue, value, null, null, seriesIndex, i, null);
 
                     // Limit maximum value with what the user choose
-                    var currentMaxValue = parsedSeries.categoryAxisEnd ? Math.min(parsedSeries.categoryAxisEnd, maxValue) : maxValue;
+                    var currentMaxValue = parsedSeries.categoryAxisEnd
+                        ? parsedSeries.categoryAxisEnd
+                        : maxValue;
+
                     var formatString = dataView.categorical.values[seriesIndex].source.format;
 
                     dataPoints.push({
@@ -1572,78 +1575,31 @@ module powerbi.visuals.samples {
             switch (options.objectName) {
                 case "dataPoint": {
                     this.enumerateDataPoint(enumeration);
+
                     break;
                 }
                 case "categoryAxis": {
                     this.enumerateCategoryAxis(enumeration);
+
                     break;
                 }
                 case "labels": {
-                    var labelSettings = settings.labelSettings;
-                    var labels: VisualObjectInstance = {
-                        objectName: "labels",
-                        displayName: "Labels",
-                        selector: null,
-                        properties: {
-                            show: labelSettings.show,
-                            fontSize: labelSettings.fontSize,
-                            labelPrecision: labelSettings.precision,
-                            labelDisplayUnits: labelSettings.displayUnits,
-                            insideFill: labelSettings.labelColor,
-                            outsideFill: settings.labelOutsideFillColor
-                        }
-                    };
+                    this.enumerateLabels(enumeration, settings);
 
-                    enumeration.pushInstance(labels);
                     break;
                 }
                 case "legend": {
-                    if (!this.dataView.hasDynamicSeries)
+                    if (!this.dataView.hasDynamicSeries) {
                         return;
+                    }
 
-                    var showTitle: boolean = true,
-                        titleText: string = "",
-                        legend: VisualObjectInstance;
+                    this.enumerateLegend(enumeration, settings);
 
-                    showTitle = DataViewObject.getValue<boolean>(
-                        this.dataView.legendObjectProperties,
-                        legendProps.showTitle,
-                        showTitle);
-
-                    titleText = DataViewObject.getValue<string>(
-                        this.dataView.legendObjectProperties,
-                        legendProps.titleText,
-                        titleText);
-
-                    legend = {
-                        objectName: "legend",
-                        displayName: "Legend",
-                        selector: null,
-                        properties: {
-                            show: settings.showLegend,
-                            position: LegendPosition[this.legend.getOrientation()],
-                            showTitle: showTitle,
-                            titleText: titleText,
-                            fontSize: settings.legendFontSize,
-                            labelColor: settings.legendColor,
-                        }
-                    };
-
-                    enumeration.pushInstance(legend);
                     break;
                 }
                 case "categories": {
-                    var categories: VisualObjectInstance = {
-                        objectName: "categories",
-                        displayName: "Categories",
-                        selector: null,
-                        properties: {
-                            show: settings.showCategories,
-                            fill: settings.categoriesFillColor
-                        }
-                    };
+                    this.enumerateCategories(enumeration, settings);
 
-                    enumeration.pushInstance(categories);
                     break;
                 }
             }
@@ -1687,6 +1643,86 @@ module powerbi.visuals.samples {
                     }
                 });
             }
+        }
+
+        private enumerateLabels(
+            enumeration: ObjectEnumerationBuilder,
+            settings: TornadoChartSettings): void {
+
+            var labelSettings = settings.labelSettings,
+                labels: VisualObjectInstance = {
+                    objectName: "labels",
+                    displayName: "Labels",
+                    selector: null,
+                    properties: {
+                        show: labelSettings.show,
+                        fontSize: labelSettings.fontSize,
+                        labelPrecision: labelSettings.precision,
+                        labelDisplayUnits: labelSettings.displayUnits,
+                        insideFill: labelSettings.labelColor,
+                        outsideFill: settings.labelOutsideFillColor
+                    }
+                };
+
+            enumeration.pushInstance(labels);
+        }
+
+        private enumerateCategories(
+            enumeration: ObjectEnumerationBuilder,
+            settings: TornadoChartSettings): void {
+
+            var categories: VisualObjectInstance = {
+                objectName: "categories",
+                displayName: "Categories",
+                selector: null,
+                properties: {
+                    show: settings.showCategories,
+                    fill: settings.categoriesFillColor
+                }
+            };
+
+            enumeration.pushInstance(categories);
+        }
+
+        private enumerateLegend(
+            enumeration: ObjectEnumerationBuilder,
+            settings: TornadoChartSettings): void {
+
+            var showTitle: boolean = true,
+                titleText: string = "",
+                legend: VisualObjectInstance,
+                position: string;
+
+            showTitle = DataViewObject.getValue<boolean>(
+                this.dataView.legendObjectProperties,
+                legendProps.showTitle,
+                showTitle);
+
+            titleText = DataViewObject.getValue<string>(
+                this.dataView.legendObjectProperties,
+                legendProps.titleText,
+                titleText);
+
+            position = DataViewObject.getValue<string>(
+                this.dataView.legendObjectProperties,
+                legendProps.position,
+                legendPosition.top);
+
+            legend = {
+                objectName: "legend",
+                displayName: "Legend",
+                selector: null,
+                properties: {
+                    show: settings.showLegend,
+                    position: position,
+                    showTitle: showTitle,
+                    titleText: titleText,
+                    fontSize: settings.legendFontSize,
+                    labelColor: settings.legendColor,
+                }
+            };
+
+            enumeration.pushInstance(legend);
         }
 
         public destroy(): void {

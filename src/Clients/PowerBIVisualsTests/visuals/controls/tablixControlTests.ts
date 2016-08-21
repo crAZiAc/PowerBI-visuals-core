@@ -207,10 +207,10 @@ module powerbitests {
                 });
             });
 
-            describe('scroll with mousewheel', () => {
+            describe('Scrolling with mousewheel', () => {
                 let spyVerticalScrolling: jasmine.Spy;
                 let spyHorizontalScrolling: jasmine.Spy;
-                let evt: MouseWheelEvent;
+                let evt: WheelEvent;
 
                 beforeEach(() => {
                     spyVerticalScrolling = spyOn(tablixControl.rowDimension.scrollbar, "onMouseWheel");
@@ -219,155 +219,101 @@ module powerbitests {
                     spyHorizontalScrolling.and.stub();
                 });
 
-                describe("On Canvas", () => {
+                describe("on Canvas", () => {
 
                     afterEach(() => {
                         expect(evt.defaultPrevented).toBeTruthy();
                     });
 
-                    it("Y Scrolling - No scrollbar", () => {
-                        showVerticalScroll(false);
-                        showHorizontalScroll(false);
+                    describe("in Y direction", () => {
 
-                        // Firefox
-                        evt = sendDomMouseScroll(-100);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-                        expect(evt.defaultPrevented).toBeTruthy();
+                        it("doesn't scroll if Tablix has no scrollbars", () => {
+                            showVerticalScroll(false);
+                            showHorizontalScroll(false);
+                            evt = scroll(0, 100);
+                            assertWheelBehavior(false, false, true);
+                        });
 
-                        // Others
-                        evt = sendMouseWheel(0, -100);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
+                        it("scrolls vertically if Tablix has only a vertical scrollbar", () => {
+                            showVerticalScroll(true);
+                            showHorizontalScroll(false);
+                            evt = scroll(0, 100);
+                            assertWheelBehavior(true, false, true);
+                        });
+
+                        it("scrolls horizontally if Tablix has only a horizontal scrollbar", () => {
+                            showVerticalScroll(false);
+                            showHorizontalScroll(true);
+                            evt = scroll(0, 100);
+                            assertWheelBehavior(false, true, true);
+                        });
+
+                        it("scrolls vertically if Tablix has both scrollbars", () => {
+                            showVerticalScroll(true);
+                            showHorizontalScroll(true);
+                            evt = scroll(0, 100);
+                            assertWheelBehavior(true, false, true);
+                        });
                     });
 
-                    it("Y Scrolling - Vertical scrollbar", () => {
-                        showVerticalScroll(true);
-                        showHorizontalScroll(false);
+                    describe("in X direction", () => {
+                        it("doesn't scroll if Tablix has no scrollbars", () => {
+                            showVerticalScroll(false);
+                            showHorizontalScroll(false);
+                            scroll(100, 0);
+                            assertWheelBehavior(false, false, true);
+                        });
 
-                        // Firefox
-                        sendDomMouseScroll(-100);
-                        expect(spyVerticalScrolling).toHaveBeenCalledTimes(1);
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-                        expect(evt.defaultPrevented).toBeTruthy();
+                        it("doesn't scroll if Tablix has only a vertical scrollbar", () => {
+                            showVerticalScroll(true);
+                            showHorizontalScroll(false);
+                            scroll(100, 0);
+                            assertWheelBehavior(false, false, true);
+                        });
 
-                        // Others
-                        evt = sendMouseWheel(0, -100);
-                        expect(spyVerticalScrolling).toHaveBeenCalledTimes(2);
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
+                        it("scrolls horizontally if Tablix has only a horizontal scrollbar", () => {
+                            showVerticalScroll(false);
+                            showHorizontalScroll(true);
+                            scroll(100, 0);
+                            assertWheelBehavior(false, true, true);
+                        });
+
+                        it("scrolls horizontally if Tablix has both scrollbars", () => {
+                            showVerticalScroll(true);
+                            showHorizontalScroll(true);
+                            scroll(100, 0);
+                            assertWheelBehavior(false, true, true);
+                        });
                     });
 
-                    it("Y scrolling - Horizontal scrollbar", () => {
-                        showVerticalScroll(false);
-                        showHorizontalScroll(true);
+                    describe("in X/Y direction", () => {
+                        it("doesn't scroll if Tablix has no scrollbars", () => {
+                            showVerticalScroll(false);
+                            showHorizontalScroll(false);
+                            scroll(100, 100);
+                            assertWheelBehavior(false, false, true);
+                        });
 
-                        // Firefox
-                        sendDomMouseScroll(-100);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).toHaveBeenCalledTimes(1);
-                        expect(evt.defaultPrevented).toBeTruthy();
+                        it("scrolls vertically if Tablix has only a vertical scrollbar", () => {
+                            showVerticalScroll(true);
+                            showHorizontalScroll(false);
+                            scroll(100, 100);
+                            assertWheelBehavior(true, false, true);
+                        });
 
-                        // Others
-                        evt = sendMouseWheel(0, -100);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).toHaveBeenCalledTimes(2);
-                    });
+                        it("scrolls horizontally if Tablix has only a horizontal scrollbar", () => {
+                            showVerticalScroll(false);
+                            showHorizontalScroll(true);
+                            scroll(100, 100);
+                            assertWheelBehavior(false, true, true);
+                        });
 
-                    it("Y scrolling - Both scrollbars", () => {
-                        showVerticalScroll(true);
-                        showHorizontalScroll(true);
-
-                        // Firefox
-                        sendDomMouseScroll(-100);
-                        expect(spyVerticalScrolling).toHaveBeenCalledTimes(1);
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-                        expect(evt.defaultPrevented).toBeTruthy();
-
-                        // Others
-                        evt = sendMouseWheel(0, -100);
-                        expect(spyVerticalScrolling).toHaveBeenCalledTimes(2);
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-
-                    });
-
-                    it("X Scrolling - No scrollbar", () => {
-                        showVerticalScroll(false);
-                        showHorizontalScroll(false);
-
-                        sendMouseWheel(-100, 0);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-
-                    });
-
-                    it("X Scrolling - Vertical scrollbar", () => {
-                        showVerticalScroll(true);
-                        showHorizontalScroll(false);
-
-                        sendMouseWheel(-100, 0);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-
-                    });
-
-                    it("X scrolling - Horizontal scrollbar", () => {
-                        showVerticalScroll(false);
-                        showHorizontalScroll(true);
-
-                        sendMouseWheel(-100, 0);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).toHaveBeenCalledTimes(1);
-
-                    });
-
-                    it("X scrolling - Both scrollbars", () => {
-                        showVerticalScroll(true);
-                        showHorizontalScroll(true);
-
-                        sendMouseWheel(-100, 0);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).toHaveBeenCalledTimes(1);
-
-                    });
-
-                    it("X/Y Scrolling - No scrollbar", () => {
-                        showVerticalScroll(false);
-                        showHorizontalScroll(false);
-
-                        sendMouseWheel(-100, 100);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-
-                    });
-
-                    it("X/Y Scrolling - Vertical scrollbar", () => {
-                        showVerticalScroll(true);
-                        showHorizontalScroll(false);
-
-                        sendMouseWheel(-100, 100);
-                        expect(spyVerticalScrolling).toHaveBeenCalledTimes(1);
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-
-                    });
-
-                    it("X/Y scrolling - Horizontal scrollbar", () => {
-                        showVerticalScroll(false);
-                        showHorizontalScroll(true);
-
-                        sendMouseWheel(-100, 100);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).toHaveBeenCalledTimes(1);
-
-                    });
-
-                    it("X scrolling - Both scrollbars", () => {
-                        showVerticalScroll(true);
-                        showHorizontalScroll(true);
-
-                        sendMouseWheel(-100, 100);
-                        expect(spyVerticalScrolling).toHaveBeenCalledTimes(1);
-                        expect(spyHorizontalScrolling).toHaveBeenCalledTimes(1);
-
+                        it("scrolls in both directions if Tablix has both scrollbars", () => {
+                            showVerticalScroll(true);
+                            showHorizontalScroll(true);
+                            scroll(100, 100);
+                            assertWheelBehavior(true, true, true);
+                        });
                     });
                 });
 
@@ -379,18 +325,8 @@ module powerbitests {
 
                         showVerticalScroll(false);
                         showHorizontalScroll(false);
-
-                        // Firefox
-                        evt = sendDomMouseScroll(-100);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-                        expect(evt.defaultPrevented).toBe(false);
-
-                        // Others
-                        evt = sendMouseWheel(0, -100);
-                        expect(spyVerticalScrolling).not.toHaveBeenCalled();
-                        expect(spyHorizontalScrolling).not.toHaveBeenCalled();
-                        expect(evt.defaultPrevented).toBe(false);
+                        evt = scroll(0, 100);
+                        assertWheelBehavior(false, false, false);
                     });
                 });
 
@@ -402,18 +338,54 @@ module powerbitests {
                     tablixControl.rowDimension.scrollbar["_visible"] = show;
                 }
 
-                function sendDomMouseScroll(delta: number): MouseWheelEvent {
-                    let ev = helpers.createMouseWheelEvent("DOMMouseScroll", 0, 0, delta);
+                /**
+                 * Simulates a mouse wheel scrolling
+                 * @param {number} deltaX Horizontal scrolling amount
+                 * @param {number} deltaY Vertical scrolling amount
+                 * @returns MouseWheel event
+                 */
+                function scroll(deltaX: number, deltaY: number): WheelEvent {
+                    let ev = helpers.createWheelEvent(deltaX, deltaY);
                     tablixControl.container.dispatchEvent(ev);
                     return ev;
                 }
 
-                function sendMouseWheel(deltaX: number, deltaY: number): MouseWheelEvent {
-                    let ev = helpers.createMouseWheelEvent("mousewheel", deltaX, deltaY, 0);
-                    tablixControl.container.dispatchEvent(ev);
-                    return ev;
+                function assertWheelBehavior(scrolledVertically: boolean, scrolledHorizontally: boolean, eventDefaultPrevented: boolean) {
+                    expect(spyVerticalScrolling.calls.any()).toBe(scrolledVertically);
+                    spyVerticalScrolling.calls.reset();
+                    expect(spyHorizontalScrolling.calls.any()).toBe(scrolledHorizontally);
+                    spyHorizontalScrolling.calls.reset();
+                    expect(evt.defaultPrevented).toBe(eventDefaultPrevented);
                 }
             });
+            
+            describe("Touch support - enabled", () => validateTouch(true));
+            describe("Touch support - disabled", () => validateTouch(false));
+
+            function validateTouch(isTouchEnabled: boolean) {
+                it("touch validation", () => {
+                    tablixControl = createTablixControlWithOptions({
+                        interactive: true,
+                        enableTouchSupport: isTouchEnabled,
+                    });
+                    expect(tablixControl.getIsTouchEventsBound()).toBe(isTouchEnabled);
+                });
+
+                it("toggling touch validation", () => {
+                    tablixControl = createTablixControlWithOptions({
+                        interactive: true,
+                        enableTouchSupport: isTouchEnabled,
+                    });
+
+                    tablixControl.toggleTouchBindings(false);
+                    expect(tablixControl.getIsTouchEventsBound()).toBe(false);
+                    
+                    tablixControl.toggleTouchBindings(true);
+                    expect(tablixControl.getIsTouchEventsBound()).toBe(isTouchEnabled);
+                    tablixControl.toggleTouchBindings(true); // second call should not influence touch
+                    expect(tablixControl.getIsTouchEventsBound()).toBe(isTouchEnabled);
+                });
+            }
         });
 
         describe("Scrollbar", () => {

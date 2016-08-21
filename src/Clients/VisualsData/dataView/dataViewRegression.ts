@@ -258,11 +258,17 @@ module powerbi.data {
             if (_.isEmpty(categories))
                 return;
 
-            debug.assert(categories.length === 1, 'composite category columns not supported');
             let categoryColumn = categories[0];
             columns = getColumnsWithRoleKind(roleKind, [categoryColumn], roles);
-            if (!_.isEmpty(columns))
+            if (!_.isEmpty(columns)) {
+                debug.assert(
+                    categories.length === 1 ||                                                      // not a composite category
+                    _.isEmpty(categoryColumn.values) ||                                             // no rows (can't tell if there are scalar keys, but doesn't matter)
+                    (!_.isEmpty(categoryColumn.objects) &&
+                        getScalarKeyFromDataViewObjects(categoryColumn.objects[0]) !== undefined),  // scalar keys are available
+                    'composite category columns not supported without scalar key');
                 return columns;
+            }
         }
 
         function getColumnsWithRoleKind(roleKind: CartesianRoleKind, columns: DataViewCategoricalColumn[], roles: VisualDataRole[]): DataViewCategoricalColumn[] {
@@ -353,7 +359,17 @@ module powerbi.data {
             return [x1 * lineDef.slope + lineDef.intercept, x2 * lineDef.slope + lineDef.intercept];
         }
 
+        function getScalarKeyFromDataViewObjects(objects: DataViewObjects): PrimitiveValue {
+            return DataViewObjects.getValue<PrimitiveValue>(objects, powerbi.visuals.cartesianChartProps.scalarKey.scalarKeyMin);
+        }
+
         function getValuesFromColumn(column: DataViewCategoricalColumn, preferHighlights: boolean): PrimitiveValue[] {
+            // If scalar keys are available, use them as the values for the trend line
+            let firstValue = _.head(column.objects);
+            if (firstValue && getScalarKeyFromDataViewObjects(firstValue)) {
+                return _.map(column.objects, (c) => getScalarKeyFromDataViewObjects(c));
+            }
+
             if (preferHighlights) {
                 // Attempt to use highlight values. When X is categorical, we may not have highlight values so we should fall back to the non-highlight values.
                 let valueColumn = <DataViewValueColumn>column;

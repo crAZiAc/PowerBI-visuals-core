@@ -46,14 +46,13 @@ module powerbitests.customVisuals.sampleDataViews {
         public valuesGood = [4, 4, 4 ,6 ,6 ,6 ,4 ,4];
         public valuesMaximum = [6, 6, 6, 8, 8, 8, 8, 7];
 
-        public getDataView(columnNames?: string[]): powerbi.DataView {
+        public getDataView(columnNames?: string[], customizeColumns?: CustomizeColumnFn): powerbi.DataView {
             return this.createCategoricalDataViewBuilder([
                 {
                     source: {
                         displayName: BulletChartData.ColumnCategory,
                         roles: { "Category": true },
                         type: ValueType.fromDescriptor({ text: true }),
-                        
                     },
                     values: this.valuesCategory
                 }
@@ -112,7 +111,7 @@ module powerbitests.customVisuals.sampleDataViews {
                     },
                     values: this.valuesMaximum
                 }
-                ], columnNames).build();
+                ], columnNames, customizeColumns).build();
         }
     }
 }

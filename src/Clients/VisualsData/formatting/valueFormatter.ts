@@ -70,9 +70,6 @@ module powerbi.visuals {
         /** Specifies the maximum number of decimal places to show*/
         precision?: number;
 
-        /** Detect axis precision based on value */
-        detectAxisPrecision?: boolean;
-
         /** Specifies the column type of the data value */
         columnType?: ValueTypeDescriptor;
     }
@@ -273,36 +270,6 @@ module powerbi.visuals {
                 else if (displayUnitSystem.displayUnit && displayUnitSystem.displayUnit.value > 1)
                     decimals = -MaxScaledDecimalPlaces;
                 
-                // Detect axis precision
-                if (options.detectAxisPrecision) {
-                    debug.assert(!forcePrecision, 'options.forcePrecision should not be true when options.detectAxisPrecision is true.');
-                    
-                    // Trailing zeroes
-                    forcePrecision = true;
-
-                    let axisValue = options.value;
-                    if (displayUnitSystem.displayUnit && displayUnitSystem.displayUnit.value > 0)
-                        axisValue = axisValue / displayUnitSystem.displayUnit.value;
-
-                    if (Double.isInteger(axisValue)) {
-                        decimals = 0;
-                    }
-                    else {
-                        decimals = Double.log10(axisValue);
-
-                        if (format && valueFormatter.getFormatMetadata(format).hasPercent) {
-                            if (decimals < 0) {
-                                // Show 2 fewer decimals since percentages since the percentage by be multipled by 100
-                                decimals = Math.min(0, decimals + 2);
-                            }
-                            else {
-                                // If decimals > 0, that means the space between ticks is greater than 100%, so don't display decimals.
-                                decimals = 0;
-                            }
-                        }
-                    }
-                }
-
                 return {
                     format: function (value: any): string {
                         let formattedValue: string = getStringFormat(value, true /*nullsAreBlank*/);
@@ -370,7 +337,7 @@ module powerbi.visuals {
             }
         }
 
-        function createDisplayUnitSystem(displayUnitSystemType?: DisplayUnitSystemType): DisplayUnitSystem {
+        export function createDisplayUnitSystem(displayUnitSystemType?: DisplayUnitSystemType): DisplayUnitSystem {
             if (displayUnitSystemType == null)
                 return new DefaultDisplayUnitSystem(locale.describe);
 

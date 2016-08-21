@@ -132,7 +132,7 @@ module powerbi.visuals.utility {
         private selectInternal(selectionId: SelectionId, multiSelect: boolean) {
             if (SelectionManager.containsSelection(this.selectedIds, selectionId)) {
                 this.selectedIds = multiSelect
-                    ? this.selectedIds.filter(d => !data.Selector.equals(d, selectionId))
+                    ? this.selectedIds.filter(d => !data.Selector.equals(d.getSelector(), selectionId.getSelector()))
                     : this.selectedIds.length > 1
                         ? [selectionId] : [];
             } else {

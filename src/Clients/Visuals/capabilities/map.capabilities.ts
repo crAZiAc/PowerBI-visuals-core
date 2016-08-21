@@ -79,6 +79,11 @@ module powerbi.visuals {
                 description: data.createDisplayNameGetter('Role_DisplayName_GradientDescription'),
                 requiredTypes: [{ numeric: true }, { integer: true }],
                 joinPredicate: JoinPredicateBehavior.None,
+            }, {
+                name: 'Tooltips',
+                kind: VisualDataRoleKind.Measure,
+                displayName: data.createDisplayNameGetter('Role_DisplayName_Tooltips'),
+                joinPredicate: JoinPredicateBehavior.None,
             }
         ],
         objects: {
@@ -147,6 +152,7 @@ module powerbi.visuals {
                             { bind: { to: 'Y' } },
                             { bind: { to: 'Size' } },
                             { bind: { to: 'Gradient' } },
+                            { for: { in: 'Tooltips' } }
                         ],
                         dataReductionAlgorithm: { top: {} }
                     }
@@ -155,32 +161,33 @@ module powerbi.visuals {
                 dataVolume: 4,
             }
         }, {
-                conditions: [
-                    { 'Category': { max: 0 }, 'Series': { max: 1 }, 'X': { max: 1, kind: VisualDataRoleKind.Grouping }, 'Y': { max: 1, kind: VisualDataRoleKind.Grouping }, 'Size': { max: 1 }, 'Gradient': { max: 0 } },
-                    { 'Category': { max: 0 }, 'Series': { max: 0 }, 'X': { max: 1, kind: VisualDataRoleKind.Grouping }, 'Y': { max: 1, kind: VisualDataRoleKind.Grouping }, 'Size': { max: 1 }, 'Gradient': { max: 1 } }
-                ],
-                categorical: {
-                    categories: {
+            conditions: [
+                { 'Category': { max: 0 }, 'Series': { max: 1 }, 'X': { max: 1, kind: VisualDataRoleKind.Grouping }, 'Y': { max: 1, kind: VisualDataRoleKind.Grouping }, 'Size': { max: 1 }, 'Gradient': { max: 0 } },
+                { 'Category': { max: 0 }, 'Series': { max: 0 }, 'X': { max: 1, kind: VisualDataRoleKind.Grouping }, 'Y': { max: 1, kind: VisualDataRoleKind.Grouping }, 'Size': { max: 1 }, 'Gradient': { max: 1 } }
+            ],
+            categorical: {
+                categories: {
+                    select: [
+                        { bind: { to: 'X' } },
+                        { bind: { to: 'Y' } },
+                    ],
+                    dataReductionAlgorithm: { top: {} }
+                },
+                values: {
+                    group: {
+                        by: 'Series',
                         select: [
-                            { bind: { to: 'X' } },
-                            { bind: { to: 'Y' } },
+                            { bind: { to: 'Size' } },
+                            { bind: { to: 'Gradient' } },
+                            { for: { in: 'Tooltips' } }
                         ],
                         dataReductionAlgorithm: { top: {} }
-                    },
-                    values: {
-                        group: {
-                            by: 'Series',
-                            select: [
-                                { bind: { to: 'Size' } },
-                                { bind: { to: 'Gradient' } },
-                            ],
-                            dataReductionAlgorithm: { top: {} }
-                        }
-                    },
-                    rowCount: { preferred: { min: 2 } },
-                    dataVolume: 4,
+                    }
                 },
-            }],
+                rowCount: { preferred: { min: 2 } },
+                dataVolume: 4,
+            },
+        }],
         sorting: {
             custom: {},
             implicit: {

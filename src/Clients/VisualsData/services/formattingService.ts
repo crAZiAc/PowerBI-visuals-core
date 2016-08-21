@@ -434,6 +434,7 @@ module powerbi {
             hasPermile: boolean;
             precision: number;
             scale: number;
+            partsPerScale: number; // scale due to percent and per mille
         }
 
         export interface NumberFormatComponents {
@@ -781,6 +782,11 @@ module powerbi {
                     // Rounding
                     value = parseFloat(toNonScientific(value, precision));
 
+                    if (!isFinite(value)) {
+                        // very large and small finite values can become infinite by parseFloat(toNonScientific())
+                        return Globalize.format(value, undefined);
+                    }
+
                     if (nonScientificOverrideFormat) {
                         // Get numeric format from format string
                         let numericFormat = NumberFormat.getNumericFormat(value, format);
@@ -869,7 +875,7 @@ module powerbi {
          * @param (optional) calculatePrecision - calculate precision of positive format
          * @param (optional) calculateScale - calculate scale of positive format
          */
-        export function getCustomFormatMetadata(format: string, calculatePrecision?: boolean, calculateScale?: boolean): NumericFormatMetadata {
+        export function getCustomFormatMetadata(format: string, calculatePrecision?: boolean, calculateScale?: boolean, calculatePartsPerScale?: boolean): NumericFormatMetadata {
             if (_lastCustomFormatMeta !== undefined && format === _lastCustomFormatMeta.format) {
                 return _lastCustomFormatMeta;
             }
@@ -887,6 +893,7 @@ module powerbi {
                 hasPermile: false,
                 precision: undefined,
                 scale: undefined,
+                partsPerScale: undefined,
             };
 
             for (let i = 0, length = escaped.length; i < length; i++) {
@@ -905,7 +912,7 @@ module powerbi {
                     case "%":
                         result.hasPercent = true;
                         break;
-                    case "‰":
+                    case "\u2030":  // ‰
                         result.hasPermile = true;
                         break;
                 }
@@ -916,6 +923,8 @@ module powerbi {
 
             if (calculatePrecision)
                 result.precision = getCustomFormatPrecision(formatComponents.positive, result);
+            if (calculatePartsPerScale)
+                result.partsPerScale = getCustomFormatPartsPerScale(formatComponents.positive, result);
             if (calculateScale)
                 result.scale = getCustomFormatScale(formatComponents.positive, result);
 
@@ -954,18 +963,29 @@ module powerbi {
             return result;
         }
 
+        function getCustomFormatPartsPerScale(format: string, formatMeta: NumericFormatMetadata): number {
+            if (formatMeta.partsPerScale != null)
+                return formatMeta.partsPerScale;
+
+            let result = 1;
+            if (formatMeta.hasPercent && format.indexOf("%") > -1) {
+                result = result * 100;
+            }
+            if (formatMeta.hasPermile && format.indexOf(/* ‰ */ "\u2030") > -1) {
+                result = result * 1000;
+            }
+
+            formatMeta.partsPerScale = result;
+
+            return result;
+        }
+
         /** Returns the scale factor of the format based on the "%" and scaling "," chars in the format */
         function getCustomFormatScale(format: string, formatMeta: NumericFormatMetadata): number {
             if (formatMeta.scale > -1) {
                 return formatMeta.scale;
             }
-            let result = 1;
-            if (formatMeta.hasPercent && format.indexOf("%") > -1) {
-                result = result * 100;
-            }
-            if (formatMeta.hasPermile && format.indexOf("‰") > -1) {
-                result = result * 1000;
-            }
+            let result = getCustomFormatPartsPerScale(format, formatMeta);
             if (formatMeta.hasCommas) {
                 let dotIndex = format.indexOf(".");
                 if (dotIndex === -1) {

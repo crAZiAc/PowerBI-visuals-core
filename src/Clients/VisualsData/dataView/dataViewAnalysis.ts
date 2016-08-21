@@ -323,7 +323,7 @@ module powerbi {
             if (!dataView)
                 return false;
 
-            if (!dataView.imageBase64)
+            if (!dataView.payloadBase64)
                 return false;
 
             return true;
@@ -430,7 +430,7 @@ module powerbi {
             };
         }
 
-        function checkForConditionErrors(projections: QueryProjectionsByRole, condition: DataViewMappingCondition, roleKindByQueryRef: RoleKindByQueryRef): DataViewMappingMatchError[] {
+        export function checkForConditionErrors(projections: QueryProjectionsByRole, condition: DataViewMappingCondition, roleKindByQueryRef: RoleKindByQueryRef): DataViewMappingMatchError[] {
             debug.assertValue(projections, 'projections');
             debug.assertValue(condition, 'condition');
 
@@ -473,10 +473,13 @@ module powerbi {
 
             return _.every(requiredProperties, (requiredProperty) => {
                 let objectDescriptorValue = null;
+                let objectDefinitionProperty = objectDefinitions[requiredProperty.objectName];
+                if (!objectDefinitionProperty)
+                    return false;
                 let objectDescriptorProperty = objectDescriptors[requiredProperty.objectName];
                 if (objectDescriptorProperty)
                     objectDescriptorValue = objectDescriptorProperty.properties[requiredProperty.propertyName];
-                let objectDefinitionValue = DataViewObjectDefinitions.getValue(objectDefinitions, requiredProperty, null);
+                let objectDefinitionValue = DataViewObjectDefinitions.getValue(objectDefinitions, requiredProperty, objectDefinitionProperty[0].selector);
 
                 if (!objectDescriptorValue || !objectDefinitionValue)
                     return false;

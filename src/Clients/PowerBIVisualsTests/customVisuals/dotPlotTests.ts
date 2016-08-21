@@ -69,6 +69,16 @@ module powerbitests.customVisuals {
                     done();
                 });
             });
+
+            it("should correctly render duplicates in categories", done => {
+                dataView.categorical.categories[0].values[1] = dataView.categorical.categories[0].values[0];
+                dataView.categorical.categories[0].identity[1] = dataView.categorical.categories[0].identity[0];
+                visualBuilder.updateRenderTimeout(dataView, () => {
+                    let groupsRects = visualBuilder.dotGroups.toArray().map((e: Element) => e.getBoundingClientRect());
+                    expect(_.unique(groupsRects.map(x => x.left)).length).toEqual(groupsRects.length);
+                    done();
+                });
+            });
         });
 
         describe("xAxis tests", () => {
@@ -153,6 +163,10 @@ module powerbitests.customVisuals {
 
         public get xAxisLabel() {
             return this.xAxis.children("text.xAxisLabel");
+        }
+
+        public get dotGroups() {
+            return this.mainElement.children("g.dotplotSelector").children("g.dotplotGroup");
         }
 
         public get xAxisTicks() {

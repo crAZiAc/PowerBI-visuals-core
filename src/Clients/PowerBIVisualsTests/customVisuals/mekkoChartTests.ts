@@ -117,6 +117,27 @@ module powerbitests.customVisuals {
                     done();
                 });
             });
+
+            it("axes labels shouldn't be cut off", done => {
+                dataView.metadata.objects = { 
+                    categoryAxis: { show: true, showAxisTitle: true },
+                    valueAxis: { show: true, showAxisTitle: true }
+                };
+
+                visualBuilder.updateRenderTimeout(dataView, () => {
+                    expect(helpers.isTextElementInOrOutElement(
+                        visualBuilder.mainElement[0],
+                        visualBuilder.xAxisLabel[0],
+                        (v1, v2) => v1 >= v2)).toBeTruthy();
+
+                    expect(helpers.isTextElementInOrOutElement(
+                        visualBuilder.mainElement[0],
+                        visualBuilder.yAxisLabel[0],
+                        (v1, v2) => v1 >= v2)).toBeTruthy();
+
+                    done();
+                }, 300);
+            });
         });
 
         describe("MekkoColumnChartData", () => {
@@ -215,8 +236,10 @@ module powerbitests.customVisuals {
                             };
 
                             visualBuilder.updateRenderTimeout(dataView, () => {
-                                expect(visualBuilder.mainElement.find('.x.axis g.tick text').first().attr('font-size')).toBe("17px");
-                                expect(visualBuilder.mainElement.find('.y.axis g.tick text').first().attr('font-size')).toBe("15px");
+                                expect(visualBuilder.mainElement.find('.x.axis g.tick text').first().attr('font-size'))
+                                    .toBe(jsCommon.PixelConverter.fromPointToPixel(17) + "px");
+                                expect(visualBuilder.mainElement.find('.y.axis g.tick text').first().attr('font-size'))
+                                    .toBe(jsCommon.PixelConverter.fromPointToPixel(15) + "px");
 
                                 done();
                             });
@@ -298,6 +321,22 @@ module powerbitests.customVisuals {
 
         public get categoriesAxisTicks() {
             return this.categoriesAxis.children("g.tick");
+        }
+
+        public get rootAxisGraphicsContext() {
+            return this.mainElement.children("g.axisGraphicsContext");
+        }
+
+        public get svgScrollableAxisGraphicsContext() {
+            return this.mainElement.children("svg.svgScrollable").children("g.axisGraphicsContext");
+        }
+
+        public get xAxisLabel() {
+            return this.rootAxisGraphicsContext.children("text.xAxisLabel");
+        }
+
+        public get yAxisLabel() {
+            return this.rootAxisGraphicsContext.children("text.yAxisLabel");
         }
 
         public get columnElement() {

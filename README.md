@@ -5,8 +5,8 @@
 
 # Microsoft Power BI visuals Core
 
-[![Build status](https://ci.appveyor.com/api/projects/status/77d940234217vpap/branch/master?svg=true)](https://ci.appveyor.com/project/powerbi-gitbot/powerbi-visuals)
-[![Build Status](https://travis-ci.org/Microsoft/PowerBI-visuals.svg?branch=master)](https://travis-ci.org/Microsoft/PowerBI-visuals)
+[![Build status](https://ci.appveyor.com/api/projects/status/blt89rrll3fnc4ia/branch/master?svg=true)](https://ci.appveyor.com/project/powerbi-gitbot/powerbi-visuals-core/branch/master)
+[![Build Status](https://travis-ci.org/Microsoft/PowerBI-visuals-core.svg?branch=master)](https://travis-ci.org/Microsoft/PowerBI-visuals-core)
 
 The Microsoft Power BI visuals project provides high quality data visualizations that you can use to extend [Power BI](https://powerbi.microsoft.com/).  The project contains over 20 visualization types, the framework to run them, and the testing infrastructure that enables you to build high quality visualizations.  The framework provides all the interfaces you need to integrate fully with Power BI's selection, filtering, and other UI experiences.  The code is written in [TypeScript](http://www.typescriptlang.org/) so it's easier to build and debug. Everything compiles down to JavaScript and runs in modern web browsers.  The visuals are built using [D3](http://d3js.org/) but you can use your favorite technology like [WebGL](https://en.wikipedia.org/wiki/WebGL), [Canvas](https://en.wikipedia.org/wiki/Canvas_element), or [SVG](https://en.wikipedia.org/wiki/Scalable_Vector_Graphics). This gives you everything you need to build custom visualizations for Power BI.
 
@@ -26,7 +26,7 @@ To build the library and run the sample application you will need:
 - Recommended IDE - [Visual Studio Community 2015](https://www.visualstudio.com/vs-2015-product-editions?wt.mc_id=github_microsoft_powerbi-visuals) (Free for use)
  -  Be sure to install the "Microsoft Web Developer Tools" optional feature. To install, go to Add/Remove Programs, right-click on Visual Studio, select Change, then Modify. Check the "Microsoft Web Developer Tools" checkbox and finish the install.
  -  Ensure that Visual Studio is not using previous version of Node.js. Go to Tools > Options, then Projects and Solutions > External Web Tools. You can remove old path and add folder with the latest Node.js, or just leave $(PATH) and move it above all folders, if PATH environment variable contains path of the latest Node.js.
- -  You can install [VSIX Package](https://github.com/Microsoft/PowerBI-visuals/blob/master/tools/VSIXExtensions/VisualTemplate.vsix?raw=true) and use Visual Studio Template from it to create new Visual.
+ -  You can install [VSIX Package](https://github.com/Microsoft/PowerBI-visuals-core/blob/master/tools/VSIXExtensions/VisualTemplate.vsix?raw=true) and use Visual Studio Template from it to create new Visual.
 
 ### One-Time Setup
 In order to build the Power BI visuals, ensure that you have [Git](http://git-scm.com/book/en/v2/Getting-Started-Installing-Git#Installing-on-Windows) and [Node.js](https://nodejs.org/en/download) installed.
@@ -40,13 +40,13 @@ npm install -g gulp
 Clone a copy of the repo:
 
 ```
-git clone https://github.com/Microsoft/PowerBI-visuals.git
+git clone https://github.com/Microsoft/PowerBI-visuals-core.git
 ```
 
-Change to the PowerBI-visuals directory:
+Change to the PowerBI-visuals-core directory:
 
 ```
-cd PowerBI-visuals
+cd PowerBI-visuals-core
 ```
 
 Install dev dependencies:
@@ -57,7 +57,7 @@ npm install # This command will install all necessary modules
 
 ### Running PlayGround from Visual Studio
 
-Make sure you first follow the [Prerequisites](https://github.com/Microsoft/PowerBI-visuals#prerequisites) & [Onetime Setup](https://github.com/Microsoft/PowerBI-visuals#one-time-setup)
+Make sure you first follow the [Prerequisites](https://github.com/Microsoft/PowerBI-visuals-core#prerequisites) & [Onetime Setup](https://github.com/Microsoft/PowerBI-visuals-core#one-time-setup)
 
 To run sample app:
 
@@ -73,7 +73,7 @@ To run sample app:
  
 ### Running PlayGround without Visual Studio
 
-Make sure you first follow the [Prerequisites](https://github.com/Microsoft/PowerBI-visuals#prerequisites) & [Onetime Setup](https://github.com/Microsoft/PowerBI-visuals#one-time-setup)
+Make sure you first follow the [Prerequisites](https://github.com/Microsoft/PowerBI-visuals-core#prerequisites) & [Onetime Setup](https://github.com/Microsoft/PowerBI-visuals-core#one-time-setup)
 
 Use the following command to run sample app:
 
@@ -83,7 +83,7 @@ gulp playground # Build and run sample app with Webpack dev server (live reload 
 
 ### Building Power BI visuals from command line
 
-Make sure you first follow the [Onetime Setup](https://github.com/Microsoft/PowerBI-visuals#one-time-setup)
+Make sure you first follow the [Onetime Setup](https://github.com/Microsoft/PowerBI-visuals-core#one-time-setup)
 
 Use the following command to build Power BI visuals from command line:
 
@@ -101,8 +101,8 @@ gulp test # Build and run unit tests
 ## How to Engage, Contribute and Provide Feedback
 
 There are many ways in which you can contribute to Power BI visuals:
-* You can contribute fixes and new visuals to this repo, read the [contribution guidelines](https://github.com/Microsoft/PowerBI-visuals/blob/master/CONTRIBUTING.md).
-* Submit bugs by opening a GitHub Issue [here](https://github.com/Microsoft/PowerBI-visuals/issues).
+* You can contribute fixes and new visuals to this repo, read the [contribution guidelines](https://github.com/Microsoft/PowerBI-visuals-core/blob/master/CONTRIBUTING.md).
+* Submit bugs by opening a GitHub Issue [here](https://github.com/Microsoft/PowerBI-visuals-core/issues).
 * Contribute to discussions on [StackOverflow](http://stackoverflow.com/questions/tagged/powerbidev).
 * Follow the [Power BI Developer](http://blogs.msdn.com/powerbidev) blog for updates.
 * Follow Power BI on Twitter [@mspowerbi](http://twitter.com/mspowerbi).
@@ -111,9 +111,9 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 
 ## Documentation
 
-*  [Getting started](https://github.com/Microsoft/PowerBI-visuals/wiki)
-*  [API specification](http://microsoft.github.io/PowerBI-visuals/interfaces/powerbi.ivisual.html)
-*  [Power BI visuals playground (see our visuals live in action)](http://microsoft.github.io/PowerBI-visuals/playground/index.html)
+*  [Getting started](https://github.com/Microsoft/PowerBI-visuals-core/wiki)
+*  [API specification](http://microsoft.github.io/PowerBI-visuals-core/interfaces/powerbi.ivisual.html)
+*  [Power BI visuals playground (see our visuals live in action)](http://microsoft.github.io/PowerBI-visuals-core/playground/index.html)
 *  [Power BI Homepage](https://powerbi.microsoft.com/)
 
 

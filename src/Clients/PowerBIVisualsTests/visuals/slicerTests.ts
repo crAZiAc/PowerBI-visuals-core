@@ -34,7 +34,7 @@ module powerbitests {
     import FilterAnalyzerOptions = powerbi.FilterAnalyzerOptions;
     import SemanticFilter = powerbi.data.SemanticFilter;
     import SlicerOrientation = powerbi.visuals.slicerOrientation.Orientation;
-    import VisualDataChangedOptions = powerbi.VisualDataChangedOptions;  
+    import VisualDataChangedOptions = powerbi.VisualDataChangedOptions;
     import visuals = powerbi.visuals;
 
     powerbitests.mocks.setLocale();
@@ -116,12 +116,9 @@ module powerbitests {
 
             it("SelectAll", () => {
                 validateSelectionState(orientation, []);
-
-                let selectAllItem: any = getSelectAllItem().eq(0);
-                selectAllItem.d3Click(0, 0);
-
+                let selectAllItem: any = getSelectAllItem();
+                selectAllItem.click();
                 validateSelectionState(orientation, [0, 1, 2, 3, 4, 5]);
-
                 builder.slicerText.eq(1).d3Click(0, 0);
                 validateSelectionState(orientation, [2, 3, 4, 5]);
                 let partialSelect = getPartiallySelectedContainer();
@@ -159,7 +156,7 @@ module powerbitests {
                 reconfigureSlicer(builder.interactiveDataViewOptions,
                     () => (<any>(builder.dataView.metadata.objects)).selection.singleSelect = true,
                     builder
-                    );
+                );
 
                 // Check the 'Select All' item
                 let selectAllItem: any = getSelectAllItem().eq(0);
@@ -174,7 +171,7 @@ module powerbitests {
             });
 
             it("Clear", () => {
-                let clearBtn = $(".clear");
+                let clearBtn = $(".slicer-header-clear");
                 let slicerText = builder.slicerText;
 
                 // Slicer click
@@ -323,17 +320,17 @@ module powerbitests {
             afterEach(() => builder.destroy());
 
             it('Show hide header test', () => {
-                expect($(".titleHeader").css('display')).toBe('block');
+                expect($(".slicer-header-title").css('display')).toBe('block');
 
                 let dataView = builder.dataView;
                 dataView.metadata.objects["header"] = { show: false };
                 helpers.fireOnDataChanged(builder.visual, { dataViews: [dataView] });
 
-                expect($(".titleHeader").css('display')).toBe('none');
+                expect($(".slicer-header-title").css('display')).toBe('none');
             });
 
             it('Header outline color test', () => {
-                expect($(".titleHeader").css('border-color')).toBe('rgb(128, 128, 128)');
+                expect($(".slicer-header-title").css("border-color")).toBe('rgb(128, 128, 128)');
             });
 
             it('Background and font slicer text test', () => {
@@ -351,7 +348,7 @@ module powerbitests {
             });
 
             it('Background and font header test', () => {
-                expect($(".slicerHeader .headerText").css('color')).toBe('rgb(0, 0, 0)');
+                expect($(".slicer-header-title .slicer-header-text").css('color')).toBe('rgb(0, 0, 0)');
 
                 let dataView = builder.dataView;
                 dataView.metadata.objects["header"] = {
@@ -361,12 +358,12 @@ module powerbitests {
                 };
                 helpers.fireOnDataChanged(builder.visual, { dataViews: [dataView] });
 
-                expect($(".slicerHeader .headerText").css('color')).toBe('rgb(245, 245, 245)');
-                expect($(".slicerHeader .headerText").css('background-color')).toBe('rgb(246, 246, 246)');
+                expect($(".slicer-header-title .slicer-header-text").css('color')).toBe('rgb(245, 245, 245)');
+                expect($(".slicer-header-title").css('background-color')).toBe('rgb(246, 246, 246)');
             });
 
             it('Test header border outline', () => {
-                expect($(".titleHeader").css('border-width')).toBe('0px 0px 1px');
+                expect($(".slicer-header-title").css('border-width')).toBe('0px 0px 1px');
 
                 let dataView = builder.dataView;
                 let visual = builder.visual;
@@ -377,27 +374,27 @@ module powerbitests {
                 };
                 helpers.fireOnDataChanged(visual, { dataViews: [dataView] });
 
-                expect($(".titleHeader").css('border-width')).toBe('0px');
+                expect($(".slicer-header-title").css('border-width')).toBe('0px');
 
                 dataView.metadata.objects["header"] = { outline: visuals.outline.topOnly };
                 helpers.fireOnDataChanged(visual, { dataViews: [dataView] });
 
-                expect($(".titleHeader").css('border-width')).toBe('1px 0px 0px');
+                expect($(".slicer-header-title").css('border-width')).toBe('1px 0px 0px');
 
                 dataView.metadata.objects["header"] = { outline: visuals.outline.topBottom };
                 helpers.fireOnDataChanged(visual, { dataViews: [dataView] });
 
-                expect($(".titleHeader").css('border-width')).toBe('1px 0px');
+                expect($(".slicer-header-title").css('border-width')).toBe('1px 0px');
 
                 dataView.metadata.objects["header"] = { outline: visuals.outline.leftRight };
                 helpers.fireOnDataChanged(visual, { dataViews: [dataView] });
 
-                expect($(".titleHeader").css('border-width')).toBe('0px 1px');
+                expect($(".slicer-header-title").css('border-width')).toBe('0px 1px');
 
                 dataView.metadata.objects["header"] = { outline: visuals.outline.frame };
                 helpers.fireOnDataChanged(visual, { dataViews: [dataView] });
 
-                expect($(".titleHeader").css('border-width')).toBe('1px');
+                expect($(".slicer-header-title").css('border-width')).toBe('1px');
             });
 
             it('Row text size', () => {
@@ -416,7 +413,7 @@ module powerbitests {
             });
 
             it('Header text size', () => {
-                expect(parseAndRoundFontSize($(".slicerHeader .headerText"))).toBe(13);
+                expect(parseAndRoundFontSize($(".slicer-header-title .slicer-header-text"))).toBe(13);
 
                 let dataView = builder.dataView;
                 dataView.metadata.objects["header"] = {
@@ -425,7 +422,7 @@ module powerbitests {
                 };
                 helpers.fireOnDataChanged(builder.visual, { dataViews: [dataView] });
 
-                expect(parseAndRoundFontSize($(".slicerHeader .headerText"))).toBe(19);
+                expect(parseAndRoundFontSize($(".slicer-header-title .slicer-header-text"))).toBe(19);
             });
         }
 
@@ -499,7 +496,7 @@ module powerbitests {
                 helpers.fireOnDataChanged(builder.visual, { dataViews: [] });
                 expect($(".slicerText").length).toBe(6);
             });
-            
+
             it("Empty dataView test", () => {
                 expect($(".slicerText").length).toBe(6);
 
@@ -530,7 +527,7 @@ module powerbitests {
 
             afterEach(() => builder.destroy());
 
-            it("On Clear should reset the default value", () => {                
+            it("On Clear should reset the default value", () => {
                 (<visuals.Slicer>builder.visual).onClearSelection();
                 expect(filterAnalyzed).toBe(true);
                 jasmine.clock().tick(0);
@@ -543,8 +540,7 @@ module powerbitests {
                     let slicerText = $(item).find('.slicerText');
                     expect(slicerText.text()).toBe('Banana');
                 }
-                else
-                {
+                else {
                     expect(selectedContainer.text()).toBe('Banana');
                 }
             });
@@ -555,7 +551,12 @@ module powerbitests {
     });
 
     function getSelectAllItem(): JQuery {
-        return $('.slicerText:contains("' + slicerHelper.SelectAllTextKey + '")');
+        let item = $('.slicerText:contains("' + slicerHelper.SelectAllTextKey + '")').first();
+        if(_.isEmpty(item)) {
+            // When text is on multiple lines.
+            item = $('.slicerText:contains("SelectAll")').first();
+        }
+        return item;
     }
 
     function getSlicerContainer(orientation: SlicerOrientation): JQuery {

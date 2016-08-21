@@ -687,7 +687,7 @@ module powerbitests {
             // assert categoricalA.categorical.categories...
             expect(categoricalA.categorical.categories.length).toBe(1);
             expect(categoricalA.categorical.categories[0].source.queryName).toBe('RowGroup3');
-            expect(categoricalA.categorical.categories[0].values).toEqual(['OR USA', 'WA USA', 'AB Canada', 'BC Canada']);
+            expect(categoricalA.categorical.categories[0].values).toEqual(['USA OR', 'USA WA', 'Canada AB', 'Canada BC']);
 
             let expectedCategoryIdentitiesSQExpr: SQExpr[] = [
                 SQExprBuilder.and(<SQExpr>metadataIdentities.category1.USA.expr, <SQExpr>metadataIdentities.category2.OR.expr),

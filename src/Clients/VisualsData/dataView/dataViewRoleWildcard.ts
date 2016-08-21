@@ -39,7 +39,7 @@ module powerbi.data {
             return firstRoleWildcard.key &&
                 secondRoleWildcard.key &&
                 firstRoleWildcard.key === secondRoleWildcard.key &&
-                ArrayExtensions.sequenceEqual<string>(
+                ArrayExtensions.sequenceEqual(
                     firstRoleWildcard.roles,
                     secondRoleWildcard.roles,
                     (role1: string, role2: string) => role1 === role2);

@@ -378,7 +378,8 @@ module powerbi.visuals {
 
             for (let i = 0, len = maxCards; i < len; i++) {
                 let row = tableDataRows[i];
-                let isValuePromoted: boolean = undefined;
+                let promotedColumnIndex: number = null;
+                let canPromote: boolean = true;
                 var title: string = undefined;
                 let showTitleAsURL: boolean = false;
                 let showTitleAsImage: boolean = false;
@@ -405,17 +406,20 @@ module powerbi.visuals {
                     // The columnDetail represents column name. In card the column name is shown as details
                     let columnDetail: string = columnMetadata[j].displayName;
 
-                    //Title is shown only on Canvas and only if there is one Category field.
-                    if (!isDashboardVisual && !column.type.numeric) {
-                        if (isValuePromoted === undefined) {
-                            isValuePromoted = true;
+                    // Promote 1 non-numeric field to the "title" if it's the only non-numeric field only if we're on the canvas.
+                    if (canPromote && !isDashboardVisual && !column.type.numeric) {
+                        if (promotedColumnIndex == null) {
+                            promotedColumnIndex = j;
                             title = columnCaption;
                             showTitleAsURL = converterHelper.isWebUrlColumn(column) && UrlUtils.isValidUrl(title);
                             showTitleAsImage = converterHelper.isImageUrlColumn(column) && UrlUtils.isValidImageUrl(columnCaption);
                             showTitleAsKPI = showKPI;
                         }
-                        else if (isValuePromoted) {
-                            isValuePromoted = false;
+                        else if (promotedColumnIndex != null) {
+                            // We encountered multiple non-numeric fields, so disable promotion and clear the column that was promoted.
+                            canPromote = false;
+                            promotedColumnIndex = null;
+                            
                         }
                     }
                     cardData.push({
@@ -427,12 +431,26 @@ module powerbi.visuals {
                         columnIndex: j
                     });
                 }
+
+                if (promotedColumnIndex != null) {
+                    // If we have a promoted card, strip it out of the data
+                    let dataBeforeTitle = cardData.slice(0, promotedColumnIndex);
+                    let dataAfterTitle = cardData.slice(promotedColumnIndex + 1);
+
+                    // Also decrease the column index of the items after the promoted value since it's now excluded
+                    for (let data of dataAfterTitle) {
+                        data.columnIndex--;
+                    }
+
+                    cardData = dataBeforeTitle.concat(dataAfterTitle);
+                }
+
                 details.push({
-                    title: isValuePromoted ? title : undefined,
+                    title: promotedColumnIndex != null ? title : undefined,
                     showTitleAsURL: showTitleAsURL,
                     showTitleAsImage: showTitleAsImage,
                     showTitleAsKPI: showTitleAsKPI,
-                    cardItemsData: isValuePromoted ? cardData.filter((d: CardItemData) => d.caption !== title) : cardData
+                    cardItemsData: cardData
                 });
             }
             return {

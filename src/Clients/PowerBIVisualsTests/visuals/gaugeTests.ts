@@ -31,6 +31,7 @@ module powerbitests {
     import GaugeVisual = powerbi.visuals.Gauge;
     import gaugeVisualCapabilities = powerbi.visuals.gaugeCapabilities;
     import SVGUtil = powerbi.visuals.SVGUtil;
+    import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 
     let sideNumbersVisibleMinHeight: number = 80; // Matches powerbi.visualHost.MobileVisualPluginService.MinHeightGaugeSideNumbersVisible
     let sideNumbersVisibleGreaterThanMinHeight: number = sideNumbersVisibleMinHeight + 1;
@@ -39,31 +40,46 @@ module powerbitests {
     let sideNumbersVisibleSmallerThanMinHeightString: string = sideNumbersVisibleSmallerThanMinHeight.toString();
     let marginsOnSmallViewPort: number = 10; // Matches powerbi.visualHost.MobileVisualPluginService.GaugeMarginsOnSmallViewPort
 
+    const YColumn: DataViewMetadataColumn = {
+        displayName: "col1",
+        roles: { "Y": true },
+        isMeasure: true,
+        objects: { general: { formatString: "$0" } }
+    };
+
+    const MinColunmn: DataViewMetadataColumn = {
+        displayName: "col2",
+        roles: { "MinValue": true },
+        isMeasure: true,
+    };
+
+    const MaxColumn: DataViewMetadataColumn = {
+        displayName: "col3",
+        roles: { "MaxValue": true },
+        isMeasure: true,
+    };
+
+    const TargetColumn: DataViewMetadataColumn = {
+        displayName: "col4",
+        roles: { "TargetValue": true },
+        isMeasure: true,
+    };
+
+    const TooltipColumn: DataViewMetadataColumn = {
+        displayName: "tooltip",
+        roles: { "Tooltips": true },
+        isMeasure: true,
+    };
+
     class GaugeDataBuilder {
         private _dataViewMetadata: powerbi.DataViewMetadata = {
             columns: [
-                {
-                    displayName: "col1",
-                    roles: { "Y": true },
-                    isMeasure: true,
-                    objects: { general: { formatString: "$0" } },
-                }, {
-                    displayName: "col2",
-                    roles: { "MinValue": true },
-                    isMeasure: true
-                }, {
-                    displayName: "col3",
-                    roles: { "MaxValue": true },
-                    isMeasure: true
-                }, {
-                    displayName: "col4",
-                    roles: { "TargetValue": true },
-                    isMeasure: true
-                }, {
-                    displayName: "tooltip",
-                    roles: { "Tooltips": true },
-                    isMeasure: true
-                }]
+                _.clone(YColumn),
+                _.clone(MinColunmn),
+                _.clone(MaxColumn),
+                _.clone(TargetColumn),
+                _.clone(TooltipColumn)
+            ]
         };
 
         public get dataViewMetadata(): powerbi.DataViewMetadata {
@@ -312,10 +328,10 @@ module powerbitests {
             });
         }
     }
-    
+
     const DefaultFillColor = '#00B8AA';
     const DefaultTargetColor = '#666666';
-    
+
     describe("Gauge", () => {
         beforeEach(() => {
             powerbitests.mocks.setLocale();
@@ -360,7 +376,7 @@ module powerbitests {
         it("Uses the formatter based on metadata parrameter", () => {
             gaugeDataBuilder.singleValue = 200;
             gaugeDataBuilder.values = [[0], [0], [0], [0]];
-            let metadata =  gaugeDataBuilder.reader.getValueMetadataColumn(powerbi.visuals.gaugeRoleNames.y);
+            let metadata = gaugeDataBuilder.reader.getValueMetadataColumn(powerbi.visuals.gaugeRoleNames.y);
             let settings = powerbi.visuals.dataLabelUtils.getDefaultGaugeLabelSettings();
             metadata.objects = { general: { formatString: "$0.00" } };
 
@@ -481,7 +497,7 @@ module powerbitests {
 
             gaugeDataBuilder.onDataChanged();
 
-            setTimeout(() => {    
+            setTimeout(() => {
                 // Check Arc Drawn
                 let backgroundArc = $(".backgroundArc");
                 let foregroundArc = $(".foregroundArc");
@@ -549,10 +565,10 @@ module powerbitests {
             };
             gaugeDataBuilder.buildDataView();
             gaugeDataBuilder.onDataChanged();
-            setTimeout(() => {    
+            setTimeout(() => {
                 //Callout value
                 expect($(".mainText").length).toBe(0);
-                
+
                 //Data labels
                 expect($(".labelText").length).toBe(0);
                 done();
@@ -633,7 +649,7 @@ module powerbitests {
             setTimeout(() => {
                 //Callout value
                 expect($(".mainText").text()).toBe("$1000.00K");
-                
+
                 //Data labels
                 let textLabels: JQuery = $(".labelText");
 
@@ -679,10 +695,10 @@ module powerbitests {
                 done();
             }, DefaultWaitForRender);
         });
-        
+
         it("Formatting: Currency format shows scientific notation", (done) => {
             let dataViewMetadata: powerbi.DataViewMetadata = {
-                    columns: [{
+                columns: [{
                     displayName: "col1",
                     roles: { "Y": true },
                     isMeasure: true,
@@ -705,7 +721,7 @@ module powerbitests {
             setTimeout(() => {
                 //Callout value
                 expect($(".mainText").text()).toBe("$563.73T");
-                
+
                 //Data labels
                 let textLabels: JQuery = $(".labelText");
 
@@ -717,9 +733,9 @@ module powerbitests {
                 done();
             }, DefaultWaitForRender);
         });
-        
+
         it("Verify correct arc fill color", (done) => {
-            
+
             gaugeDataBuilder.singleValue = 20;
             gaugeDataBuilder.values = [[20], [0], [400], [0]];
             gaugeDataBuilder.dataViewMetadata.objects = {
@@ -740,10 +756,10 @@ module powerbitests {
 
                 done();
             }, DefaultWaitForRender);
-         });
-         
-          it("Verify correct target color", (done) => {
-            
+        });
+
+        it("Verify correct target color", (done) => {
+
             gaugeDataBuilder.singleValue = 20;
             gaugeDataBuilder.values = [[20], [0], [400], [0]];
             gaugeDataBuilder.dataViewMetadata.objects = {
@@ -760,7 +776,7 @@ module powerbitests {
 
                 done();
             }, DefaultWaitForRender);
-         });
+        });
     });
 
     describe("Gauge Data Tests", () => {
@@ -770,7 +786,7 @@ module powerbitests {
             isValid: (<any>GaugeVisual.prototype).isValid
         };
 
-        let getValueAngle = GaugeVisual.prototype.getValueAngle.bind(GaugeMock);
+        let getValueAngle = GaugeVisual.prototype.getAngle.bind(GaugeMock);
 
         beforeEach(() => {
             powerbitests.mocks.setLocale();
@@ -795,9 +811,29 @@ module powerbitests {
             gaugeDataBuilder.values = [[500], [0], [300], [200]];
 
             gaugeDataBuilder.onDataChanged();
-            
+
             GaugeMock.data = GaugeVisual.converter(gaugeDataBuilder.reader);
-            expect(getValueAngle()).toBe(1);
+            expect(getValueAngle(gaugeDataBuilder.singleValue)).toBe(1);
+        });
+
+        it("Gauge_greaterThanMax_MinMax0", () => {
+            gaugeDataBuilder.singleValue = 500;
+            gaugeDataBuilder.values = [[500], [0], [0], [0]];
+
+            gaugeDataBuilder.onDataChanged();
+
+            GaugeMock.data = GaugeVisual.converter(gaugeDataBuilder.reader);
+            expect(getValueAngle(gaugeDataBuilder.singleValue)).toBe(1);
+        });
+
+        it("Gauge_equalMin_MinMax0", () => {
+            gaugeDataBuilder.singleValue = 0;
+            gaugeDataBuilder.values = [[0], [0], [0], [0]];
+
+            gaugeDataBuilder.onDataChanged();
+
+            GaugeMock.data = GaugeVisual.converter(gaugeDataBuilder.reader);
+            expect(getValueAngle(gaugeDataBuilder.singleValue)).toBe(0);
         });
 
         it("Gauge_smallerThanMin", () => {
@@ -806,7 +842,7 @@ module powerbitests {
 
             gaugeDataBuilder.onDataChanged();
             GaugeMock.data = GaugeVisual.converter(gaugeDataBuilder.reader);
-            expect(getValueAngle()).toBe(0);
+            expect(getValueAngle(gaugeDataBuilder.singleValue)).toBe(0);
         });
 
         it("Gauge_betweenMinMax", () => {
@@ -815,7 +851,7 @@ module powerbitests {
 
             gaugeDataBuilder.onDataChanged();
             GaugeMock.data = GaugeVisual.converter(gaugeDataBuilder.reader);
-            expect(getValueAngle()).toBe(0.5);
+            expect(getValueAngle(gaugeDataBuilder.singleValue)).toBe(0.5);
         });
 
         it("Gauge_Nulls", () => {
@@ -826,7 +862,7 @@ module powerbitests {
 
             let data = GaugeVisual.converter(gaugeDataBuilder.reader);
             GaugeMock.data = GaugeVisual.converter(gaugeDataBuilder.reader);
-            expect(getValueAngle()).toBe(0);
+            expect(getValueAngle(gaugeDataBuilder.singleValue)).toBe(0);
             expect(data.targetSettings).toEqual({
                 min: null,
                 max: null,
@@ -891,7 +927,7 @@ module powerbitests {
                     max: 500,
                     target: 200
                 },
-                tooltipInfo: [{ displayName: "col1", value: "(Blank)"}, { displayName: "col4", value: "$200" }],
+                tooltipInfo: [{ displayName: "col1", value: "(Blank)" }, { displayName: "col4", value: "$200" }],
                 dataLabelsSettings: {
                     show: true,
                     displayUnits: 0,
@@ -1028,6 +1064,51 @@ module powerbitests {
             expect(data).toEqual(expectedValues);
         });
 
+        it("Expects max to be 2*value", () => {
+            gaugeDataBuilder.singleValue = null;
+            gaugeDataBuilder.dataViewMetadata = {
+                columns: [
+                    YColumn, 
+                    MinColunmn
+                ]
+            };
+            gaugeDataBuilder.values = [[200], [100]];
+
+            gaugeDataBuilder.onDataChanged();
+
+            let data = GaugeVisual.converter(gaugeDataBuilder.reader);
+            expect(data.targetSettings.max).toEqual(400);
+        });
+
+        it("Expects min to be 2*value and max to be 0", () => {
+            gaugeDataBuilder.singleValue = null;
+            gaugeDataBuilder.dataViewMetadata = {
+                columns: [
+                    YColumn, 
+                ]
+            };
+            gaugeDataBuilder.values = [[-200]];
+            gaugeDataBuilder.onDataChanged();
+
+            let data = GaugeVisual.converter(gaugeDataBuilder.reader);
+            expect(data.targetSettings.max).toEqual(0);
+            expect(data.targetSettings.min).toEqual(-400);
+        });
+
+        it("Expects min to be 2*value", () => {
+            gaugeDataBuilder.singleValue = null;
+            gaugeDataBuilder.dataViewMetadata = {
+                columns: [
+                    YColumn,
+                    MaxColumn 
+                ]
+            };
+            gaugeDataBuilder.values = [[-200], [0]];
+            gaugeDataBuilder.onDataChanged();
+            let data = GaugeVisual.converter(gaugeDataBuilder.reader);
+            expect(data.targetSettings.min).toEqual(-400);
+        });
+
         it("Gauge_betweenMinMax_Tooltip_Data", () => {
             gaugeDataBuilder.singleValue = 200;
             gaugeDataBuilder.values = [[200], [100], [300], [200]];
@@ -1071,7 +1152,7 @@ module powerbitests {
             expect(data).toEqual(expectedValues);
         });
 
-        it("Gauge_formatting_min_max_target", () => {    
+        it("Gauge_formatting_min_max_target", () => {
             // 1
             let dataViewMetadata: powerbi.DataViewMetadata = {
                 columns: [
@@ -1213,7 +1294,7 @@ module powerbitests {
             expect(data.targetSettings.max).toEqual(1000);
             expect(data.targetSettings.target).toEqual(100);
         });
-         
+
         describe("Gauge Rendering Tests", () => {
             let gaugeVisualDataBuilder: GaugeVisualDataBuilder;
 
@@ -1251,8 +1332,8 @@ module powerbitests {
                 let height = parseFloat(gaugeVisualDataBuilder.height);
                 let radius = width / 2;
                 let left = height / 2;
-                let top = radius + (height - radius) / 2; 
-                
+                let top = radius + (height - radius) / 2;
+
                 let expectedViewPortProperty = {
                     radius: radius,
                     innerRadiusOfArc: radius * innerRadiusFactor,
@@ -1535,7 +1616,7 @@ module powerbitests {
             gaugeVisualDataBuilder.onDataChanged();
 
             let viewPortProperty = gaugeVisualDataBuilder.gauge.getGaugeVisualProperties();
-            expect(viewPortProperty.margin.left).toEqual(0);
+            expect(viewPortProperty.margin.right).toEqual(0);
             expect(viewPortProperty.margin.top).toEqual(20);
         });
 
@@ -1550,7 +1631,7 @@ module powerbitests {
 
             let viewPortProperty = gaugeVisualDataBuilder.gauge.getGaugeVisualProperties();
             expect(viewPortProperty.margin.top).toEqual(20);
-            expect(viewPortProperty.margin.right).toEqual(0);
+            expect(viewPortProperty.margin.left).toEqual(0);
         });
 
         it("Gauge margin test with small width and target", () => {

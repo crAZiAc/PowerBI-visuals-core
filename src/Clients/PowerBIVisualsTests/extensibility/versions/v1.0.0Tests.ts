@@ -52,9 +52,11 @@ module powerbitests {
                 let spy = spyOn((<any>adapter).visual, 'update');
                 let dataViews = [];
                 let viewport = { width: 11, height: 22 };
+                let viewMode = powerbi.ViewMode.Edit;
                 adapter.update({
                     viewport: viewport,
                     dataViews: dataViews,
+                    viewMode: viewMode,
                     type: powerbi.VisualUpdateType.Resize
                 });
                 expect(spy.calls.count()).toBe(1);
@@ -62,6 +64,7 @@ module powerbitests {
 
                 expect(callArgs.viewport).toBe(viewport);
                 expect(callArgs.dataViews).toBe(dataViews);
+                expect(callArgs.viewMode).toBe(viewMode);
                 expect(callArgs.type).toBe(powerbi.VisualUpdateType.Resize);
             });
 

@@ -66,15 +66,17 @@ module powerbi.visuals {
         highlightedValueDisplayName: string;
     }
 
-    export interface TooltipEvent {
-        data: any;
+    export interface TooltipEventArgs<TData> {
+        data: TData;
         coordinates: number[];
         elementCoordinates: number[];
         context: HTMLElement;
         isTouchEvent: boolean;
     }
+    
+    export type TooltipEvent = TooltipEventArgs<any>;
 
-    const enum ScreenArea {
+    export const enum ScreenQuadrant {
         TopLeft,
         TopRight,
         BottomRight,
@@ -90,33 +92,30 @@ module powerbi.visuals {
     const TooltipTitleCellClassName: ClassAndSelector = createClassAndSelector("tooltip-title-cell");
     const TooltipValueCellClassName: ClassAndSelector = createClassAndSelector("tooltip-value-cell");
 
-    export class ToolTipComponent {
+    export interface ITooltipContainer {
+        isVisible(): boolean;
+        setTestScreenSize(width: number, height: number): void;
+        show(tooltipData?: VisualTooltipDataItem[], clickedArea?: IRect): void;
+        move(tooltipData: VisualTooltipDataItem[], clickedArea: IRect): void;
+        hide(): void;
+    }
 
-        private static DefaultTooltipOptions: TooltipOptions = {
-            opacity: 1,
-            animationDuration: 250,
-            offsetX: 10,
-            offsetY: 10
-        };
-
+    export class TooltipContainer implements ITooltipContainer {
+        private options: TooltipOptions;
+        private rootElement: Element;
         private tooltipContainer: D3.Selection;
         private isTooltipVisible: boolean = false;
-        private currentTooltipData: TooltipDataItem[];
+        private currentContent: VisualTooltipDataItem[];
 
         private customScreenWidth: number;
         private customScreenHeight: number;
 
-        public static parentContainerSelector: string = "body";
-        public static highlightedValueDisplayNameResorceKey: string = "Tooltip_HighlightedValueDisplayName";
-        public static localizationOptions: TooltipLocalizationOptions;
-
-        constructor(public tooltipOptions?: TooltipOptions) {
-            if (!tooltipOptions) {
-                this.tooltipOptions = ToolTipComponent.DefaultTooltipOptions;
-            }
+        constructor(rootElement: Element, options: TooltipOptions) {
+            this.options = options;
+            this.rootElement = rootElement;
         }
 
-        public isTooltipComponentVisible(): boolean {
+        public isVisible(): boolean {
             return this.isTooltipVisible;
         }
 
@@ -126,32 +125,40 @@ module powerbi.visuals {
             this.customScreenHeight = height;
         }
 
-        public show(tooltipData: TooltipDataItem[], clickedArea: TouchUtils.Rectangle) {
+        public show(tooltipData?: VisualTooltipDataItem[], clickedArea?: IRect) {
             this.isTooltipVisible = true;
 
             if (!this.tooltipContainer) {
-                this.tooltipContainer = this.createTooltipContainer();
+                this.tooltipContainer = this.createTooltipContainer(this.rootElement);
             }
 
-            this.setTooltipContent(tooltipData);
+            if (tooltipData) {
+                this.setTooltipContent(tooltipData);
+            }
 
             this.tooltipContainer
                 .style("visibility", "visible")
                 .transition()
                 .duration(0) // Cancel previous transitions
-                .style("opacity", this.tooltipOptions.opacity);
+                .style("opacity", this.options.opacity);
 
-            this.setPosition(clickedArea);
-        }
-
-        public move(tooltipData: TooltipDataItem[], clickedArea: TouchUtils.Rectangle) {
-            if (this.isTooltipVisible) {
-                if (tooltipData) {
-                    this.setTooltipContent(tooltipData);
-                }
-
+            if (clickedArea) {
                 this.setPosition(clickedArea);
             }
+        }
+
+        public move(tooltipData: VisualTooltipDataItem[], clickedArea: IRect) {
+            debug.assertAnyValue(tooltipData, 'tooltipData');
+
+            if (!this.tooltipContainer) {
+                this.tooltipContainer = this.createTooltipContainer(this.rootElement);
+            }
+
+            if (tooltipData) {
+                this.setTooltipContent(tooltipData);
+            }
+
+            this.setPosition(clickedArea);
         }
 
         public hide() {
@@ -159,27 +166,28 @@ module powerbi.visuals {
                 this.isTooltipVisible = false;
                 this.tooltipContainer
                     .transition()
-                    .duration(this.tooltipOptions.animationDuration)
+                    .duration(this.options.animationDuration)
                     .style("opacity", 0)
                     .each('end', function () { this.style.visibility = "hidden"; });
             }
         }
 
-        private createTooltipContainer(): D3.Selection {
-            let container: D3.Selection = d3.select(ToolTipComponent.parentContainerSelector)
+        private createTooltipContainer(root: Element): D3.Selection {
+            let container: D3.Selection = d3.select(root)
                 .append("div")
                 .attr("class", ContainerClassName.class);
 
             container.append("div").attr("class", ArrowClassName.class);
             container.append("div").attr("class", ContentContainerClassName.class);
+            container.style("visibility", "hidden");
 
             return container;
         }
 
-        private setTooltipContent(tooltipData: TooltipDataItem[]): void {
-            if (_.isEqual(tooltipData, this.currentTooltipData))
+        private setTooltipContent(tooltipData: VisualTooltipDataItem[]): void {
+            if (_.isEqual(tooltipData, this.currentContent))
                 return;
-            this.currentTooltipData = tooltipData;
+            this.currentContent = tooltipData;
 
             let rowsSelector: string = TooltipRowClassName.selector;
             let contentContainer = this.tooltipContainer.select(ContentContainerClassName.selector);
@@ -211,38 +219,38 @@ module powerbi.visuals {
                         'r': '5'
                     })
                     .style({
-                        'fill': (d: TooltipDataItem) => d.color,
-                        'fill-opacity': (d: TooltipDataItem) => d.opacity != null ? d.opacity : 1,
+                        'fill': (d: VisualTooltipDataItem) => d.color,
+                        'fill-opacity': (d: VisualTooltipDataItem) => d.opacity != null ? d.opacity : 1,
                     });
             }
             let newTitleCell: D3.Selection = newRow.append("div").attr("class", TooltipTitleCellClassName.class);
             let newValueCell: D3.Selection = newRow.append("div").attr("class", TooltipValueCellClassName.class);
 
-            newTitleCell.text(function (d: TooltipDataItem) { return d.displayName; });
-            newValueCell.text(function (d: TooltipDataItem) { return d.value; });
+            newTitleCell.text(function (d: VisualTooltipDataItem) { return d.displayName; });
+            newValueCell.text(function (d: VisualTooltipDataItem) { return d.value; });
         }
 
-        private getTooltipPosition(clickedArea: TouchUtils.Rectangle, clickedScreenArea: ScreenArea): TouchUtils.Point {
+        private getTooltipPosition(clickedArea: IRect, clickedScreenArea: ScreenQuadrant): TouchUtils.Point {
             let tooltipContainerBounds: ClientRect = this.tooltipContainer.node().getBoundingClientRect();
             let centerPointOffset: number = Math.floor(clickedArea.width / 2);
             let offsetX: number = 0;
             let offsetY: number = 0;
-            let centerPoint: TouchUtils.Point = new TouchUtils.Point(clickedArea.x + centerPointOffset, clickedArea.y + centerPointOffset);
+            let centerPoint: TouchUtils.Point = new TouchUtils.Point(clickedArea.left + centerPointOffset, clickedArea.top + centerPointOffset);
             let arrowOffset: number = 7;
 
-            if (clickedScreenArea === ScreenArea.TopLeft) {
+            if (clickedScreenArea === ScreenQuadrant.TopLeft) {
                 offsetX += 3 * arrowOffset + centerPointOffset;
                 offsetY -= 2 * arrowOffset + centerPointOffset;
             }
-            else if (clickedScreenArea === ScreenArea.TopRight) {
+            else if (clickedScreenArea === ScreenQuadrant.TopRight) {
                 offsetX -= (2 * arrowOffset + tooltipContainerBounds.width + centerPointOffset);
                 offsetY -= 2 * arrowOffset + centerPointOffset;
             }
-            else if (clickedScreenArea === ScreenArea.BottomLeft) {
+            else if (clickedScreenArea === ScreenQuadrant.BottomLeft) {
                 offsetX += 3 * arrowOffset + centerPointOffset;
                 offsetY -= (tooltipContainerBounds.height - 2 * arrowOffset + centerPointOffset);
             }
-            else if (clickedScreenArea === ScreenArea.BottomRight) {
+            else if (clickedScreenArea === ScreenQuadrant.BottomRight) {
                 offsetX -= (2 * arrowOffset + tooltipContainerBounds.width + centerPointOffset);
                 offsetY -= (tooltipContainerBounds.height - 2 * arrowOffset + centerPointOffset);
             }
@@ -252,9 +260,8 @@ module powerbi.visuals {
             return centerPoint;
         }
 
-        private setPosition(clickedArea: TouchUtils.Rectangle): void {
-            let clickedScreenArea: ScreenArea = this.getClickedScreenArea(clickedArea);
-
+        private setPosition(clickedArea: IRect): void {
+            let clickedScreenArea: ScreenQuadrant = this.getClickedScreenArea(clickedArea);
             let tooltipPosition: TouchUtils.Point = this.getTooltipPosition(clickedArea, clickedScreenArea);
             this.setTooltipContainerClass(clickedScreenArea);
             this.tooltipContainer.style({ "left": tooltipPosition.x + "px", "top": tooltipPosition.y + "px" });
@@ -262,15 +269,15 @@ module powerbi.visuals {
             this.setArrowPosition(clickedScreenArea);
         }
 
-        private setTooltipContainerClass(clickedScreenArea: ScreenArea): void {
+        private setTooltipContainerClass(clickedScreenArea: ScreenQuadrant): void {
             let tooltipContainerClassName: string;
             switch (clickedScreenArea) {
-                case ScreenArea.TopLeft:
-                case ScreenArea.BottomLeft:
+                case ScreenQuadrant.TopLeft:
+                case ScreenQuadrant.BottomLeft:
                     tooltipContainerClassName = 'left';
                     break;
-                case ScreenArea.TopRight:
-                case ScreenArea.BottomRight:
+                case ScreenQuadrant.TopRight:
+                case ScreenQuadrant.BottomRight:
                     tooltipContainerClassName = 'right';
                     break;
             }
@@ -279,17 +286,17 @@ module powerbi.visuals {
                 .classed(tooltipContainerClassName, true);
         }
 
-        private setArrowPosition(clickedScreenArea: ScreenArea): void {
+        private setArrowPosition(clickedScreenArea: ScreenQuadrant): void {
             let arrow: D3.Selection = this.getArrowElement();
             let arrowClassName: string;
 
-            if (clickedScreenArea === ScreenArea.TopLeft) {
+            if (clickedScreenArea === ScreenQuadrant.TopLeft) {
                 arrowClassName = "top left";
             }
-            else if (clickedScreenArea === ScreenArea.TopRight) {
+            else if (clickedScreenArea === ScreenQuadrant.TopRight) {
                 arrowClassName = "top right";
             }
-            else if (clickedScreenArea === ScreenArea.BottomLeft) {
+            else if (clickedScreenArea === ScreenQuadrant.BottomLeft) {
                 arrowClassName = "bottom left";
             }
             else {
@@ -305,39 +312,97 @@ module powerbi.visuals {
             return this.tooltipContainer.select(ArrowClassName.selector);
         }
 
-        private getClickedScreenArea(clickedArea: TouchUtils.Rectangle): ScreenArea {
+        private getClickedScreenArea(clickedArea: IRect): ScreenQuadrant {
             let screenWidth: number = this.customScreenWidth || window.innerWidth;
             let screenHeight: number = this.customScreenHeight || window.innerHeight;
             let centerPointOffset: number = clickedArea.width / 2;
-            let centerPoint: TouchUtils.Point = new TouchUtils.Point(clickedArea.x + centerPointOffset, clickedArea.y + centerPointOffset);
+            let centerPoint: TouchUtils.Point = new TouchUtils.Point(clickedArea.left + centerPointOffset, clickedArea.top + centerPointOffset);
             let halfWidth: number = screenWidth / 2;
             let halfHeight: number = screenHeight / 2;
 
             if (centerPoint.x < halfWidth && centerPoint.y < halfHeight) {
-                return ScreenArea.TopLeft;
+                return ScreenQuadrant.TopLeft;
             }
             else if (centerPoint.x >= halfWidth && centerPoint.y < halfHeight) {
-                return ScreenArea.TopRight;
+                return ScreenQuadrant.TopRight;
             }
             else if (centerPoint.x < halfWidth && centerPoint.y >= halfHeight) {
-                return ScreenArea.BottomLeft;
+                return ScreenQuadrant.BottomLeft;
             }
             else if (centerPoint.x >= halfWidth && centerPoint.y >= halfHeight) {
-                return ScreenArea.BottomRight;
+                return ScreenQuadrant.BottomRight;
             }
         }
     }
 
-    export module TooltipManager {
+    /**
+     * Legacy tooltip component. Please use the tooltip host service instead.
+     */
+    export class ToolTipComponent {
+        public static DefaultTooltipOptions: TooltipOptions = {
+            opacity: 1,
+            animationDuration: 250,
+            offsetX: 10,
+            offsetY: 10
+        };
 
+        public static parentContainerSelector: string = "body";
+        public static highlightedValueDisplayNameResorceKey: string = "Tooltip_HighlightedValueDisplayName";
+        public static localizationOptions: TooltipLocalizationOptions;
+
+        private tooltipContainer: TooltipContainer;
+
+        constructor(public tooltipOptions?: TooltipOptions) {
+            if (!tooltipOptions) {
+                this.tooltipOptions = ToolTipComponent.DefaultTooltipOptions;
+            }
+
+            // NOTE: This will be called statically by the TooltipManager, thus we need to defer creation of the tooltip container until we actually have a root element.
+        }
+
+        public isTooltipComponentVisible(): boolean {
+            return this.tooltipContainer && this.tooltipContainer.isVisible();
+        }
+
+        public show(tooltipData: TooltipDataItem[], clickedArea: TouchUtils.Rectangle) {
+            this.ensureTooltipContainer();
+            this.tooltipContainer.show(tooltipData, this.convertRect(clickedArea));
+        }
+
+        public move(tooltipData: TooltipDataItem[], clickedArea: TouchUtils.Rectangle) {
+            this.ensureTooltipContainer();
+            this.tooltipContainer.move(tooltipData, this.convertRect(clickedArea));
+        }
+
+        public hide() {
+            this.ensureTooltipContainer();
+            this.tooltipContainer.hide();
+        }
+
+        private convertRect(rect: TouchUtils.Rectangle): IRect {
+            return new Rect(rect.x, rect.y, rect.width, rect.height);
+        }
+
+        private ensureTooltipContainer(): void {
+            if (!this.tooltipContainer) {
+                let root = $(ToolTipComponent.parentContainerSelector).get(0);
+                this.tooltipContainer = new TooltipContainer(root, this.tooltipOptions);
+            }
+        }
+    }
+
+    /**
+     * Legacy tooltip management API. Please use the tooltip host service instead.
+     */
+    export module TooltipManager {
+        let GlobalTooltipEventsAttached: boolean = false;
         export let ShowTooltips: boolean = true;
         export let ToolTipInstance: ToolTipComponent = new ToolTipComponent();
-        let GlobalTooltipEventsAttached: boolean = false;
-        const tooltipMouseOverDelay: number = 350;
-        const tooltipMouseOutDelay: number = 500;
-        const tooltipTouchDelay: number = 350;
+        export let tooltipMouseOverDelay: number = 350;
+        export let tooltipMouseOutDelay: number = 500;
+        export let tooltipTouchDelay: number = 350;
+        export let handleTouchDelay: number = 1000;
         let tooltipTimeoutId: number;
-        const handleTouchDelay: number = 1000;
         let handleTouchTimeoutId: number = 0;
         let mouseCoordinates: number[];
         let tooltipData: TooltipDataItem[];
@@ -357,7 +422,7 @@ module powerbi.visuals {
             let rootNode = d3.select(ToolTipComponent.parentContainerSelector).node();
 
             // Mouse events
-            selection.on("mouseover", () => {
+            selection.on("mouseover.tooltip", () => {
                 let target = <HTMLElement>d3.event.target;
                 let data = d3.select(target).datum();
                 
@@ -382,7 +447,7 @@ module powerbi.visuals {
                 tooltipTimeoutId = showDelayedTooltip(tooltipEvent, getTooltipInfoDelegate, delay);
             });
 
-            selection.on("mouseout", () => {
+            selection.on("mouseout.tooltip", () => {
                 if (!handleTouchTimeoutId) {
                     clearTooltipTimeout();
                     tooltipTimeoutId = hideDelayedTooltip();
@@ -393,7 +458,7 @@ module powerbi.visuals {
                 }
             });
 
-            selection.on("mousemove", () => {
+            selection.on("mousemove.tooltip", () => {
                 let target = <HTMLElement>d3.event.target;
                 let data = d3.select(target).datum();
                 
@@ -458,11 +523,11 @@ module powerbi.visuals {
             });
         }
 
-        export function showDelayedTooltip(tooltipEvent: TooltipEvent, getTooltipInfoDelegate: (tooltipEvent: TooltipEvent) => TooltipDataItem[], delayInMs: number): number {
+        function showDelayedTooltip(tooltipEvent: TooltipEvent, getTooltipInfoDelegate: (tooltipEvent: TooltipEvent) => TooltipDataItem[], delayInMs: number): number {
             return setTimeout(() => showTooltipEventHandler(tooltipEvent, getTooltipInfoDelegate), delayInMs);
         }
 
-        export function hideDelayedTooltip(): number {
+        function hideDelayedTooltip(): number {
             return setTimeout(() => hideTooltipEventHandler(), tooltipMouseOutDelay);
         }
 
@@ -474,7 +539,7 @@ module powerbi.visuals {
             let tooltipInfo: TooltipDataItem[] = tooltipData || getTooltipInfoDelegate(tooltipEvent);
             if (!_.isEmpty(tooltipInfo)) {
                 let coordinates: number[] = mouseCoordinates || tooltipEvent.coordinates;
-                let clickedArea: TouchUtils.Rectangle = getClickedArea(coordinates[0], coordinates[1], tooltipEvent.isTouchEvent);
+                let clickedArea = getClickedArea(coordinates[0], coordinates[1], tooltipEvent.isTouchEvent);
                 ToolTipInstance.show(tooltipInfo, clickedArea);
             }
         }
@@ -484,7 +549,7 @@ module powerbi.visuals {
             if (reloadTooltipDataOnMouseMove) {
                 tooltipData = getTooltipInfoDelegate(tooltipEvent);
             }
-            let clickedArea: TouchUtils.Rectangle = getClickedArea(tooltipEvent.coordinates[0], tooltipEvent.coordinates[1], tooltipEvent.isTouchEvent);
+            let clickedArea = getClickedArea(tooltipEvent.coordinates[0], tooltipEvent.coordinates[1], tooltipEvent.isTouchEvent);
             ToolTipInstance.move(tooltipData, clickedArea);
         };
 

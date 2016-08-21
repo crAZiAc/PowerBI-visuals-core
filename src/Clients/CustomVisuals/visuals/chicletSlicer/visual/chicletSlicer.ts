@@ -27,14 +27,55 @@
 /// <reference path="../../../_references.ts"/>
 
 module powerbi.visuals.samples {
-
+    // jsCommon
     import ClassAndSelector = jsCommon.CssConstants.ClassAndSelector;
     import createClassAndSelector = jsCommon.CssConstants.createClassAndSelector;
     import PixelConverter = jsCommon.PixelConverter;
+
+    // powerbi
+    import IViewport = powerbi.IViewport;
+    import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
+    import IEnumType = powerbi.IEnumType;
+    import createEnumType = powerbi.createEnumType;
+    import IVisual = powerbi.IVisual;
+    import IVisualHostServices = powerbi.IVisualHostServices;
+    import DataView = powerbi.DataView;
+    import DataViewObjects = powerbi.DataViewObjects;
+    import DataViewCategoricalColumn = powerbi.DataViewCategoricalColumn;
+    import VisualCapabilities = powerbi.VisualCapabilities;
+    import VisualDataRoleKind = powerbi.VisualDataRoleKind;
+    import SelectEventArgs = powerbi.SelectEventArgs;
+    import VisualUpdateOptions = powerbi.VisualUpdateOptions;
+    import DataViewAnalysis = powerbi.DataViewAnalysis;
+    import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
+    import VisualObjectInstance = powerbi.VisualObjectInstance;
+    import VisualObjectInstancesToPersist = powerbi.VisualObjectInstancesToPersist;
+    import TextMeasurementService = powerbi.TextMeasurementService;
+    import TextProperties = powerbi.TextProperties;
+    import DataViewCategorical = powerbi.DataViewCategorical;
+    import DataViewMetadata = powerbi.DataViewMetadata;
+    import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
+    import DataViewScopeIdentity = powerbi.DataViewScopeIdentity;
+    import VisualInitOptions = powerbi.VisualInitOptions;
+
+    // powerbi.data
     import SemanticFilter = powerbi.data.SemanticFilter;
     import SQExprConverter = powerbi.data.SQExprConverter;
+    import Selector = powerbi.data.Selector;
+    import SQExpr = powerbi.data.SQExpr;
+
+    // powerbi.visuals
+    import SelectableDataPoint = powerbi.visuals.SelectableDataPoint;
+    import IMargin = powerbi.visuals.IMargin;
+    import IInteractivityService = powerbi.visuals.IInteractivityService;
+    import valueFormatter = powerbi.visuals.valueFormatter;
+    import createInteractivityService = powerbi.visuals.createInteractivityService;
+    import isCategoryColumnSelected = powerbi.visuals.isCategoryColumnSelected;
+    import converterHelper = powerbi.visuals.converterHelper;
+    import SelectionId = powerbi.visuals.SelectionId;
+    import IInteractiveBehavior = powerbi.visuals.IInteractiveBehavior;
+    import ISelectionHandler = powerbi.visuals.ISelectionHandler;
     import SelectionIdBuilder = powerbi.visuals.SelectionIdBuilder;
-    import Selector = data.Selector;
 
     export interface ITableView {
         data(data: any[], dataIdFunction: (d) => {}, dataAppended: boolean): ITableView;
@@ -46,6 +87,8 @@ module powerbi.visuals.samples {
         viewport(viewport: IViewport): ITableView;
         render(): void;
         empty(): void;
+        computedColumns: number;
+        computedRows: number;
     }
 
     export module TableViewFactory {
@@ -69,11 +112,28 @@ module powerbi.visuals.samples {
         scrollEnabled: boolean;
     }
 
+    export interface TableViewGroupedData {
+        data: any[];
+        totalColumns: number;
+        totalRows: number;
+    }
+
+    export interface TableViewComputedOptions {
+        columns: number;
+        rows: number;
+    }
+
     /**
      * A UI Virtualized List, that uses the D3 Enter, Update & Exit pattern to update rows.
      * It can create lists containing either HTML or SVG elements.
      */
-    class TableView implements ITableView {
+    export class TableView implements ITableView {
+        public static RowSelector: ClassAndSelector = createClassAndSelector('row');
+        public static CellSelector: ClassAndSelector = createClassAndSelector('cell');
+
+        private static defaultRowHeight = 0;
+        private static defaultColumns = 1;
+
         private getDatumIndex: (d: any) => {};
         private _data: any[];
         private _totalRows: number;
@@ -83,8 +143,7 @@ module powerbi.visuals.samples {
         private visibleGroupContainer: D3.Selection;
         private scrollContainer: D3.Selection;
 
-        private static defaultRowHeight = 0;
-        private static defaultColumns = 1;
+        private computedOptions: TableViewComputedOptions;
 
         public constructor(options: TableViewViewOptions) {
             // make a copy of options so that it is not modified later by caller
@@ -97,6 +156,7 @@ module powerbi.visuals.samples {
             this.scrollContainer = options.baseContainer
                 .append('div')
                 .attr('class', 'scrollRegion');
+
             this.visibleGroupContainer = this.scrollContainer
                 .append('div')
                 .attr('class', 'visibleGroup');
@@ -108,54 +168,78 @@ module powerbi.visuals.samples {
             options.rowHeight = options.rowHeight || TableView.defaultRowHeight;
         }
 
+        public get computedColumns(): number {
+            return this.computedOptions
+                ? this.computedOptions.columns
+                : 0;
+        }
+
+        public get computedRows(): number {
+            return this.computedOptions
+                ? this.computedOptions.rows
+                : 0;
+        }
+
         public rowHeight(rowHeight: number): TableView {
             this.options.rowHeight = Math.ceil(rowHeight);
+
             return this;
         }
+
         public columnWidth(columnWidth: number): TableView {
             this.options.columnWidth = Math.ceil(columnWidth);
+
             return this;
         }
 
         public orientation(orientation: string): TableView {
             this.options.orientation = orientation;
+
             return this;
         }
 
         public rows(rows: number): TableView {
             this.options.rows = Math.ceil(rows);
+
             return this;
         }
 
         public columns(columns: number): TableView {
             this.options.columns = Math.ceil(columns);
+
             return this;
         }
 
         public data(data: any[], getDatumIndex: (d) => {}, dataReset: boolean = false): ITableView {
             this._data = data;
             this.getDatumIndex = getDatumIndex;
+
             this.setTotalRows();
+
             if (dataReset) {
                 $(this.options.baseContainer.node()).scrollTop(0);
             }
+
             return this;
         }
 
         public viewport(viewport: IViewport): ITableView {
             this.options.viewport = viewport;
+
             return this;
         }
 
-        public empty(): void {
+        public empty(): ITableView {
             this._data = [];
             this.render();
+
+            return this;
         }
 
         private setTotalRows(): void {
-            var count = this._data.length;
-            var rows = Math.min(this.options.rows, count);
-            var columns = Math.min(this.options.columns, count);
+            var count: number = this._data.length,
+                rows: number = Math.min(this.options.rows, count),
+                columns: number = Math.min(this.options.columns, count);
 
             if ((columns > 0) && (rows > 0)) {
                 this._totalColumns = columns;
@@ -172,16 +256,18 @@ module powerbi.visuals.samples {
             }
         }
 
-        public render(): void {
-            var options = this.options;
-            var visibleGroupContainer = this.visibleGroupContainer;
-            var rowHeight = options.rowHeight || TableView.defaultRowHeight;
-            var groupedData: any[] = [];
-            var totalRows = options.rows;
-            var totalColumns = options.columns;
-            var totalItems: number = this._data.length;
-            var totalRows = options.rows > totalItems ? totalItems : options.rows;
-            var totalColumns = options.columns > totalItems ? totalItems : options.columns;
+        private getGroupedData(): TableViewGroupedData {
+            var options = this.options,
+                groupedData: any[] = [],
+                totalRows = options.rows,
+                totalColumns = options.columns,
+                totalItems: number = this._data.length,
+                totalRows = options.rows > totalItems
+                    ? totalItems
+                    : options.rows,
+                totalColumns = options.columns > totalItems
+                    ? totalItems
+                    : options.columns;
 
             if (totalColumns === 0 && totalRows === 0) {
                 if (options.orientation === Orientation.HORIZONTAL) {
@@ -199,17 +285,22 @@ module powerbi.visuals.samples {
 
             if (this.options.orientation === Orientation.VERTICAL) {
                 var n = totalRows;
+
                 totalRows = totalColumns;
                 totalColumns = n;
             } else if (this.options.orientation === Orientation.HORIZONTAL) {
-                if (totalRows === 0)
+                if (totalRows === 0) {
                     totalRows = this._totalRows;
-                if (totalColumns === 0)
+                }
+
+                if (totalColumns === 0) {
                     totalColumns = this._totalColumns;
+                }
             }
 
-            var m: number = 0;
-            var k: number = 0;
+            var m: number = 0,
+                k: number = 0;
+
             for (var i: number = 0; i < totalRows; i++) {
                 if (this.options.orientation === Orientation.VERTICAL
                     && options.rows === 0
@@ -218,68 +309,157 @@ module powerbi.visuals.samples {
                     if (totalItems % options.columns > i) {
                         m = i * Math.ceil(totalItems / options.columns);
                         k = m + Math.ceil(totalItems / options.columns);
-                        groupedData.push(this._data.slice(m, k));
+
+                        this.addDataToArray(groupedData, this._data, m, k);
                     } else {
-                        groupedData.push(this._data.slice(k, k + Math.floor(totalItems / options.columns)));
+                        this.addDataToArray(groupedData, this._data, k, k + Math.floor(totalItems / options.columns));
+
                         k = k + Math.floor(totalItems / options.columns);
                     }
                 } else if (this.options.orientation === Orientation.HORIZONTAL
                     && options.columns === 0
                     && totalItems % options.rows > 0
                     && options.rows <= totalItems) {
+
                     if (totalItems % options.rows > i) {
                         m = i * Math.ceil(totalItems / options.rows);
                         k = m + Math.ceil(totalItems / options.rows);
-                        groupedData.push(this._data.slice(m, k));
+
+                        this.addDataToArray(groupedData, this._data, m, k);
                     } else {
-                        groupedData.push(this._data.slice(k, k + Math.floor(totalItems / options.rows)));
+                        this.addDataToArray(groupedData, this._data, k, k + Math.floor(totalItems / options.rows));
+
                         k = k + Math.floor(totalItems / options.rows);
                     }
                 } else {
                     var k: number = i * totalColumns;
-                    groupedData.push(this._data.slice(k, k + totalColumns));
+
+                    this.addDataToArray(groupedData, this._data, k, k + totalColumns);
                 }
             }
 
-            visibleGroupContainer.selectAll(".row").remove();
-            var cellSelection = visibleGroupContainer.selectAll(".row")
-                .data(groupedData)
+            this.computedOptions = this.getComputedOptions(groupedData, this.options.orientation);
+
+            return {
+                data: groupedData,
+                totalColumns: totalColumns,
+                totalRows: totalRows
+            };
+        }
+
+        private addDataToArray(array: any[], data: any[], start: number, end: number): void {
+            if (!array || !data) {
+                return;
+            }
+
+            var elements: any[] = data.slice(start, end);
+
+            if (elements && elements.length > 0) {
+                array.push(elements);
+            }
+        }
+
+        private getComputedOptions(data: any[], orientation: string): TableViewComputedOptions {
+            var rows: number, 
+                columns: number = 0;
+
+            rows = data
+                ? data.length
+                : 0;
+
+            for (var i: number = 0; i < rows; i++) {
+                var currentRow: any[] = data[i];
+
+                if (currentRow && currentRow.length > columns) {
+                    columns = currentRow.length;
+                }
+            }
+
+            if (orientation === Orientation.HORIZONTAL) {
+                return {
+                    columns: columns,
+                    rows: rows
+                };
+            } else {
+                return {
+                    columns: rows,
+                    rows: columns
+                };
+            }
+        }
+
+        public render(): void {
+            var options: TableViewViewOptions = this.options,
+                visibleGroupContainer: D3.Selection = this.visibleGroupContainer,
+                rowHeight: number = options.rowHeight || TableView.defaultRowHeight,
+                groupedData: TableViewGroupedData = this.getGroupedData(),
+                rowSelection: D3.UpdateSelection,
+                cellSelection: D3.UpdateSelection;
+
+            rowSelection = visibleGroupContainer
+                .selectAll(TableView.RowSelector.selector)
+                .data(<ChicletSlicerDataPoint[]>groupedData.data);
+
+            rowSelection
                 .enter()
                 .append("div")
-                .classed('row', true)
-                .selectAll(".cell")
-                .data(d => d);
+                .classed(TableView.RowSelector.class, true);
+
+            cellSelection = rowSelection
+                .selectAll(TableView.CellSelector.selector)
+                .data((dataPoints: ChicletSlicerDataPoint[]) => {
+                    return dataPoints;
+                });
 
             cellSelection
                 .enter()
                 .append('div')
-                .classed('cell', true)
-                .call(d => options.enter(d));
-            cellSelection.order();
+                .classed(TableView.CellSelector.class, true);
 
-            var cellUpdateSelection = visibleGroupContainer.selectAll('.cell:not(.transitioning)');
+            cellSelection.call((selection: D3.Selection) => {
+                options.enter(selection);
+            });
 
-            cellUpdateSelection.call(d => options.update(d));
-            cellUpdateSelection.style({ 'height': (rowHeight > 0) ? rowHeight + 'px' : 'auto' });
+            cellSelection.call((selection: D3.Selection) => {
+                options.update(selection);
+            });
+
+            cellSelection.style({
+                'height': (rowHeight > 0) ? rowHeight + 'px' : 'auto'
+            });
 
             if (this.options.orientation === Orientation.VERTICAL) {
-                var realColumnNumber = 0;
-                for (var i: number = 0; i < groupedData.length; i++) {
-                    if (groupedData[i].length !== 0)
+                var realColumnNumber: number = 0;
+
+                for (var i: number = 0; i < groupedData.data.length; i++) {
+                    if (groupedData.data[i].length !== 0)
                         realColumnNumber = i + 1;
                 }
 
-                cellUpdateSelection.style({ 'width': '100%' });
-                var rowUpdateSelection = visibleGroupContainer.selectAll('div.row');
-                rowUpdateSelection.style({ 'width': (options.columnWidth > 0) ? options.columnWidth + 'px' : (100 / realColumnNumber) + '%' });
+                cellSelection.style({ 'width': '100%' });
+
+                rowSelection
+                    .style({
+                        'width': (options.columnWidth > 0)
+                            ? options.columnWidth + 'px'
+                            : (100 / realColumnNumber) + '%'
+                    });
             }
             else {
-                cellUpdateSelection.style({
-                    'width': (options.columnWidth > 0) ? options.columnWidth + 'px' : (100 / totalColumns) + '%'
+                cellSelection.style({
+                    'width': (options.columnWidth > 0)
+                        ? options.columnWidth + 'px'
+                        : (100 / groupedData.totalColumns) + '%'
                 });
+
+                rowSelection.style({ 'width': null });
             }
 
             cellSelection
+                .exit()
+                .remove();
+
+            rowSelection
                 .exit()
                 .call(d => options.exit(d))
                 .remove();
@@ -468,7 +648,7 @@ module powerbi.visuals.samples {
             ],
             objects: {
                 general: {
-                    displayName: data.createDisplayNameGetter('Visual_General'),
+                    displayName: 'General',
                     properties: {
                         selection: {
                             displayName: "Selection",
@@ -498,24 +678,24 @@ module powerbi.visuals.samples {
                             type: { bool: true }
                         },
                         filter: {
-                            type: { filter: {} },
+                            type: { filter: {} }
                         },
                         selfFilter: {
-                            type: { filter: { selfFilter: true } },
+                            type: { filter: { selfFilter: true } }
                         },
                         selfFilterEnabled: {
                             type: { operations: { searchEnabled: true } }
                         },
                         formatString: {
-                            type: { formatting: { formatString: true } },
+                            type: { formatting: { formatString: true } }
                         },
                     },
                 },
                 header: {
-                    displayName: data.createDisplayNameGetter('Visual_Header'),
+                    displayName: 'Header',
                     properties: {
                         show: {
-                            displayName: data.createDisplayNameGetter('Visual_Show'),
+                            displayName: 'Show',
                             type: { bool: true }
                         },
                         title: {
@@ -523,19 +703,19 @@ module powerbi.visuals.samples {
                             type: { text: true }
                         },
                         fontColor: {
-                            displayName: data.createDisplayNameGetter('Visual_FontColor'),
+                            displayName: 'Font color',
                             type: { fill: { solid: { color: true } } }
                         },
                         background: {
-                            displayName: data.createDisplayNameGetter('Visual_Background'),
+                            displayName: 'Background',
                             type: { fill: { solid: { color: true } } }
                         },
                         outline: {
-                            displayName: data.createDisplayNameGetter('Visual_Outline'),
+                            displayName: 'Outline',
                             type: { formatting: { outline: true } }
                         },
                         textSize: {
-                            displayName: data.createDisplayNameGetter('Visual_TextSize'),
+                            displayName: 'Text Size',
                             type: { numeric: true }
                         },
                         outlineColor: {
@@ -556,7 +736,7 @@ module powerbi.visuals.samples {
                             type: { fill: { solid: { color: true } } }
                         },
                         textSize: {
-                            displayName: data.createDisplayNameGetter('Visual_TextSize'),
+                            displayName: 'Text Size',
                             type: { numeric: true }
                         },
                         height: {
@@ -584,7 +764,7 @@ module powerbi.visuals.samples {
                             type: { fill: { solid: { color: true } } }
                         },
                         background: {
-                            displayName: data.createDisplayNameGetter('Visual_Background'),
+                            displayName: 'Background',
                             type: { fill: { solid: { color: true } } }
                         },
                         transparency: {
@@ -593,7 +773,7 @@ module powerbi.visuals.samples {
                             type: { numeric: true }
                         },
                         outline: {
-                            displayName: data.createDisplayNameGetter('Visual_Outline'),
+                            displayName: 'Outline',
                             type: { formatting: { outline: true } }
                         },
                         outlineColor: {
@@ -630,7 +810,12 @@ module powerbi.visuals.samples {
             },
             dataViewMappings: [{
                 conditions: [
-                    { 'Category': { max: 1 }, 'Image': { min: 0, max: 1 }, 'Values': { min: 0, max: 1 } }],
+                    {
+                        'Category': { max: 1 },
+                        'Image': { min: 0, max: 1 },
+                        'Values': { min: 0, max: 1 }
+                    }
+                ],
                 categorical: {
                     categories: {
                         for: { in: 'Category' },
@@ -639,9 +824,8 @@ module powerbi.visuals.samples {
                     values: {
                         group: {
                             by: 'Image',
-                            select: [{ bind: { to: 'Values' } },
-                            ],
-                           dataReductionAlgorithm: { top: { count: 10000 } }
+                            select: [{ bind: { to: 'Values' } }],
+                            dataReductionAlgorithm: { top: { count: 10000 } }
                         }
                     },
                     includeEmptyGroups: true
@@ -653,6 +837,7 @@ module powerbi.visuals.samples {
             },
             suppressDefaultTitle: true,
         };
+
         private element: JQuery;
         private searchHeader: JQuery;
         private searchInput: JQuery;
@@ -670,23 +855,32 @@ module powerbi.visuals.samples {
         private isSelectionLoaded: boolean;
         private isSelectionSaved: boolean;
 
-        public static DefaultFontFamily: string = 'Segoe UI, Tahoma, Verdana, Geneva, sans-serif';
+        public static DefaultFontFamily: string = "'Segoe UI', 'wf_segoe-ui_normal', helvetica, arial, sans-serif";
         public static DefaultFontSizeInPt: number = 11;
-        private static cellTotalInnerPaddings = 8;
-        private static cellTotalInnerBorders = 2;
-        private static chicletTotalInnerRightLeftPaddings = 14;
+
+        private static cellTotalInnerPaddings: number = 8;
+        private static cellTotalInnerBorders: number = 2;
+        private static chicletTotalInnerRightLeftPaddings: number = 14;
 
         public static MinImageSplit: number = 0;
         public static MaxImageSplit: number = 100;
 
-        private static ItemContainer: ClassAndSelector = createClassAndSelector('slicerItemContainer');
-        private static HeaderText: ClassAndSelector = createClassAndSelector('headerText');
-        private static Container: ClassAndSelector = createClassAndSelector('chicletSlicer');
-        private static LabelText: ClassAndSelector = createClassAndSelector('slicerText');
-        private static Header: ClassAndSelector = createClassAndSelector('slicerHeader');
-        private static Input: ClassAndSelector = createClassAndSelector('slicerCheckbox');
-        private static Clear: ClassAndSelector = createClassAndSelector('clear');
-        private static Body: ClassAndSelector = createClassAndSelector('slicerBody');
+        private static MinSizeOfViewport: number = 0;
+
+        private static WidthOfScrollbar: number = 17;
+
+        public static ItemContainerSelector: ClassAndSelector = createClassAndSelector('slicerItemContainer');
+        public static SlicerImgWrapperSelector: ClassAndSelector = createClassAndSelector('slicer-img-wrapper');
+        public static SlicerTextWrapperSelector: ClassAndSelector = createClassAndSelector('slicer-text-wrapper');
+        public static SlicerBodyHorizontalSelector: ClassAndSelector = createClassAndSelector('slicerBody-horizontal');
+        public static SlicerBodyVerticalSelector: ClassAndSelector = createClassAndSelector('slicerBody-vertical');
+        public static HeaderTextSelector: ClassAndSelector = createClassAndSelector('headerText');
+        public static ContainerSelector: ClassAndSelector = createClassAndSelector('chicletSlicer');
+        public static LabelTextSelector: ClassAndSelector = createClassAndSelector('slicerText');
+        public static HeaderSelector: ClassAndSelector = createClassAndSelector('slicerHeader');
+        public static InputSelector: ClassAndSelector = createClassAndSelector('slicerCheckbox');
+        public static ClearSelector: ClassAndSelector = createClassAndSelector('clear');
+        public static BodySelector: ClassAndSelector = createClassAndSelector('slicerBody');
 
         public static DefaultStyleProperties(): ChicletSlicerSettings {
             return {
@@ -757,6 +951,7 @@ module powerbi.visuals.samples {
                     this.behavior = options.behavior;
                 }
             }
+
             if (!this.behavior) {
                 this.behavior = new ChicletSlicerWebBehavior();
             }
@@ -775,7 +970,7 @@ module powerbi.visuals.samples {
             }
         }
 
-        public static converter(dataView: DataView, localizedSelectAllText: string, searchText: string, interactivityService: IInteractivityService): ChicletSlicerData {
+        public static converter(dataView: DataView, searchText: string, interactivityService: IInteractivityService): ChicletSlicerData {
             if (!dataView ||
                 !dataView.categorical ||
                 !dataView.categorical.categories ||
@@ -784,11 +979,15 @@ module powerbi.visuals.samples {
                 !(dataView.categorical.categories[0].values.length > 0)) {
                 return;
             }
+
             var converter = new ChicletSlicerChartConversion.ChicletSlicerConverter(dataView, interactivityService);
+
             converter.convert();
-            var slicerData: ChicletSlicerData;
-            var defaultSettings: ChicletSlicerSettings = this.DefaultStyleProperties();
-            var objects: DataViewObjects = dataView.metadata.objects;
+
+            var slicerData: ChicletSlicerData,
+                defaultSettings: ChicletSlicerSettings = this.DefaultStyleProperties(),
+                objects: DataViewObjects = dataView.metadata.objects;
+
             if (objects) {
                 defaultSettings.general.orientation = DataViewObjects.getValue<string>(objects, chicletSlicerProps.general.orientation, defaultSettings.general.orientation);
                 defaultSettings.general.columns = DataViewObjects.getValue<number>(objects, chicletSlicerProps.general.columns, defaultSettings.general.columns);
@@ -827,12 +1026,13 @@ module powerbi.visuals.samples {
                 defaultSettings.images.bottomImage = DataViewObjects.getValue<boolean>(objects, chicletSlicerProps.images.bottomImage, defaultSettings.images.bottomImage);
             }
 
-            if(defaultSettings.general.selfFilterEnabled && searchText) {
+            if (defaultSettings.general.selfFilterEnabled && searchText) {
                 searchText = searchText.toLowerCase();
                 converter.dataPoints.forEach(x => x.filtered = x.category.toLowerCase().indexOf(searchText) < 0);
             }
 
             var categories: DataViewCategoricalColumn = dataView.categorical.categories[0];
+
             slicerData = {
                 categorySourceName: categories.source.displayName,
                 formatString: valueFormatter.getFormatString(categories.source, chicletSlicerProps.formatString),
@@ -846,25 +1046,30 @@ module powerbi.visuals.samples {
             return slicerData;
         }
 
-       public init(options: VisualInitOptions): void {
+        public init(options: VisualInitOptions): void {
             this.element = options.element;
             this.currentViewport = options.viewport;
+
             if (this.behavior) {
                 this.interactivityService = createInteractivityService(options.host);
             }
+
             this.hostServices = options.host;
             this.hostServices.canSelect = ChicletSlicer.canSelect;
+
             this.settings = ChicletSlicer.DefaultStyleProperties();
 
             this.initContainer();
         }
 
         private static canSelect(args: SelectEventArgs): boolean {
-           var selectors = _.map(args.visualObjects, (visualObject) => Selector.convertSelectorsByColumnToSelector(visualObject.selectorsByColumn));
+            var selectors = _.map(args.visualObjects, (visualObject) => {
+                return Selector.convertSelectorsByColumnToSelector(visualObject.selectorsByColumn);
+            });
 
             // We can't have multiple selections if any include more than one identity
             if (selectors && (selectors.length > 1)) {
-                if (selectors.some((value: data.Selector) => value && value.data && value.data.length > 1)) {
+                if (selectors.some((value: Selector) => value && value.data && value.data.length > 1)) {
                     return false;
                 }
             }
@@ -907,12 +1112,12 @@ module powerbi.visuals.samples {
 
         public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] {
             var data: ChicletSlicerData = this.slicerData;
+
             if (!data) {
                 return;
             }
 
-            var objectName = options.objectName;
-            switch (objectName) {
+            switch (options.objectName) {
                 case 'rows':
                     return this.enumerateRows(data);
                 case 'header':
@@ -926,6 +1131,7 @@ module powerbi.visuals.samples {
 
         private enumerateHeader(data: ChicletSlicerData): VisualObjectInstance[] {
             var slicerSettings: ChicletSlicerSettings = this.settings;
+
             return [{
                 selector: null,
                 objectName: 'header',
@@ -944,6 +1150,7 @@ module powerbi.visuals.samples {
 
         private enumerateRows(data: ChicletSlicerData): VisualObjectInstance[] {
             var slicerSettings: ChicletSlicerSettings = this.settings;
+
             return [{
                 selector: null,
                 objectName: 'rows',
@@ -985,6 +1192,7 @@ module powerbi.visuals.samples {
 
         private enumerateImages(data: ChicletSlicerData): VisualObjectInstance[] {
             var slicerSettings: ChicletSlicerSettings = this.settings;
+
             return [{
                 selector: null,
                 objectName: 'images',
@@ -995,13 +1203,16 @@ module powerbi.visuals.samples {
                 }
             }];
         }
-        private updateInternal(resetScrollbarPosition: boolean) {
-            this.updateSlicerBodyDimensions();
 
-            var localizedSelectAllText: string = 'Select All';
-            var data = ChicletSlicer.converter(this.dataView, localizedSelectAllText, this.searchInput.val(), this.interactivityService);
+        private updateInternal(resetScrollbarPosition: boolean) {
+            var data = ChicletSlicer.converter(
+                this.dataView,
+                this.searchInput.val(),
+                this.interactivityService);
+
             if (!data) {
                 this.tableView.empty();
+
                 return;
             }
 
@@ -1009,41 +1220,59 @@ module powerbi.visuals.samples {
                 this.interactivityService.applySelectionStateToData(data.slicerDataPoints);
             }
 
-            data.slicerSettings.header.outlineWeight = data.slicerSettings.header.outlineWeight < 0 ? 0 : data.slicerSettings.header.outlineWeight;
-            data.slicerSettings.slicerText.outlineWeight = data.slicerSettings.slicerText.outlineWeight < 0 ? 0 : data.slicerSettings.slicerText.outlineWeight;
-            data.slicerSettings.slicerText.height = data.slicerSettings.slicerText.height < 0 ? 0 : data.slicerSettings.slicerText.height;
-            data.slicerSettings.slicerText.width = data.slicerSettings.slicerText.width < 0 ? 0 : data.slicerSettings.slicerText.width;
+            data.slicerSettings.header.outlineWeight = data.slicerSettings.header.outlineWeight < 0
+                ? 0
+                : data.slicerSettings.header.outlineWeight;
+
+            data.slicerSettings.slicerText.outlineWeight = data.slicerSettings.slicerText.outlineWeight < 0
+                ? 0
+                : data.slicerSettings.slicerText.outlineWeight;
+
+            data.slicerSettings.slicerText.height = data.slicerSettings.slicerText.height < 0
+                ? 0
+                : data.slicerSettings.slicerText.height;
+
+            data.slicerSettings.slicerText.width = data.slicerSettings.slicerText.width < 0
+                ? 0
+                : data.slicerSettings.slicerText.width;
+
             data.slicerSettings.images.imageSplit = ChicletSlicer.getValidImageSplit(data.slicerSettings.images.imageSplit);
 
-            data.slicerSettings.general.columns = data.slicerSettings.general.columns < 0 ? 0 : data.slicerSettings.general.columns;
-            data.slicerSettings.general.rows = data.slicerSettings.general.rows < 0 ? 0 : data.slicerSettings.general.rows;
+            data.slicerSettings.general.columns = data.slicerSettings.general.columns < 0
+                ? 0
+                : data.slicerSettings.general.columns;
+
+            data.slicerSettings.general.rows = data.slicerSettings.general.rows < 0
+                ? 0
+                : data.slicerSettings.general.rows;
 
             data.slicerSettings.general.getSavedSelection = () => {
-                    try {
-                        return JSON.parse(this.slicerData.slicerSettings.general.selection) || [];
-                    } catch(ex) {
-                        return [];
-                    }
-                };
+                try {
+                    return JSON.parse(this.slicerData.slicerSettings.general.selection) || [];
+                } catch (ex) {
+                    return [];
+                }
+            };
 
             data.slicerSettings.general.setSavedSelection = (filter: SemanticFilter, selectionIds: string[]): void => {
                 this.isSelectionSaved = true;
                 this.hostServices.persistProperties(<VisualObjectInstancesToPersist>{
-                        merge: [{
+                    merge: [{
                         objectName: "general",
                         selector: null,
                         properties: {
                             filter: filter,
-                            selection: selectionIds && JSON.stringify(selectionIds) || "" }
+                            selection: selectionIds && JSON.stringify(selectionIds) || ""
+                        }
                     }]
                 });
             };
 
             if (this.slicerData) {
                 if (this.isSelectionSaved) {
-                     this.isSelectionLoaded = true;
+                    this.isSelectionLoaded = true;
                 } else {
-                   this.isSelectionLoaded = this.slicerData.slicerSettings.general.selection === data.slicerSettings.general.selection;
+                    this.isSelectionLoaded = this.slicerData.slicerSettings.general.selection === data.slicerSettings.general.selection;
                 }
             } else {
                 this.isSelectionLoaded = false;
@@ -1051,6 +1280,9 @@ module powerbi.visuals.samples {
 
             this.slicerData = data;
             this.settings = this.slicerData.slicerSettings;
+
+            this.updateSlicerBodyDimensions();
+
             if (this.settings.general.showDisabled === ChicletSlicerShowDisabled.BOTTOM) {
                 data.slicerDataPoints.sort(function (a, b) {
                     if (a.selectable === b.selectable) {
@@ -1066,13 +1298,22 @@ module powerbi.visuals.samples {
             }
 
             var height: number = this.settings.slicerText.height;
+
             if (height === 0) {
-                var extraSpaceForCell = ChicletSlicer.cellTotalInnerPaddings + ChicletSlicer.cellTotalInnerBorders;
-                var textProperties = ChicletSlicer.getChicletTextProperties(this.settings.slicerText.textSize);
-                height = TextMeasurementService.estimateSvgTextHeight(textProperties) + TextMeasurementService.estimateSvgTextBaselineDelta(textProperties) + extraSpaceForCell;
-                var hasImage = _.any(data.slicerDataPoints, x => x.imageURL !== '' && typeof x.imageURL !== "undefined");
-                if (hasImage)
+                var extraSpaceForCell = ChicletSlicer.cellTotalInnerPaddings + ChicletSlicer.cellTotalInnerBorders,
+                    textProperties = ChicletSlicer.getChicletTextProperties(this.settings.slicerText.textSize);
+
+                height = TextMeasurementService.estimateSvgTextHeight(textProperties) +
+                    TextMeasurementService.estimateSvgTextBaselineDelta(textProperties) +
+                    extraSpaceForCell;
+
+                var hasImage: boolean = _.any(data.slicerDataPoints, (dataPoint: ChicletSlicerDataPoint) => {
+                    return dataPoint.imageURL !== '' && typeof dataPoint.imageURL !== "undefined";
+                });
+
+                if (hasImage) {
                     height += 100;
+                }
             }
 
             this.tableView
@@ -1081,9 +1322,10 @@ module powerbi.visuals.samples {
                 .orientation(this.settings.general.orientation)
                 .rows(this.settings.general.rows)
                 .columns(this.settings.general.columns)
-                .data(data.slicerDataPoints.filter(x => !x.filtered),
-                (d: ChicletSlicerDataPoint) => $.inArray(d, data.slicerDataPoints),
-                resetScrollbarPosition)
+                .data(
+                    data.slicerDataPoints.filter(x => !x.filtered),
+                    (d: ChicletSlicerDataPoint) => $.inArray(d, data.slicerDataPoints),
+                    resetScrollbarPosition)
                 .viewport(this.getSlicerBodyViewport(this.currentViewport))
                 .render();
 
@@ -1091,24 +1333,25 @@ module powerbi.visuals.samples {
         }
 
         private initContainer() {
-            var settings: ChicletSlicerSettings = this.settings;
-            var slicerBodyViewport: IViewport = this.getSlicerBodyViewport(this.currentViewport);
+            var settings: ChicletSlicerSettings = this.settings,
+                slicerBodyViewport: IViewport = this.getSlicerBodyViewport(this.currentViewport);
+
             var slicerContainer: D3.Selection = d3.select(this.element.get(0))
                 .append('div')
-                .classed(ChicletSlicer.Container.class, true);
+                .classed(ChicletSlicer.ContainerSelector.class, true);
 
             this.slicerHeader = slicerContainer
                 .append('div')
-                .classed(ChicletSlicer.Header.class, true);
+                .classed(ChicletSlicer.HeaderSelector.class, true);
 
             this.slicerHeader
                 .append('span')
-                .classed(ChicletSlicer.Clear.class, true)
+                .classed(ChicletSlicer.ClearSelector.class, true)
                 .attr('title', 'Clear');
 
             this.slicerHeader
                 .append('div')
-                .classed(ChicletSlicer.HeaderText.class, true)
+                .classed(ChicletSlicer.HeaderTextSelector.class, true)
                 .style({
                     'margin-left': PixelConverter.toString(settings.headerText.marginLeft),
                     'margin-top': PixelConverter.toString(settings.headerText.marginTop),
@@ -1121,142 +1364,26 @@ module powerbi.visuals.samples {
             this.createSearchHeader($(slicerContainer.node()));
 
             this.slicerBody = slicerContainer
-                .append('div').classed(ChicletSlicer.Body.class, true)
-                .classed('slicerBody-horizontal', settings.general.orientation === Orientation.HORIZONTAL)
-                .classed('slicerBody-vertical', settings.general.orientation === Orientation.VERTICAL)
+                .append('div')
+                .classed(ChicletSlicer.BodySelector.class, true)
+                .classed(
+                    ChicletSlicer.SlicerBodyHorizontalSelector.class,
+                    settings.general.orientation === Orientation.HORIZONTAL)
+                .classed(
+                    ChicletSlicer.SlicerBodyVerticalSelector.class,
+                    settings.general.orientation === Orientation.VERTICAL
+                )
                 .style({
                     'height': PixelConverter.toString(slicerBodyViewport.height),
                     'width': '100%',
                 });
 
             var rowEnter = (rowSelection: D3.Selection) => {
-                var settings: ChicletSlicerSettings = this.settings;
-                var listItemElement = rowSelection
-                    .append('ul')
-                    .append('li')
-                    .classed(ChicletSlicer.ItemContainer.class, true)
-                    .style({
-                        'margin-left': PixelConverter.toString(settings.slicerItemContainer.marginLeft),
-                    });
-
-                listItemElement.append('img')
-                    .classed('slicer-img-wrapper', true);
-
-                listItemElement.append('div')
-                    .classed('slicer-text-wrapper', true)
-                    .append('span')
-                    .classed(ChicletSlicer.LabelText.class, true)
-                    .style({
-                        'font-size': PixelConverter.fromPoint(settings.slicerText.textSize),
-                    });
+                this.enterSelection(rowSelection);
             };
 
             var rowUpdate = (rowSelection: D3.Selection) => {
-                var settings: ChicletSlicerSettings = this.settings;
-                var data = this.slicerData;
-                if (data && settings) {
-                    this.slicerHeader.classed('hidden', !settings.header.show);
-                    this.slicerHeader.select(ChicletSlicer.HeaderText.selector)
-                        .text(settings.header.title.trim() !== "" ? settings.header.title.trim() : this.slicerData.categorySourceName)
-                        .style({
-                            'border-style': this.getBorderStyle(settings.header.outline),
-                            'border-color': settings.header.outlineColor,
-                            'border-width': this.getBorderWidth(settings.header.outline, settings.header.outlineWeight),
-                            'color': settings.header.fontColor,
-                            'background-color': settings.header.background,
-                            'font-size': PixelConverter.fromPoint(settings.header.textSize),
-                        });
-
-                    this.slicerBody
-                        .classed('slicerBody-horizontal', settings.general.orientation === Orientation.HORIZONTAL)
-                        .classed('slicerBody-vertical', settings.general.orientation === Orientation.VERTICAL);
-
-                    var slicerText = rowSelection.selectAll(ChicletSlicer.LabelText.selector);
-                    var textProperties = ChicletSlicer.getChicletTextProperties(settings.slicerText.textSize);
-
-                    var formatString = data.formatString;
-                    slicerText.text((d: ChicletSlicerDataPoint) => {
-                        var text = valueFormatter.format(d.category, formatString);
-                        textProperties.text = text;
-                        if (this.settings.slicerText.width === 0)
-                            return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, (this.currentViewport.width / this.settings.general.columns) - ChicletSlicer.chicletTotalInnerRightLeftPaddings - ChicletSlicer.cellTotalInnerBorders - settings.slicerText.outlineWeight);
-                        else
-                            return TextMeasurementService.getTailoredTextOrDefault(textProperties, this.settings.slicerText.width - ChicletSlicer.chicletTotalInnerRightLeftPaddings - ChicletSlicer.cellTotalInnerBorders - settings.slicerText.outlineWeight);
-                    });
-
-                    var slicerImg = rowSelection.selectAll('.slicer-img-wrapper');
-                    slicerImg
-                        .style('max-height', settings.images.imageSplit + '%')
-                        .classed('hidden', (d: ChicletSlicerDataPoint) => {
-                            if (!(d.imageURL)) {
-                                return true;
-                            }
-                            if (settings.images.imageSplit < 10) {
-                                return true;
-                            }
-                        })
-                        .style('display', (d: ChicletSlicerDataPoint) => (d.imageURL) ? 'flex' : 'none')
-                        .classed('stretchImage', settings.images.stretchImage)
-                        .classed('bottomImage', settings.images.bottomImage)
-                        .attr('src', (d: ChicletSlicerDataPoint) => {
-                            return d.imageURL ? d.imageURL : '';
-                        });
-
-                    rowSelection.selectAll('.slicer-text-wrapper')
-                        .style('height', (d: ChicletSlicerDataPoint) => {
-                            return d.imageURL ? (100 - settings.images.imageSplit) + '%' : '100%';
-                        })
-                        .classed('hidden', (d: ChicletSlicerDataPoint) => {
-                            if (settings.images.imageSplit > 90) {
-                                return true;
-                            }
-                        });
-
-                    rowSelection.selectAll('.slicerItemContainer').style({
-                        'color': settings.slicerText.fontColor,
-                        'border-style': this.getBorderStyle(settings.slicerText.outline),
-                        'border-color': settings.slicerText.outlineColor,
-                        'border-width': this.getBorderWidth(settings.slicerText.outline, settings.slicerText.outlineWeight),
-                        'font-size': PixelConverter.fromPoint(settings.slicerText.textSize),
-                        'border-radius': this.getBorderRadius(settings.slicerText.borderStyle),
-                    });
-
-                    if (settings.slicerText.background)
-                        this.slicerBody.style('background-color', explore.util.hexToRGBString(settings.slicerText.background, (100 - settings.slicerText.transparency) / 100));
-                    else
-                        this.slicerBody.style('background-color', null);
-
-                    if (this.interactivityService && this.slicerBody) {
-                        this.interactivityService.applySelectionStateToData(data.slicerDataPoints);
-
-                        var slicerBody = this.slicerBody.attr('width', this.currentViewport.width);
-                        var slicerItemContainers = slicerBody.selectAll(ChicletSlicer.ItemContainer.selector);
-                        var slicerItemLabels = slicerBody.selectAll(ChicletSlicer.LabelText.selector);
-                        var slicerItemInputs = slicerBody.selectAll(ChicletSlicer.Input.selector);
-                        var slicerClear = this.slicerHeader.select(ChicletSlicer.Clear.selector);
-
-                        var behaviorOptions: ChicletSlicerBehaviorOptions = {
-                            dataPoints: data.slicerDataPoints,
-                            slicerItemContainers: slicerItemContainers,
-                            slicerItemLabels: slicerItemLabels,
-                            slicerItemInputs: slicerItemInputs,
-                            slicerClear: slicerClear,
-                            interactivityService: this.interactivityService,
-                            slicerSettings: data.slicerSettings,
-                            isSelectionLoaded: this.isSelectionLoaded
-                        };
-
-                        this.interactivityService.bind(data.slicerDataPoints, this.behavior, behaviorOptions, {
-                            overrideSelectionFromData: true,
-                            hasSelectionOverride: data.hasSelectionOverride,
-                        });
-                        this.behavior.styleSlicerInputs(rowSelection.select(ChicletSlicer.ItemContainer.selector),
-                            this.interactivityService.hasSelection());
-                    }
-                    else {
-                        this.behavior.styleSlicerInputs(rowSelection.select(ChicletSlicer.ItemContainer.selector), false);
-                    }
-                }
+                this.updateSelection(rowSelection);
             };
 
             var rowExit = (rowSelection: D3.Selection) => {
@@ -1281,6 +1408,243 @@ module powerbi.visuals.samples {
             this.tableView = TableViewFactory.createTableView(tableViewOptions);
         }
 
+        private enterSelection (rowSelection: D3.Selection): void {
+            var settings: ChicletSlicerSettings = this.settings;
+
+            var ulItemElement = rowSelection
+                .selectAll('ul')
+                .data((dataPoint: ChicletSlicerDataPoint) => {
+                    return [dataPoint];
+                });
+
+            ulItemElement
+                .enter()
+                .append('ul');
+
+            ulItemElement
+                .exit()
+                .remove();
+
+            var listItemElement = ulItemElement
+                .selectAll(ChicletSlicer.ItemContainerSelector.selector)
+                .data((dataPoint: ChicletSlicerDataPoint) => {
+                    return [dataPoint];
+                });
+
+            listItemElement
+                .enter()
+                .append('li')
+                .classed(ChicletSlicer.ItemContainerSelector.class, true);
+
+            listItemElement.style({
+                'margin-left': PixelConverter.toString(settings.slicerItemContainer.marginLeft)
+            });
+
+            var slicerImgWrapperSelection: D3.UpdateSelection = listItemElement
+                .selectAll(ChicletSlicer.SlicerImgWrapperSelector.selector)
+                .data((dataPoint: ChicletSlicerDataPoint) => {
+                    return [dataPoint];
+                });
+
+            slicerImgWrapperSelection
+                .enter()
+                .append('img')
+                .classed(ChicletSlicer.SlicerImgWrapperSelector.class, true);
+
+            slicerImgWrapperSelection
+                .exit()
+                .remove();
+
+            var slicerTextWrapperSelection: D3.UpdateSelection = listItemElement
+                .selectAll(ChicletSlicer.SlicerTextWrapperSelector.selector)
+                .data((dataPoint: ChicletSlicerDataPoint) => {
+                    return [dataPoint];
+                });
+
+            slicerTextWrapperSelection
+                .enter()
+                .append('div')
+                .classed(ChicletSlicer.SlicerTextWrapperSelector.class, true);
+
+            var labelTextSelection: D3.UpdateSelection = slicerTextWrapperSelection
+                .selectAll(ChicletSlicer.LabelTextSelector.selector)
+                .data((dataPoint: ChicletSlicerDataPoint) => {
+                    return [dataPoint];
+                });
+
+            labelTextSelection
+                .enter()
+                .append('span')
+                .classed(ChicletSlicer.LabelTextSelector.class, true);
+
+            labelTextSelection.style({
+                'font-size': PixelConverter.fromPoint(settings.slicerText.textSize),
+            });
+
+            labelTextSelection
+                .exit()
+                .remove();
+
+            slicerTextWrapperSelection
+                .exit()
+                .remove();
+
+            listItemElement
+                .exit()
+                .remove();
+        };
+
+        private updateSelection(rowSelection: D3.Selection): void {
+            var settings: ChicletSlicerSettings = this.settings,
+                data: ChicletSlicerData = this.slicerData;
+
+            if (data && settings) {
+                this.slicerHeader
+                    .classed('hidden', !settings.header.show);
+
+                this.slicerHeader
+                    .select(ChicletSlicer.HeaderTextSelector.selector)
+                    .text(settings.header.title.trim() !== ""
+                        ? settings.header.title.trim()
+                        : this.slicerData.categorySourceName)
+                    .style({
+                        'border-style': this.getBorderStyle(settings.header.outline),
+                        'border-color': settings.header.outlineColor,
+                        'border-width': this.getBorderWidth(settings.header.outline, settings.header.outlineWeight),
+                        'color': settings.header.fontColor,
+                        'background-color': settings.header.background,
+                        'font-size': PixelConverter.fromPoint(settings.header.textSize),
+                    });
+
+                this.slicerBody
+                    .classed(
+                        ChicletSlicer.SlicerBodyHorizontalSelector.class,
+                        settings.general.orientation === Orientation.HORIZONTAL)
+                    .classed(
+                        ChicletSlicer.SlicerBodyVerticalSelector.class,
+                        settings.general.orientation === Orientation.VERTICAL);
+
+                var slicerText: D3.Selection = rowSelection.selectAll(ChicletSlicer.LabelTextSelector.selector),
+                    textProperties: TextProperties = ChicletSlicer.getChicletTextProperties(settings.slicerText.textSize),
+                    formatString: string = data.formatString;
+
+                slicerText.text((d: ChicletSlicerDataPoint) => {
+                    var maxWidth: number = 0;
+
+                    textProperties.text = valueFormatter.format(d.category, formatString);
+
+                    if (this.settings.slicerText.width === 0) {
+                        var slicerBodyViewport: IViewport = this.getSlicerBodyViewport(this.currentViewport);
+
+                        maxWidth = (slicerBodyViewport.width / (this.tableView.computedColumns || 1)) -
+                            ChicletSlicer.chicletTotalInnerRightLeftPaddings -
+                            ChicletSlicer.cellTotalInnerBorders -
+                            settings.slicerText.outlineWeight;
+
+                        return TextMeasurementService.getTailoredTextOrDefault(textProperties, maxWidth);
+                    }
+                    else {
+                        maxWidth = this.settings.slicerText.width -
+                            ChicletSlicer.chicletTotalInnerRightLeftPaddings -
+                            ChicletSlicer.cellTotalInnerBorders -
+                            settings.slicerText.outlineWeight;
+
+                        return TextMeasurementService.getTailoredTextOrDefault(textProperties, maxWidth);
+                    }
+                });
+
+                rowSelection
+                    .selectAll(ChicletSlicer.SlicerImgWrapperSelector.selector)
+                    .style({
+                        'max-height': settings.images.imageSplit + '%',
+                        'display': (dataPoint: ChicletSlicerDataPoint) => (dataPoint.imageURL)
+                            ? 'flex'
+                            : 'none'
+                    })
+                    .classed({
+                        'hidden': (dataPoint: ChicletSlicerDataPoint) => {
+                            if (!(dataPoint.imageURL)) {
+                                return true;
+                            }
+
+                            if (settings.images.imageSplit < 10) {
+                                return true;
+                            }
+                        },
+                        'stretchImage': settings.images.stretchImage,
+                        'bottomImage': settings.images.bottomImage
+                    })
+                    .attr('src', (d: ChicletSlicerDataPoint) => {
+                        return d.imageURL ? d.imageURL : '';
+                    });
+
+                rowSelection.selectAll('.slicer-text-wrapper')
+                    .style('height', (d: ChicletSlicerDataPoint) => {
+                        return d.imageURL
+                            ? (100 - settings.images.imageSplit) + '%'
+                            : '100%';
+                    })
+                    .classed('hidden', (d: ChicletSlicerDataPoint) => {
+                        if (settings.images.imageSplit > 90) {
+                            return true;
+                        }
+                    });
+
+                rowSelection.selectAll('.slicerItemContainer').style({
+                    'color': settings.slicerText.fontColor,
+                    'border-style': this.getBorderStyle(settings.slicerText.outline),
+                    'border-color': settings.slicerText.outlineColor,
+                    'border-width': this.getBorderWidth(settings.slicerText.outline, settings.slicerText.outlineWeight),
+                    'font-size': PixelConverter.fromPoint(settings.slicerText.textSize),
+                    'border-radius': this.getBorderRadius(settings.slicerText.borderStyle),
+                });
+
+                if (settings.slicerText.background) {
+                    var backgroundColor: string = explore.util.hexToRGBString(
+                        settings.slicerText.background,
+                        (100 - settings.slicerText.transparency) / 100);
+
+                    this.slicerBody.style('background-color', backgroundColor);
+                }
+                else {
+                    this.slicerBody.style('background-color', null);
+                }
+
+                if (this.interactivityService && this.slicerBody) {
+                    this.interactivityService.applySelectionStateToData(data.slicerDataPoints);
+
+                    var slicerBody: D3.Selection = this.slicerBody.attr('width', this.currentViewport.width),
+                        slicerItemContainers: D3.Selection = slicerBody.selectAll(ChicletSlicer.ItemContainerSelector.selector),
+                        slicerItemLabels: D3.Selection = slicerBody.selectAll(ChicletSlicer.LabelTextSelector.selector),
+                        slicerItemInputs: D3.Selection = slicerBody.selectAll(ChicletSlicer.InputSelector.selector),
+                        slicerClear: D3.Selection = this.slicerHeader.select(ChicletSlicer.ClearSelector.selector);
+
+                    var behaviorOptions: ChicletSlicerBehaviorOptions = {
+                        dataPoints: data.slicerDataPoints,
+                        slicerItemContainers: slicerItemContainers,
+                        slicerItemLabels: slicerItemLabels,
+                        slicerItemInputs: slicerItemInputs,
+                        slicerClear: slicerClear,
+                        interactivityService: this.interactivityService,
+                        slicerSettings: data.slicerSettings,
+                        isSelectionLoaded: this.isSelectionLoaded
+                    };
+
+                    this.interactivityService.bind(data.slicerDataPoints, this.behavior, behaviorOptions, {
+                        overrideSelectionFromData: true,
+                        hasSelectionOverride: data.hasSelectionOverride,
+                    });
+
+                    this.behavior.styleSlicerInputs(
+                        rowSelection.select(ChicletSlicer.ItemContainerSelector.selector),
+                        this.interactivityService.hasSelection());
+                }
+                else {
+                    this.behavior.styleSlicerInputs(rowSelection.select(ChicletSlicer.ItemContainerSelector.selector), false);
+                }
+            }
+        };
+
         private createSearchHeader(container: JQuery): void {
             this.searchHeader = $("<div>")
                 .appendTo(container)
@@ -1302,7 +1666,8 @@ module powerbi.visuals.samples {
                         selector: null,
                         properties: {
                             counter: counter++
-                        }}]
+                        }
+                    }]
                 }));
         }
 
@@ -1319,12 +1684,15 @@ module powerbi.visuals.samples {
         }
 
         private getSlicerBodyViewport(currentViewport: IViewport): IViewport {
-            var settings = this.settings;
-            var headerHeight = (settings.header.show) ? this.getHeaderHeight() : 0;
-            var slicerBodyHeight = currentViewport.height - (headerHeight + settings.header.borderBottomWidth);
+            var settings: ChicletSlicerSettings = this.settings,
+                headerHeight: number = (settings.header.show) ? this.getHeaderHeight() : 0,
+                borderHeight: number = settings.header.outlineWeight,
+                height: number = currentViewport.height - (headerHeight + borderHeight + settings.header.borderBottomWidth),
+                width: number = currentViewport.width - ChicletSlicer.WidthOfScrollbar;
+
             return {
-                height: slicerBodyHeight,
-                width: currentViewport.width
+                height: Math.max(height, ChicletSlicer.MinSizeOfViewport),
+                width: Math.max(width, ChicletSlicer.MinSizeOfViewport)
             };
         }
 
@@ -1398,7 +1766,7 @@ module powerbi.visuals.samples {
             private category: DataViewCategoryColumn;
             private categoryIdentities: DataViewScopeIdentity[];
             private categoryValues: any[];
-            private categoryColumnRef: data.SQExpr[];
+            private categoryColumnRef: SQExpr[];
             private categoryFormatString: string;
             private interactivityService: IInteractivityService;
 
@@ -1416,7 +1784,7 @@ module powerbi.visuals.samples {
                     this.category = dataViewCategorical.categories[0];
                     this.categoryIdentities = this.category.identity;
                     this.categoryValues = this.category.values;
-                    this.categoryColumnRef = <data.SQExpr[]>this.category.identityFields;
+                    this.categoryColumnRef = <SQExpr[]>this.category.identityFields;
                     this.categoryFormatString = valueFormatter.getFormatString(this.category.source, chicletSlicerProps.formatString);
                 }
 
@@ -1639,9 +2007,12 @@ module powerbi.visuals.samples {
 
         public bindEvents(options: ChicletSlicerBehaviorOptions, selectionHandler: ISelectionHandler): void {
             var slicers = this.slicers = options.slicerItemContainers;
+
             this.slicerItemLabels = options.slicerItemLabels;
             this.slicerItemInputs = options.slicerItemInputs;
+
             var slicerClear = options.slicerClear;
+
             this.dataPoints = options.dataPoints;
             this.interactivityService = options.interactivityService;
             this.slicerSettings = options.slicerSettings;
@@ -1655,6 +2026,7 @@ module powerbi.visuals.samples {
                 if (d.selectable) {
                     d.mouseOver = true;
                     d.mouseOut = false;
+
                     this.renderMouseover();
                 }
             });
@@ -1663,35 +2035,50 @@ module powerbi.visuals.samples {
                 if (d.selectable) {
                     d.mouseOver = false;
                     d.mouseOut = true;
+
                     this.renderMouseover();
                 }
             });
 
-            slicers.on("click", (d: ChicletSlicerDataPoint, index) => {
-                if (!d.selectable) {
+            slicers.on("click", (dataPoint: ChicletSlicerDataPoint, index) => {
+                if (!dataPoint.selectable) {
                     return;
                 }
-                var settings: ChicletSlicerSettings = this.slicerSettings;
+
                 d3.event.preventDefault();
+
+                var settings: ChicletSlicerSettings = this.slicerSettings;
+
                 if (d3.event.altKey && settings.general.multiselect) {
-                    var selectedIndexes = jQuery.map(this.dataPoints, function (d, index) { if (d.selected) return index; });
-                    var selIndex = selectedIndexes.length > 0 ? (selectedIndexes[selectedIndexes.length - 1]) : 0;
+                    var selectedIndexes = jQuery.map(this.dataPoints, (d, index) => {
+                        if (d.selected) {
+                            return index;
+                        };
+                    });
+
+                    var selIndex = selectedIndexes.length > 0
+                        ? (selectedIndexes[selectedIndexes.length - 1])
+                        : 0;
+
                     if (selIndex > index) {
                         var temp = index;
                         index = selIndex;
                         selIndex = temp;
                     }
+
                     selectionHandler.handleClearSelection();
+
                     for (var i = selIndex; i <= index; i++) {
                         selectionHandler.handleSelection(this.dataPoints[i], true /* isMultiSelect */);
                     }
                 }
-                else if (d3.event.ctrlKey && settings.general.multiselect) {
-                    selectionHandler.handleSelection(d, true /* isMultiSelect */);
+                else if ((d3.event.ctrlKey || d3.event.metaKey) && settings.general.multiselect) {
+                    selectionHandler.handleSelection(dataPoint, true /* isMultiSelect */);
                 }
                 else {
-                    selectionHandler.handleSelection(d, false /* isMultiSelect */);
+                    selectionHandler.handleSelection(dataPoint, false /* isMultiSelect */);
                 }
+
                 this.saveSelection(selectionHandler);
             });
 
@@ -1712,7 +2099,7 @@ module powerbi.visuals.samples {
         }
 
         private static getFilterFromSelectors(selectionHandler: ISelectionHandler, isSelectionModeInverted: boolean): SemanticFilter {
-            var selectors: data.Selector[] = [];
+            var selectors: Selector[] = [];
             var selectedIds: SelectionId[] = <SelectionId[]>(<any>selectionHandler).selectedIds;
 
             if (selectedIds.length > 0) {
@@ -1722,7 +2109,7 @@ module powerbi.visuals.samples {
                     .value();
             }
 
-            var filter: SemanticFilter = powerbi.data.Selector.filterFromSelector(selectors, isSelectionModeInverted);
+            var filter: SemanticFilter = Selector.filterFromSelector(selectors, isSelectionModeInverted);
             return filter;
         }
 
@@ -1770,6 +2157,7 @@ module powerbi.visuals.samples {
                     'background': d.selectable ? (d.selected ? settings.slicerText.selectedColor : settings.slicerText.unselectedColor)
                         : settings.slicerText.disabledColor
                 });
+
                 d3.select(this).classed('slicerItem-disabled', !d.selectable);
             });
         }

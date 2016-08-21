@@ -299,11 +299,11 @@ module powerbi.visuals {
                     this.handleClearSelection();
                 }
                 else {
-            this.useDefaultValue = false;
-            this.select(dataPoint, multiSelect);
-            this.sendSelectionToHost();
-            this.renderAll();
-        }
+                    this.useDefaultValue = false;
+                    this.select(dataPoint, multiSelect);
+                    this.sendSelectionToHost();
+                    this.renderAll();
+                }
             }
         }
 
@@ -484,12 +484,18 @@ module powerbi.visuals {
             if (!host.onContextMenu)
                 return;
 
-            let selectors = this.getSelectorsByColumn([dataPoint.identity]);
-            if (_.isEmpty(selectors))
+            let selectorsByColumn: SelectorsByColumn;
+            if (dataPoint.specificIdentity) {
+                selectorsByColumn = dataPoint.specificIdentity.getSelectorsByColumn();
+            }
+            else if (dataPoint.identity) {
+                selectorsByColumn = dataPoint.identity.getSelectorsByColumn();
+            }
+            if (_.isEmpty(selectorsByColumn))
                 return;
 
             let args: ContextMenuArgs = {
-                data: selectors,
+                data: [selectorsByColumn],
                 position: position
             };
 
@@ -524,14 +530,6 @@ module powerbi.visuals {
                     .value();
             }
             return selectEventArgs;
-        }
-
-        private getSelectorsByColumn(selectionIds: SelectionId[]): SelectorsByColumn[] {
-            return _(selectionIds)
-                .filter(value => value.hasIdentity)
-                .map(value => value.getSelectorsByColumn())
-                .compact()
-                .value();
         }
 
         private takeSelectionStateFromDataPoints(dataPoints: SelectableDataPoint[]): void {

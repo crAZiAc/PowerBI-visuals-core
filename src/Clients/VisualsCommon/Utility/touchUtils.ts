@@ -26,16 +26,37 @@
 
 /// <reference path="../_references.ts"/>
 
-module powerbi.visuals {
-    export module sliderMode {
-        export const before: string = 'Before';
-        export const after: string = 'After';
-        export const between: string = 'Between';
+module powerbi.visuals.TouchUtils {
+    export function touchStartEventName(): string {
+        let eventName: string = "touchstart";
 
-        export const type: IEnumType = createEnumType([
-            { value: between, displayName: resources => resources.get('Visual_SliderMode_Between') },
-            { value: before, displayName: resources => resources.get('Visual_SliderMode_Before') },
-            { value: after, displayName: resources => resources.get('Visual_SliderMode_After') }
-        ]);
+        if (window["PointerEvent"]) {
+            // IE11
+            eventName = "pointerdown";
+        } else if (window["MSPointerEvent"]) {
+            // IE10
+            eventName = "MSPointerDown";
+        }
+
+        return eventName;
+    }
+
+    export function touchEndEventName(): string {
+        let eventName: string = "touchend";
+
+        if (window["PointerEvent"]) {
+            // IE11
+            eventName = "pointerup";
+        } else if (window["MSPointerEvent"]) {
+            // IE10
+            eventName = "MSPointerUp";
+        }
+
+        return eventName;
+    }
+    
+    export function usePointerEvents(): boolean {
+        let eventName = touchStartEventName();
+        return eventName === "pointerdown" || eventName === "MSPointerDown";
     }
 }

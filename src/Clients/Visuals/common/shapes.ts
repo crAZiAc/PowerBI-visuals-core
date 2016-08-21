@@ -490,6 +490,18 @@ module powerbi.visuals {
                 return { left: newLeft, top: newTop, width: rect.width, height: rect.height };
             }
 
+            export function add(rect: IRect, rect2: IRect): IRect {
+                debug.assertValue(rect, 'rect');
+                debug.assertValue(rect2, 'rect2');
+
+                return {
+                    left: rect.left + rect2.left,
+                    top: rect.top + rect2.top,
+                    height: rect.height + rect2.height,
+                    width: rect.width + rect2.width
+                };
+            }
+
             export function inflate(rect: IRect, padding: IThickness): IRect {
                 let result = clone(rect);
                 if (padding) {

@@ -38,7 +38,6 @@ module powerbi.visuals {
         mapControlFactory?: IMapControlFactory;
         behavior?: MapBehavior;
         tooltipsEnabled?: boolean;
-        tooltipBucketEnabled?: boolean;
         filledMapDataLabelsEnabled?: boolean;
         disableZooming?: boolean;
         disablePanning?: boolean;
@@ -133,7 +132,7 @@ module powerbi.visuals {
 
     /** Note: public for UnitTest */
     export interface IMapDataPointRenderer {
-        init(mapControl: Microsoft.Maps.Map, mapDiv: JQuery, addClearCatcher: boolean): void;
+        init(mapControl: Microsoft.Maps.Map, mapDiv: JQuery, addClearCatcher: boolean, tooltipService: ITooltipService): void;
         setData(data: MapData): void;
         getDataPointCount(): number;
         converter(viewPort: IViewport, dataView: DataView, labelSettings: PointDataLabelsSettings, interactivityService: IInteractivityService, tooltipsEnabled: boolean): MapRendererData;
@@ -171,6 +170,7 @@ module powerbi.visuals {
         private arc: D3.Svg.Arc;
         private dataLabelsSettings: PointDataLabelsSettings;
         private tooltipsEnabled: boolean;
+        private tooltipService: ITooltipService;
         private static validLabelPositions: NewPointLabelPosition[] = [NewPointLabelPosition.Above, NewPointLabelPosition.Below, NewPointLabelPosition.Left, NewPointLabelPosition.Right];
         private mapRendererData: MapRendererData;
         private root: JQuery;
@@ -179,7 +179,7 @@ module powerbi.visuals {
             this.tooltipsEnabled = tooltipsEnabled;
         }
 
-        public init(mapControl: Microsoft.Maps.Map, mapDiv: JQuery, addClearCatcher: boolean): void {
+        public init(mapControl: Microsoft.Maps.Map, mapDiv: JQuery, addClearCatcher: boolean, tooltipService: ITooltipService): void {
             /*
                 The layout of the visual would look like :
                 <div class="visual mapControl">
@@ -203,6 +203,7 @@ module powerbi.visuals {
 
             this.mapControl = mapControl;
             this.root = mapDiv;
+            mapDiv.css("display", "inline-block");
             let root = d3.select(mapDiv[0]);
             root.attr("drag-resize-disabled", "true"); // Enable panning within the maps in IE
             let svg = this.svg = root
@@ -235,6 +236,8 @@ module powerbi.visuals {
             this.arc = d3.svg.arc();
             this.clearMaxDataPointRadius();
             this.dataLabelsSettings = dataLabelUtils.getDefaultMapLabelSettings();
+            
+            this.tooltipService = tooltipService;
         }
 
         public setData(data: MapData): void {
@@ -409,7 +412,11 @@ module powerbi.visuals {
             bubbles.exit().remove();
 
             if (this.tooltipsEnabled) {
-                TooltipManager.addTooltip(this.bubbleGraphicsContext, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo);
+                this.tooltipService.addTooltip(
+                    this.bubbleGraphicsContext, 
+                    (args: TooltipEventArgs<MapBubble>) => args.data.tooltipInfo,
+                    (args: TooltipEventArgs<MapBubble>) => args.data.identity);
+                    
                 bubbles.style("pointer-events", "all");
             }
 
@@ -449,7 +456,11 @@ module powerbi.visuals {
             this.updateInternalDataLabels(viewport, redrawDataLabels);
 
             if (this.tooltipsEnabled) {
-                TooltipManager.addTooltip(this.sliceGraphicsContext, (tooltipEvent: TooltipEvent) => tooltipEvent.data.data.tooltipInfo);
+                this.tooltipService.addTooltip(
+                    this.sliceGraphicsContext,
+                    (args: TooltipEventArgs<MapSliceContainer>) => args.data.data.tooltipInfo,
+                    (args: TooltipEventArgs<MapSliceContainer>) => args.data.data.identity);
+                    
                 slices.style("pointer-events", "all");
             }
 
@@ -558,6 +569,7 @@ module powerbi.visuals {
         private dataLabelsSettings: PointDataLabelsSettings;
         private filledMapDataLabelsEnabled: boolean;
         private tooltipsEnabled: boolean;
+        private tooltipService: ITooltipService;
         private labelLayout: FilledMapLabelLayout;
         private static validLabelPolygonPositions: NewPointLabelPosition[] = [NewPointLabelPosition.Center, NewPointLabelPosition.Below, NewPointLabelPosition.Above, NewPointLabelPosition.Right, NewPointLabelPosition.Left, NewPointLabelPosition.BelowRight, NewPointLabelPosition.BelowLeft, NewPointLabelPosition.AboveRight, NewPointLabelPosition.AboveLeft];
         private root: JQuery;
@@ -603,7 +615,7 @@ module powerbi.visuals {
             this.tooltipsEnabled = tooltipsEnabled;
         }
 
-        public init(mapControl: Microsoft.Maps.Map, mapDiv: JQuery, addClearCatcher: boolean): void {
+        public init(mapControl: Microsoft.Maps.Map, mapDiv: JQuery, addClearCatcher: boolean, tooltipService: ITooltipService): void {
             /*
                 The layout of the visual would look like :
                 <div class="visual mapControl">
@@ -650,6 +662,8 @@ module powerbi.visuals {
 
             this.clearMaxShapeDimension();
             this.dataLabelsSettings = dataLabelUtils.getDefaultMapLabelSettings();
+            
+            this.tooltipService = tooltipService;
         }
 
         public setData(data: MapData): void {
@@ -788,7 +802,11 @@ module powerbi.visuals {
             this.updateInternalDataLabels(viewport, redrawDataLabels);
 
             if (this.tooltipsEnabled) {
-                TooltipManager.addTooltip(this.shapeGraphicsContext, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo);
+                this.tooltipService.addTooltip(
+                    this.shapeGraphicsContext, 
+                    (args: TooltipEventArgs<MapShape>) => args.data.tooltipInfo,
+                    (args: TooltipEventArgs<MapShape>) => args.data.identity);
+                    
                 shapes.style("pointer-events", "all");
             }
 
@@ -996,7 +1014,7 @@ module powerbi.visuals {
         private promiseFactory: IPromiseFactory;
         private mapControlFactory: IMapControlFactory;
         private tooltipsEnabled: boolean;
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
         private filledMapDataLabelsEnabled: boolean;
         private disableZooming: boolean;
         private disablePanning: boolean;
@@ -1023,7 +1041,6 @@ module powerbi.visuals {
             this.mapControlFactory = options.mapControlFactory ? options.mapControlFactory : this.getDefaultMapControlFactory();
             this.behavior = options.behavior;
             this.tooltipsEnabled = options.tooltipsEnabled;
-            this.tooltipBucketEnabled = options.tooltipBucketEnabled;
             this.disableZooming = options.disableZooming;
             this.disablePanning = options.disablePanning;
             this.isLegendScrollable = !!options.behavior;
@@ -1047,6 +1064,7 @@ module powerbi.visuals {
             this.legendData = { dataPoints: [] };
             this.geoTaggingAnalyzerService = powerbi.createGeoTaggingAnalyzerService(options.host.getLocalizedString);
             this.host = options.host;
+            this.tooltipService = createTooltipService(options.host);
             if (options.host.locale)
                 this.locale = options.host.locale();
             this.geocoder = options.host.geocoder();
@@ -1583,11 +1601,18 @@ module powerbi.visuals {
 
                 // Convert data
                 let colorHelper = new ColorHelper(this.colors, mapProps.dataPoint.fill, this.defaultDataPointColor);
-                data = Map.converter(dataView, colorHelper, this.geoTaggingAnalyzerService, isFilledMap, this.tooltipBucketEnabled);
+                data = Map.converter(dataView, colorHelper, this.geoTaggingAnalyzerService, isFilledMap);
                 this.hasDynamicSeries = data.hasDynamicSeries;
 
                 // Create legend
-                this.legendData = Map.createLegendData(dataView, colorHelper);
+                if (data.hasDynamicSeries) {
+                    this.legendData = Legend.buildSeriesLegendData(dataView, colorHelper, mapProps.general.formatString);
+                }
+                else {
+                    this.legendData = {
+                        dataPoints: [],
+                    };
+                }
                 this.dataPointsToEnumerate = this.legendData.dataPoints;
                 this.renderLegend(this.legendData);
 
@@ -1650,7 +1675,7 @@ module powerbi.visuals {
             this.updateInternal(true /* dataChanged */, true /* redrawDataLabels */);
         }
 
-        public static converter(dataView: DataView, colorHelper: ColorHelper, geoTaggingAnalyzerService: IGeoTaggingAnalyzerService, isFilledMap: boolean, tooltipBucketEnabled?: boolean): MapData {
+        public static converter(dataView: DataView, colorHelper: ColorHelper, geoTaggingAnalyzerService: IGeoTaggingAnalyzerService, isFilledMap: boolean): MapData {
             let reader = powerbi.data.createIDataViewCategoricalReader(dataView);
             let dataPoints: MapDataPoint[] = [];
             let hasDynamicSeries = reader.hasDynamicSeries();
@@ -1766,10 +1791,12 @@ module powerbi.visuals {
                             seriesCount = 1;
                         }
                         for (let seriesIndex = 0; seriesIndex < seriesCount; seriesIndex++) {
+                            let seriesName;
                             let color: string;
 
                             if (hasDynamicSeries) {
-                                color = colorHelper.getColorForSeriesValue(reader.getSeriesObjects(seriesIndex), seriesColumnIdentifier, <string>(reader.getSeriesName(seriesIndex)));
+                                seriesName = converterHelper.formatFromMetadataColumn(reader.getSeriesName(seriesIndex), reader.getSeriesMetadataColumn(), formatStringProp);
+                                color = colorHelper.getColorForSeriesValue(reader.getSeriesObjects(seriesIndex), seriesColumnIdentifier, seriesName);
                             }
                             else if (reader.hasCategoryWithRole('Series')) {
                                 color = colorHelper.getColorForSeriesValue(reader.getCategoryObjects('Series', categoryIndex), reader.getCategoryColumnIdentityFields('Series'), categoryValue);
@@ -1793,7 +1820,7 @@ module powerbi.visuals {
                             if (hasDynamicSeries) {
                                 seriesTooltipItem = {
                                     displayName: reader.getSeriesDisplayName(),
-                                    value: converterHelper.formatFromMetadataColumn(reader.getSeriesName(seriesIndex), reader.getSeriesMetadataColumn(), formatStringProp),
+                                    value: seriesName,
                                 };
                             }
 
@@ -1827,9 +1854,7 @@ module powerbi.visuals {
                             if (gradientTooltipItem)
                                 tooltipInfo.push(gradientTooltipItem);
 
-                            if (tooltipBucketEnabled) {
                                 TooltipBuilder.addTooltipBucketItem(reader, tooltipInfo, categoryIndex, seriesIndex);
-                            }
 
                             // Do not create subslices for data points with null or zero if not filled map
                             if (subsliceValue || !hasSize || (subsliceValue === 0 && isFilledMap)) {
@@ -1866,32 +1891,6 @@ module powerbi.visuals {
             };
 
             return mapData;
-        }
-
-        public static createLegendData(dataView: DataView, colorHelper: ColorHelper): LegendData {
-            let reader = powerbi.data.createIDataViewCategoricalReader(dataView);
-            let legendDataPoints: LegendDataPoint[] = [];
-            let legendTitle: string;
-            if (reader.hasDynamicSeries()) {
-                legendTitle = reader.getSeriesDisplayName();
-                let seriesColumnIdentifier = reader.getSeriesColumnIdentityFields();
-                for (let seriesIndex = 0, seriesCount = reader.getSeriesCount(); seriesIndex < seriesCount; seriesIndex++) {
-                    let color = colorHelper.getColorForSeriesValue(reader.getSeriesObjects(seriesIndex), seriesColumnIdentifier, <string>reader.getSeriesName(seriesIndex));
-                    let identity = new SelectionIdBuilder().withSeries(reader.getSeriesValueColumns(), reader.getSeriesValueColumnGroup(seriesIndex)).createSelectionId();
-                    legendDataPoints.push({
-                        color: color,
-                        label: valueFormatter.format(reader.getSeriesName(seriesIndex)),
-                        icon: LegendIcon.Circle,
-                        identity: identity,
-                        selected: false,
-                    });
-                }
-            }
-            let legendData: LegendData = {
-                dataPoints: legendDataPoints,
-                title: legendTitle,
-            };
-            return legendData;
         }
 
         private swapLogoContainerChildElement() {
@@ -1947,7 +1946,7 @@ module powerbi.visuals {
             }
 
             Microsoft.Maps.Events.addHandler(this.mapControl, "viewchangeend", () => { this.onViewChangeEnded(); });
-            this.dataPointRenderer.init(this.mapControl, divQuery, !!this.behavior);
+            this.dataPointRenderer.init(this.mapControl, divQuery, !!this.behavior, this.tooltipService);
 
             if (!this.pendingGeocodingRender) {
                 this.updateInternal(true /* dataChanged */, true);
@@ -1980,10 +1979,24 @@ module powerbi.visuals {
         }
 
         public static removeTransform3d(mapRoot: JQuery): void {
-            // don't remove transform3d from bing maps images in safari (using applewebkit engine)
-            let userAgent = window.navigator.userAgent.toLowerCase();
-            if (mapRoot && userAgent.indexOf('applewebkit') === -1) {
-                let imageTiles = mapRoot.find('img');
+            // If we have a null translate (translate3d(0px, 0px, 0px)), we want to remove it since it causes some bluriness issues in Chrome.
+            // We need to keep the non-null transforms since web views in Apple platforms use it to properly place the Bing maps tiles.
+            // Note: This may have a perf impact since it's no longer forced to run on the GPU.
+            // Note: Chrome calculates the matrix for the translate3d and returns it for the calculated value instead of translate3d, so we check for either.
+            let nullTransforms: string[] = ['matrix(1, 0, 0, 1, 0, 0)', 'translate3d(0px, 0px, 0px)'];
+            let imageTiles = mapRoot.find('img');
+
+            // If any of the tiles are a non-null transform, we'll keep all of them. 
+            // This is mainly for consistency and reliability as mixing elements with and without transforms may be unexpected behavior.
+            let shouldKeepTransform = imageTiles.is((index: number, element: HTMLElement) => {
+                // If the transform doesn't match any of the null ones, return true.
+                let transform = $(element).css('transform');
+                return !_.any(nullTransforms, (nullTransform: string) => nullTransform === transform);
+
+            });
+
+            // Remove the transform if requested
+            if (!shouldKeepTransform) {
                 imageTiles.css('transform', '');
             }
         }

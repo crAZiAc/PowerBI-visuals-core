@@ -10,6 +10,7 @@ window.Microsoft = window.Microsoft || {};
 // Extra libraries used in tests
 require("script!../../../node_modules/jasmine-jquery/lib/jasmine-jquery.js");
 require("script!../../../src/Clients/Externals/ThirdPartyIP/QuillJS/quill.min.js");
+require("script!../../../src/Clients/Externals/ThirdPartyIP/jqueryui/1.11.1/jquery-ui.min.js");
 require("script!../../../src/Clients/Externals/ThirdPartyIP/noUiSlider/nouislider.min.js");
 
 require("./typedefs/typedefs.ts");
@@ -41,7 +42,7 @@ require("./customVisuals/sampleDataViews/SankeyDiagramData.ts");
 require("./customVisuals/sampleDataViews/MekkoChartData.ts");
 require("./customVisuals/sampleDataViews/BulletChartData.ts");
 require("./customVisuals/sampleDataViews/CarLogosData.ts");
-require("./customVisuals/sampleDataViews/CountriesData.ts");
+require("./customVisuals/sampleDataViews/WordCloudData.ts");
 require("./customVisuals/sampleDataViews/ChordChartData.ts");
 require("./customVisuals/sampleDataViews/SalesByDayOfWeekData.ts");
 require("./customVisuals/sampleDataViews/EnhancedScatterChartData.ts");

@@ -34,7 +34,6 @@ module powerbi.visuals {
         isScrollable: boolean;
         behavior?: TreemapWebBehavior;
         tooltipsEnabled?: boolean;
-        tooltipBucketEnabled?: boolean;
     }
 
     export interface TreemapData {
@@ -165,7 +164,7 @@ module powerbi.visuals {
         private isScrollable: boolean;
         private hostService: IVisualHostServices;
         private tooltipsEnabled: boolean;
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
 
         /**
          * Note: Public for testing.
@@ -208,7 +207,6 @@ module powerbi.visuals {
 
         constructor(options?: TreemapConstructorOptions) {
             this.tooltipsEnabled = options && options.tooltipsEnabled;
-            this.tooltipBucketEnabled = options && options.tooltipBucketEnabled;
             if (options && options.animator) {
                 this.animator = options.animator;
                 this.isScrollable = options.isScrollable ? options.isScrollable : false;
@@ -257,12 +255,13 @@ module powerbi.visuals {
             this.colors = this.style.colorPalette.dataColors;
 
             this.hostService = options.host;
+            this.tooltipService = createTooltipService(options.host);
         }
 
         /**
          * Note: Public for testing purposes.
          */
-        public static converter(dataView: DataView, colors: IDataColorPalette, labelSettings: VisualDataLabelsSettings, interactivityService: IInteractivityService, viewport: IViewport, legendObjectProperties?: DataViewObject, tooltipsEnabled: boolean = true, tooltipBucketEnabled?: boolean): TreemapData {
+        public static converter(dataView: DataView, colors: IDataColorPalette, labelSettings: VisualDataLabelsSettings, interactivityService: IInteractivityService, viewport: IViewport, legendObjectProperties?: DataViewObject, tooltipsEnabled: boolean = true): TreemapData {
             let reader = data.createIDataViewCategoricalReader(dataView);
             let hasNegativeValues: boolean;
             let allValuesAreNegative: boolean;
@@ -375,10 +374,9 @@ module powerbi.visuals {
                                     value: converterHelper.formatFromMetadataColumn(highlightedValue, valueColumn.source, formatStringProp),
                                 });
                             }
-                            if (tooltipBucketEnabled) {
+                            
                                 TooltipBuilder.addTooltipBucketItem(reader, tooltipInfo, 0, hasDynamicSeries ? seriesIndex : undefined);
                             }
-                        }
                         
                         let node: TreemapNode = {
                             key: key,
@@ -471,10 +469,8 @@ module powerbi.visuals {
                                 });
                             }
 
-                            if (tooltipBucketEnabled) {
                                 TooltipBuilder.addTooltipBucketItem(reader, tooltipInfo, categoryIndex, seriesIndex);
                             }
-                        }
 
                         let identity: SelectionId = SelectionIdBuilder.builder()
                             .withCategory(categoryColumn, categoryIndex)
@@ -583,10 +579,8 @@ module powerbi.visuals {
                                         });
                                     }
 
-                                    if (tooltipBucketEnabled) {
                                         TooltipBuilder.addTooltipBucketItem(reader, tooltipInfo, categoryIndex, hasDynamicSeries ? seriesIndex : undefined);
                                     }
-                                }
 
                                 let childNode: TreemapNode = {
                                     key: childKey,
@@ -752,7 +746,7 @@ module powerbi.visuals {
                     legendObjectProperties = objects['legend'];
                 }
 
-                this.data = Treemap.converter(dataView, this.colors, labelSettings, this.interactivityService, this.currentViewport, legendObjectProperties, this.tooltipsEnabled, this.tooltipBucketEnabled);
+                this.data = Treemap.converter(dataView, this.colors, labelSettings, this.interactivityService, this.currentViewport, legendObjectProperties, this.tooltipsEnabled);
             }
             else {
                 let rootNode: TreemapNode = {
@@ -1185,11 +1179,22 @@ module powerbi.visuals {
             }
 
             if (this.tooltipsEnabled) {
-                TooltipManager.addTooltip(shapes, (tooltipEvent: TooltipEvent) => tooltipEvent.data.highlightedTooltipInfo ? tooltipEvent.data.highlightedTooltipInfo : tooltipEvent.data.tooltipInfo);
-                TooltipManager.addTooltip(highlightShapes, (tooltipEvent: TooltipEvent) => tooltipEvent.data.highlightedTooltipInfo);
+                this.addTooltips(shapes, highlightShapes);
             }
 
             SVGUtil.flushAllD3TransitionsIfNeeded(this.options);
+        }
+
+        private addTooltips(shapes: D3.Selection, highlightShapes: D3.Selection): void {
+            this.tooltipService.addTooltip(
+                shapes,
+                (args: TooltipEventArgs<TreemapNode>) => args.data.highlightedTooltipInfo ? args.data.highlightedTooltipInfo : args.data.tooltipInfo,
+                (args: TooltipEventArgs<TreemapNode>) => args.data.identity);
+                    
+            this.tooltipService.addTooltip(
+                highlightShapes,
+                (args: TooltipEventArgs<TreemapNode>) => args.data.highlightedTooltipInfo,
+                (args: TooltipEventArgs<TreemapNode>) => args.data.identity);
         }
 
         private renderLegend(): void {

@@ -58,5 +58,20 @@ module powerbi.data {
                 return transformedCategories;
             }
         }
+
+        export function getRowCount(dataViewCategorical: DataViewCategorical): number {
+            debug.assertValue(dataViewCategorical, 'dataViewCategorical');
+            
+            let rowCount: number =
+                !_.isEmpty(dataViewCategorical.categories) ? dataViewCategorical.categories[0].values.length :
+                !_.isEmpty(dataViewCategorical.values) ? dataViewCategorical.values[0].values.length :
+                    0;
+                                                         
+            debug.assert(_.every(dataViewCategorical.categories, (categoryColumn) => categoryColumn.values.length === rowCount), 'Invariant: every category column is expected to have the same number of values.');
+            debug.assert(_.every(dataViewCategorical.categories, (categoryColumn) => categoryColumn.identity.length === rowCount), 'Invariant: every category column is expected to have the same number of identities as there are values.');
+            debug.assert(_.every(dataViewCategorical.values, (valueColumn) => valueColumn.values.length === rowCount), 'Invariant: every value column is expected to have the same number of values.');
+            
+            return rowCount;
+        }
     }
 } 

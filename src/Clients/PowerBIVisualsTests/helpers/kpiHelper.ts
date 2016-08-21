@@ -30,6 +30,12 @@ module powerbitests.kpiHelper {
     import ValueType = powerbi.ValueType;
     import DataViewTransform = powerbi.data.DataViewTransform;
 
+    export const RedColor = '#ff0000';
+    export const GreenColor = '#00ff00';
+    export const BlueColor = '#0000ff';
+    export const NegativeDirection = 'Negative';
+    export const PositiveDirection = 'Positive';
+
     function buildDataView(dataViewMetaData: powerbi.DataViewMetadata, dataViewCategorical: powerbi.DataViewCategorical): powerbi.DataView {
         let dataView: powerbi.DataView = {
             metadata: dataViewMetaData,
@@ -44,6 +50,21 @@ module powerbitests.kpiHelper {
         let dataViewCategorical: powerbi.DataViewCategorical = buildDataViewCategoricalForRedTrend();
 
         return buildDataView(dataViewMetadata, dataViewCategorical);
+    }
+
+    export function buildDataViewForAllColorStatus(direction: string): powerbi.DataView {
+        let dataView: powerbi.DataView = buildDataViewForRedTrend();
+
+        dataView.metadata.objects = {
+            status: {
+                goodColor: { solid: { color: RedColor} },
+                badColor: { solid: { color: GreenColor } },
+                midColor: { solid: { color: BlueColor } },
+                direction: direction
+            }
+        };
+
+        return dataView;
     }
 
     export function buildDataViewForRedTrendWithSingleCategory(): powerbi.DataView {
@@ -155,6 +176,13 @@ module powerbitests.kpiHelper {
 
     export function buildDataViewForGreenTrend(): powerbi.DataView {
         let dataView = buildDataViewForRedTrend();
+        dataView.categorical.values[1].values = [20, 10, 30, 15, 25];
+
+        return dataView;
+    }
+
+    export function buildDataViewForGreenColor(): powerbi.DataView {
+        let dataView = buildDataViewForAllColorStatus(PositiveDirection);
         dataView.categorical.values[1].values = [20, 10, 30, 15, 25];
 
         return dataView;

@@ -70,6 +70,11 @@ module powerbi.visuals {
                 name: 'Play',
                 kind: VisualDataRoleKind.Grouping,
                 displayName: data.createDisplayNameGetter('Role_DisplayName_Play'),
+            }, {
+                name: 'Tooltips',
+                kind: VisualDataRoleKind.Measure,
+                displayName: data.createDisplayNameGetter('Role_DisplayName_Tooltips'),
+                joinPredicate: JoinPredicateBehavior.None,
             }
         ],
         objects: {
@@ -192,6 +197,7 @@ module powerbi.visuals {
                     position: StandardObjectProperties.referenceLinePosition,
                     dataLabelShow: StandardObjectProperties.dataLabelShow,
                     dataLabelColor: StandardObjectProperties.dataLabelColor,
+                    dataLabelText: StandardObjectProperties.dataLabelText,
                     dataLabelDecimalPoints: StandardObjectProperties.dataLabelDecimalPoints,
                     dataLabelHorizontalPosition: StandardObjectProperties.dataLabelHorizontalPosition,
                     dataLabelVerticalPosition: StandardObjectProperties.dataLabelVerticalPosition,
@@ -223,6 +229,7 @@ module powerbi.visuals {
                     position: StandardObjectProperties.referenceLinePosition,
                     dataLabelShow: StandardObjectProperties.dataLabelShow,
                     dataLabelColor: StandardObjectProperties.dataLabelColor,
+                    dataLabelText: StandardObjectProperties.dataLabelText,
                     dataLabelDecimalPoints: StandardObjectProperties.dataLabelDecimalPoints,
                     dataLabelHorizontalPosition: StandardObjectProperties.dataLabelHorizontalPosition,
                     dataLabelVerticalPosition: StandardObjectProperties.dataLabelVerticalPosition,
@@ -254,6 +261,7 @@ module powerbi.visuals {
                     position: StandardObjectProperties.referenceLinePosition,
                     dataLabelShow: StandardObjectProperties.dataLabelShow,
                     dataLabelColor: StandardObjectProperties.dataLabelColor,
+                    dataLabelText: StandardObjectProperties.dataLabelText,
                     dataLabelDecimalPoints: StandardObjectProperties.dataLabelDecimalPoints,
                     dataLabelHorizontalPosition: StandardObjectProperties.dataLabelHorizontalPosition,
                     dataLabelVerticalPosition: StandardObjectProperties.dataLabelVerticalPosition,
@@ -334,6 +342,7 @@ module powerbi.visuals {
                             { bind: { to: 'Y' } },
                             { bind: { to: 'Size' } },
                             { bind: { to: 'Gradient' } },
+                            { for: { in: 'Tooltips' } }
                         ],
                     }
                 },
@@ -366,6 +375,7 @@ module powerbi.visuals {
                         { bind: { to: 'X' } },
                         { bind: { to: 'Y' } },
                         { bind: { to: 'Size' } },
+                        { for: { in: 'Tooltips' } }
                     ]
                 }
             }

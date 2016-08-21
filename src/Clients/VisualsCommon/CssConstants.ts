@@ -62,6 +62,7 @@ module jsCommon {
         export const backgroundImageProperty = 'background-image';
         export const textShadowProperty = 'text-shadow';
         export const textAlignProperty = 'text-align';
+        export const borderProperty = 'border';
         export const borderTopWidthProperty = 'border-top-width';
         export const borderBottomWidthProperty = 'border-bottom-width';
         export const borderLeftWidthProperty = 'border-left-width';

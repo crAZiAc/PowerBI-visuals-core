@@ -14,9 +14,12 @@
 /// <reference path="./types/axisType.ts"/>
 /// <reference path="./types/basicShapeType.ts"/>
 /// <reference path="./types/confidenceBandStyle.ts"/>
+/// <reference path="./types/forecastUnits.ts"/>
+/// <reference path="./types/forecastConfidenceIntervals.ts"/>
 /// <reference path="./types/imageScalingType.ts"/>
 /// <reference path="./types/labelPosition.ts"/>
 /// <reference path="./types/labelStyle.ts"/>
+/// <reference path="./types/labelText.ts"/>
 /// <reference path="./types/legendPosition.ts"/>
 /// <reference path="./types/kpi_direction_type.ts"/>
 /// <reference path="./types/lineStyle.ts"/>
@@ -24,7 +27,7 @@
 /// <reference path="./types/referenceLinePosition.ts"/>
 /// <reference path="./types/slicerOrientation.ts"/>
 /// <reference path="./types/yAxisPosition.ts"/>
-/// <reference path="./types/sliderMode.ts"/>
+/// <reference path="./types/slicerMode.ts"/>
 /// <reference path="./animators/animatorCommon.ts"/>
 /// <reference path="./animators/columnChartAnimator.ts"/>
 /// <reference path="./animators/donutChartAnimator.ts"/>
@@ -44,6 +47,7 @@
 /// <reference path="./capabilities/scriptVisual.capabilities.ts"/>
 /// <reference path="./capabilities/samples/consoleWriter.capabilities.ts"/>
 /// <reference path="./visuals/samples/consoleWriter.ts"/>
+/// <reference path="./capabilities/cartesian.capabilities.ts"/>
 /// <reference path="./capabilities/lineChart.capabilities.ts"/>
 /// <reference path="./capabilities/map.capabilities.ts"/>
 /// <reference path="./capabilities/multiRowCard.capabilities.ts"/>
@@ -119,6 +123,8 @@
 /// <reference path="./services/geocodingCache.ts"/>
 /// <reference path="./services/geolocationService.ts"/>
 /// <reference path="./controls/scrollbar/scrollbar.ts"/>
+/// <reference path="./controls/selectmenu/selectmenu.ts"/>
+/// <reference path="./controls/slicerHeader/slicerHeader.ts"/>
 /// <reference path="./controls/tablix/internal/tablixGridPresenter.ts"/>
 /// <reference path="./controls/tablix/internal/tablixRealizationManager.ts"/>
 /// <reference path="./controls/tablix/internal/tablixGrid.ts"/>
@@ -133,9 +139,11 @@
 /// <reference path="./controls/tablix/touchRegionAbstraction.ts"/>
 /// <reference path="./controls/tablix/ITablixFormatting.ts"/>
 /// <reference path="./controls/tablix/tablixColumnWidthManager.ts"/>
+/// <reference path="./services/tooltipService.ts"/>
 /// <reference path="./visuals/animatedText.ts"/>
 /// <reference path="./visuals/animatedNumber.ts"/>
 /// <reference path="./visuals/basicShape.ts"/>
+/// <reference path="./controls/scrollbar/svgScrollbar.ts"/>
 /// <reference path="./cartesian/cartesianChart.ts"/>
 /// <reference path="./cartesian/columnChart.ts"/>
 /// <reference path="./cartesian/columnChartClustered.ts"/>
@@ -173,4 +181,6 @@
 /// <reference path="./plugins.ts"/>
 /// <reference path="./common/canvasBackgroundHelper.ts"/>
 /// <reference path="./common/scaleRange.ts"/>
+/// <reference path="./stylePresets/tablix.stylePresets.ts"/>
 /// <reference path="./stylePresets/table.stylePresets.ts"/>
+/// <reference path="./stylePresets/matrix.stylePresets.ts"/>

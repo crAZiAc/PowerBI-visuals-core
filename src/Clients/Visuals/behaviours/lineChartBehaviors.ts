@@ -54,7 +54,33 @@ module powerbi.visuals {
 
             interactivityLines.on('click', function (d: LineChartSeries, index: number) {
                 let categoryIndex = options.getCategoryIndex(d, getPointX(this));
-                selectionHandler.handleSelection(d.data[categoryIndex], d3.event.ctrlKey);
+                // Due to nulls, simple use of category index doesn't work, so search for a data point with a matching category index; if one doesn't
+                //   exist, create an ad-hoc id with the seriesIndex as identity and categoryIndex as specific identity (for drill).
+                let dataPoint = _.find(d.data, (dataPoint: LineChartDataPoint) => dataPoint.categoryIndex === categoryIndex);
+                if (dataPoint) {
+                    selectionHandler.handleSelection(dataPoint, d3.event.ctrlKey);
+                }
+                else {
+                    selectionHandler.handleSelection({ selected: d.selected, identity: d.identity, specificIdentity: options.categoryIdentities[categoryIndex] }, d3.event.ctrlKey);
+                }
+            });
+            
+            interactivityLines.on('contextmenu', function (d: LineChartSeries, index: number) {
+                if (d3.event.ctrlKey)
+                    return;
+
+                d3.event.preventDefault();
+
+                let position = InteractivityUtils.getPositionOfLastInputEvent();
+
+                let categoryIndex = options.getCategoryIndex(d, getPointX(this));
+                let dataPoint = _.find(d.data, (dataPoint: LineChartDataPoint) => dataPoint.categoryIndex === categoryIndex);
+                if (dataPoint) {
+                    selectionHandler.handleContextMenu(dataPoint, position);
+                }
+                else {
+                    selectionHandler.handleContextMenu({ selected: d.selected, identity: d.identity, specificIdentity: options.categoryIdentities[categoryIndex] }, position);
+                }
             });
             
             InteractivityUtils.registerStandardInteractivityHandlers(dots, selectionHandler);
@@ -64,7 +90,7 @@ module powerbi.visuals {
             }
 
             if (tooltipOverlay) {
-                if (options.categoryIdentities) {
+                if (!_.isEmpty(options.categoryIdentities)) {
                     tooltipOverlay.on('click', function () {
                         let categoryIndex = options.getCategoryIndex(undefined, getPointX(this));
                         selectionHandler.handleSelection({
@@ -72,6 +98,20 @@ module powerbi.visuals {
                             identity: undefined,
                             specificIdentity: options.categoryIdentities[categoryIndex],
                         }, d3.event.ctrlKey);
+                    });
+                    tooltipOverlay.on('contextmenu', function () {
+                        if (d3.event.ctrlKey)
+                            return;
+
+                        d3.event.preventDefault();
+
+                        let position = InteractivityUtils.getPositionOfLastInputEvent();
+                        let categoryIndex = options.getCategoryIndex(undefined, getPointX(this));
+                        selectionHandler.handleContextMenu({
+                            selected: false,
+                            identity: undefined,
+                            specificIdentity: options.categoryIdentities[categoryIndex],
+                        }, position);
                     });
                 }
                 else {

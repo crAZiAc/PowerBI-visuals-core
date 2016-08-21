@@ -165,7 +165,12 @@ module jasmine {
         debug.assertAnyValue(failureMessage, 'failureMessage');
         debug.assertValue(path, 'path');
 
-        return 'at: [' + path.join('].[') + ']: ' + util.buildFailureMessage(message, false, actual, expected, failureMessage);
+        let expectedAndFailureMessage = [expected];
+        if (failureMessage) {
+            expectedAndFailureMessage.push(failureMessage);
+        }
+
+        return 'at: [' + path.join('].[') + ']: ' + util.buildFailureMessage(message, false, actual, ...expectedAndFailureMessage);
     }
 
     function getKeys(obj: {}): string[] {

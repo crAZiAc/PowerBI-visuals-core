@@ -128,7 +128,7 @@ module powerbitests {
             expect(ArrayExtensions.emptyToNull([1, 2, 3])).toEqual([1, 2, 3]);
         });
 
-        it('ArrayExtensionsSequenceEqual', () => {
+        it('ArrayExtensionsSequenceEqual T === U', () => {
             let equalsNegativesComparison: (x: number, y: number) => boolean = (x, y) => (x === -y);
 
             expect(ArrayExtensions.sequenceEqual([1, 2], [-1, -2], equalsNegativesComparison)).toBeTruthy();
@@ -139,6 +139,13 @@ module powerbitests {
             expect(ArrayExtensions.sequenceEqual([1], null, equalsNegativesComparison)).toBeFalsy();
             expect(ArrayExtensions.sequenceEqual(null, [1], equalsNegativesComparison)).toBeFalsy();
             expect(ArrayExtensions.sequenceEqual(null, undefined, equalsNegativesComparison)).toBeTruthy();
+        });
+
+        it('ArrayExtensionsSequenceEqual, T !== U', () => {
+            let numberAndBooleanComparison: (x: number, y: boolean) => boolean = (x, y) => ((x !== 0) === y);
+
+            expect(ArrayExtensions.sequenceEqual([1, 2, 0], [true, true, false], numberAndBooleanComparison)).toBeTruthy();
+            expect(ArrayExtensions.sequenceEqual([1, 2, 3], [true, true, false], numberAndBooleanComparison)).toBeFalsy();
         });
 
         it('ArrayExtensionsDistinct', () => {

@@ -43,6 +43,7 @@ module powerbi.visuals {
         showGoal: boolean;
         showDistanceFromGoal: boolean;
         showTrendLine: boolean;
+        colors: KPIColors;
     }
 
     export interface KPIStatusWithHistoryDataPoint {
@@ -52,9 +53,20 @@ module powerbi.visuals {
         goals: number[];
     }
 
+    export interface KPIColors {
+        good: string;
+        neutral: string;
+        bad: string;
+        graphGrey: string;
+        textGrey: string;
+    }
+
     export class KPIStatusWithHistory implements IVisual {
 
         public static directionTypeStringProp: DataViewObjectPropertyIdentifier = { objectName: 'status', propertyName: 'direction' };
+        public static goodColorProp: DataViewObjectPropertyIdentifier = { objectName: 'status', propertyName: 'goodColor' };
+        public static neutralColorProp: DataViewObjectPropertyIdentifier = { objectName: 'status', propertyName: 'neutralColor' };
+        public static badColorProp: DataViewObjectPropertyIdentifier = { objectName: 'status', propertyName: 'badColor' };
         public static showKPIGoal: DataViewObjectPropertyIdentifier = { objectName: 'goals', propertyName: 'showGoal' };
         public static showKPIDistance: DataViewObjectPropertyIdentifier = { objectName: 'goals', propertyName: 'showDistance' };
         public static showKPITrendLine: DataViewObjectPropertyIdentifier = { objectName: 'trendline', propertyName: 'show' };
@@ -65,13 +77,11 @@ module powerbi.visuals {
         public static statusBandingType = { Below: "BELOW", Above: "ABOVE" };
         public static actualTextConsts = { VERTICAL_OFFSET_FROM_HALF_HEIGHT: 20, FONT_WIDTH_FACTOR: 14, RIGHT_MARGIN: 10 };
 
-        public static kpiRedClass = 'kpi-visual-red';
-        public static kpiYellowClass = 'kpi-visual-yellow';
-        public static kpiGreenClass = 'kpi-visual-green';
-        public static kpiTextGreyClass = 'kpi-visual-text-grey';
-        public static kpiGraphGreyClass = 'kpi-visual-graph-grey';
-
-        public static allColorClasses = KPIStatusWithHistory.kpiRedClass + ' ' + KPIStatusWithHistory.kpiYellowClass + ' ' + KPIStatusWithHistory.kpiGreenClass + ' ' + KPIStatusWithHistory.kpiTextGreyClass + ' ' + KPIStatusWithHistory.kpiGraphGreyClass;
+        public static kpiRed = '#E81123';
+        public static kpiGreen = '#3bb44a';
+        public static kpiYellow = '#F2C811';
+        public static kpiTextGrey = '#212121';
+        public static kpiGraphGrey = '#5F6B6D';
 
         public static trendAreaFilePercentage = 1;
 
@@ -82,16 +92,14 @@ module powerbi.visuals {
         private svg: D3.Selection;
         private dataView: DataView;
         private mainGroupElement: D3.Selection;
-        private kpiActualText: D3.Selection;
-        private absoluteGoalDistanceText: D3.Selection;
+        private indicatorText: D3.Selection;
+        private goalText: D3.Selection;
         private areaFill: D3.Selection;
         private host: IVisualHostServices;
-        private exclamationMarkIcon: D3.Selection;
-        private successMarkIcon: D3.Selection;
-        private betweenIcon: D3.Selection;
+        private indicatorIcon: D3.Selection;
         private rootElement: D3.Selection;
-        private indicatorTextContainer: D3.Selection;
-        private textContainer: D3.Selection;
+        private indicatorContainer: D3.Selection;
+        private lastTrendAxisPointSummaryContainer: D3.Selection;
 
         private static getLocalizedString: (stringId: string) => string;
 
@@ -100,20 +108,18 @@ module powerbi.visuals {
 
         public init(options: VisualInitOptions): void {
             KPIStatusWithHistory.getLocalizedString = options.host.getLocalizedString;
-            this.rootElement = d3.select(options.element.get(0)).append('div').attr('text-align', 'center').classed('kpiVisual', true);
+            this.rootElement = d3.select(options.element.get(0)).append('div').classed('kpiVisual', true);
             this.svg = this.rootElement.append('svg');
             let mainGroupElement = this.mainGroupElement = this.svg.append('g');
             this.areaFill = mainGroupElement.append("path");
 
-            this.textContainer = this.rootElement.append("div").classed('textContainer', true);
+            this.lastTrendAxisPointSummaryContainer = this.rootElement.append("div").classed('lastTrendAxisPointSummaryContainer', true);
 
-            this.indicatorTextContainer = this.textContainer.append("div").classed('indicatorText', true);
+            this.indicatorContainer = this.lastTrendAxisPointSummaryContainer.append("div").classed('indicatorContainer', true);
+            this.indicatorText = this.indicatorContainer.append("div").classed('indicatorText', true);
+            this.indicatorIcon = this.indicatorContainer.append("div").classed('powervisuals-glyph', true);
 
-            this.absoluteGoalDistanceText = this.textContainer.append("div").classed('goalText', true);
-
-            this.kpiActualText = this.indicatorTextContainer.append("div").attr('id', 'indicatorText');
-
-            this.initIcons();
+            this.goalText = this.lastTrendAxisPointSummaryContainer.append("div").classed('goalText', true);
 
             this.host = options.host;
         }
@@ -122,12 +128,12 @@ module powerbi.visuals {
             if (!options.dataViews || !options.dataViews[0]) return;
             let dataView = this.dataView = options.dataViews[0];
             let viewport = options.viewport;
-            
+
             // We must have at least one measure
             if ((!dataView.categorical || !dataView.categorical.values || dataView.categorical.values.length < 1) &&
                 (!dataView.categorical || !dataView.categorical.categories || dataView.categorical.categories.length < 1)) {
                 this.svg.attr("visibility", "hidden");
-                this.textContainer.attr("style", "display:none");
+                this.lastTrendAxisPointSummaryContainer.attr("style", "display:none");
                 return;
             }
             this.svg.attr("visibility", "visible");
@@ -140,16 +146,6 @@ module powerbi.visuals {
             this.render(kpiViewModel, viewport);
         }
 
-        private initIcons() {
-            this.successMarkIcon = this.indicatorTextContainer.append("div").classed('powervisuals-glyph checkmark kpi-visual-green', true);
-            this.betweenIcon = this.indicatorTextContainer.append('div').classed('powervisuals-glyph circle-small kpi-visual-yellow', true);
-            this.exclamationMarkIcon = this.indicatorTextContainer.append("div").classed('powervisuals-glyph exclamation kpi-visual-red', true);
-            
-            this.successMarkIcon.attr('style', 'display:none');
-            this.betweenIcon.attr('style', 'display:none');
-            this.exclamationMarkIcon.attr('style', 'display:none');
-        }
-
         private render(kpiViewModel: KPIStatusWithHistoryData, viewport: IViewport) {
 
             this.setShowDataMissingWarning(!(kpiViewModel.indicatorExists && kpiViewModel.trendExists));
@@ -157,7 +153,7 @@ module powerbi.visuals {
             if (kpiViewModel.dataPoints.length === 0 || !kpiViewModel.indicatorExists || !kpiViewModel.trendExists) {
                 this.areaFill.attr("visibility", "hidden");
                 this.svg.attr("visibility", "hidden");
-                this.textContainer.attr("style", "display:none");
+                this.lastTrendAxisPointSummaryContainer.attr("style", "display:none");
                 return;
             }
 
@@ -168,57 +164,29 @@ module powerbi.visuals {
 
             let status = KPIStatusWithHistory.status.NOGOAL;
             if (kpiViewModel.targetExists && kpiViewModel.indicatorExists && kpiViewModel.trendExists) {
-                status = GetStatus(kpiViewModel.actual, kpiViewModel.goals, kpiViewModel.directionType);
+                status = getStatus(kpiViewModel.actual, kpiViewModel.goals, kpiViewModel.directionType);
             }
 
             let actualText = kpiViewModel.formattedValue;
 
             let calculatedHeight = KPIStatusWithHistory.indicatorTextSizeInPx;
 
-            this.textContainer
+            this.lastTrendAxisPointSummaryContainer
                 .attr('style', "width:" + viewport.width + "px;" +
-                    "top:" + ((viewport.height - calculatedHeight) / 2) + "px");
+                "top:" + ((viewport.height - calculatedHeight) / 2) + "px");
 
-            this.kpiActualText
-                .classed(KPIStatusWithHistory.allColorClasses, false)
-                .classed(GetTextColorClassByStatus(status), true)
-                .attr("text-anchor", "middle")
-                .text(actualText);
+            let textColor = getTextColorByStatus(status, kpiViewModel.colors);
+            this.indicatorText.style({ color: textColor }).text(actualText);
 
-            let icon: D3.Selection = null;
-
-            switch (status) {
-                case KPIStatusWithHistory.status.INCREASE:
-                    icon = this.successMarkIcon;
-                    this.exclamationMarkIcon.attr("style", "display:none");
-                    this.betweenIcon.attr("style", "display:none");
-                    break;
-                case KPIStatusWithHistory.status.IN_BETWEEN:
-                    icon = this.betweenIcon;
-                    this.exclamationMarkIcon.attr("style", "display:none");
-                    this.successMarkIcon.attr("style", "display:none");
-                    break;
-                case KPIStatusWithHistory.status.DROP:
-                    icon = this.exclamationMarkIcon;
-                    this.successMarkIcon.attr("style", "display:none");
-                    this.betweenIcon.attr("style", "display:none");
-                    break;
-                default:
-                    this.exclamationMarkIcon.attr("style", "display:none");
-                    this.successMarkIcon.attr("style", "display:none");
-                    this.betweenIcon.attr("style", "display:none");
-            }
-
-            if (icon) {
-                icon.attr('style', 'font-size:12px');
-            }
+            this.indicatorIcon.classed("checkmark", status === KPIStatusWithHistory.status.INCREASE);
+            this.indicatorIcon.classed("circle-small", status === KPIStatusWithHistory.status.IN_BETWEEN);
+            this.indicatorIcon.classed("exclamation", status === KPIStatusWithHistory.status.DROP);
+            this.indicatorIcon.style({ color: textColor });
 
             let shownGoalString = kpiViewModel.showGoal ? kpiViewModel.formattedGoalString + " " : "";
             let shownDistanceFromGoalString = kpiViewModel.showDistanceFromGoal ? getDistanceFromGoalInPercentageString(kpiViewModel.actual, kpiViewModel.goals, kpiViewModel.directionType) : "";
 
-            this.absoluteGoalDistanceText
-                .attr("text-anchor", "middle")
-                .text(shownGoalString + shownDistanceFromGoalString);
+            this.goalText.text(shownGoalString + shownDistanceFromGoalString);
 
             if (kpiViewModel.showTrendLine && kpiViewModel.historyExists) {
                 let area = d3.svg.area()
@@ -226,13 +194,18 @@ module powerbi.visuals {
                     .y0(viewport.height)
                     .y1(function (d) { return d.y; });
 
+                let graphColor = getGraphColorByStatus(status, kpiViewModel.colors);
                 this.areaFill
-                    .classed(KPIStatusWithHistory.allColorClasses, false)
-                    .classed(GetGraphColorClassByStatus(status), true)
-                    .attr("d", area(kpiViewModel.dataPoints))
-                    .attr("stroke", "none")
-                    .attr("visibility", "visible")
-                    .attr('fill-opacity', 0.2);
+                    .attr({
+                        d: area(kpiViewModel.dataPoints),
+                        stroke: 'none',
+                        visibility: 'visible',
+                        'fill-opacity': 0.2
+                    })
+                    .style({
+                        color: graphColor,
+                        fill: graphColor
+                    });
             } else {
                 this.areaFill.attr("visibility", "hidden");
             }
@@ -286,6 +259,27 @@ module powerbi.visuals {
             }
 
             return kpiDirection.positive;
+        }
+
+        private static getProp_GoodColor(dataView: DataView) {
+            if (dataView && dataView.metadata) {
+                return DataViewObjects.getFillColor(dataView.metadata.objects, KPIStatusWithHistory.goodColorProp, KPIStatusWithHistory.kpiGreen);
+            }
+            return KPIStatusWithHistory.kpiGreen;
+        }
+
+        private static getProp_NeutralColor(dataView: DataView) {
+            if (dataView && dataView.metadata) {
+                return DataViewObjects.getFillColor(dataView.metadata.objects, KPIStatusWithHistory.neutralColorProp, KPIStatusWithHistory.kpiYellow);
+            }
+            return KPIStatusWithHistory.kpiYellow;
+        }
+
+        private static getProp_BadColor(dataView: DataView) {
+            if (dataView && dataView.metadata) {
+                return DataViewObjects.getFillColor(dataView.metadata.objects, KPIStatusWithHistory.badColorProp, KPIStatusWithHistory.kpiRed);
+            }
+            return KPIStatusWithHistory.kpiRed;
         }
 
         private static getProp_Indicator_DisplayUnits(dataView: DataView) {
@@ -392,7 +386,14 @@ module powerbi.visuals {
                     formattedValue,
                     showGoal: false,
                     showDistanceFromGoal: false,
-                    showTrendLine: false
+                    showTrendLine: false,
+                    colors: {
+                        good: KPIStatusWithHistory.kpiGreen,
+                        neutral: KPIStatusWithHistory.kpiYellow,
+                        bad: KPIStatusWithHistory.kpiRed,
+                        graphGrey: KPIStatusWithHistory.kpiGraphGrey,
+                        textGrey: KPIStatusWithHistory.kpiTextGrey
+                    }
                 };
             }
 
@@ -469,6 +470,14 @@ module powerbi.visuals {
 
             let showTrendLine = KPIStatusWithHistory.getProp_Show_KPITrendLine(dataView);
 
+            let colors: KPIColors = {
+                good: KPIStatusWithHistory.getProp_GoodColor(dataView),
+                neutral: KPIStatusWithHistory.getProp_NeutralColor(dataView),
+                bad: KPIStatusWithHistory.getProp_BadColor(dataView),
+                graphGrey: KPIStatusWithHistory.kpiGraphGrey,
+                textGrey: KPIStatusWithHistory.kpiTextGrey
+            };
+
             return {
                 dataPoints: dataPoints,
                 directionType: directionType,
@@ -482,7 +491,8 @@ module powerbi.visuals {
                 formattedValue,
                 showGoal,
                 showDistanceFromGoal,
-                showTrendLine
+                showTrendLine,
+                colors
             };
         }
 
@@ -533,7 +543,10 @@ module powerbi.visuals {
                         selector: null,
                         objectName: 'status',
                         properties: {
-                            direction: KPIStatusWithHistory.getProp_KPIDirection(dataView)
+                            direction: KPIStatusWithHistory.getProp_KPIDirection(dataView),
+                            goodColor: KPIStatusWithHistory.getProp_GoodColor(dataView),
+                            neutralColor: KPIStatusWithHistory.getProp_NeutralColor(dataView),
+                            badColor: KPIStatusWithHistory.getProp_BadColor(dataView)
                         }
                     });
             }
@@ -545,13 +558,12 @@ module powerbi.visuals {
         }
     }
 
-    function GetStatus(actual, goals: any[], directionType) {
+    function getStatus(actual, goals: any[], directionType) {
         if (!goals || goals.length === 0) {
             return KPIStatusWithHistory.status.NOGOAL;
         }
 
         let maxGoal, minGoal;
-
         if (goals.length === 2) {
             maxGoal = Math.max.apply(Math, goals);
             minGoal = Math.min.apply(Math, goals);
@@ -571,13 +583,11 @@ module powerbi.visuals {
                     return KPIStatusWithHistory.status.DROP;
                 }
                 break;
-
             case kpiDirection.negative:
                 if (actual > maxGoal) {
                     return KPIStatusWithHistory.status.DROP;
                 }
                 break;
-
             default:
                 break;
         }
@@ -616,35 +626,35 @@ module powerbi.visuals {
         return "(" + sign + percent + "%)";
     }
 
-    function GetTextColorClassByStatus(status) {
+    function getTextColorByStatus(status, colors: KPIColors) {
         switch (status) {
             case KPIStatusWithHistory.status.NOGOAL:
-                return KPIStatusWithHistory.kpiTextGreyClass;
+                return colors.textGrey;
 
             case KPIStatusWithHistory.status.INCREASE:
-                return KPIStatusWithHistory.kpiGreenClass;
+                return colors.good;
 
             case KPIStatusWithHistory.status.IN_BETWEEN:
-                return KPIStatusWithHistory.kpiYellowClass;
+                return colors.neutral;
 
             case KPIStatusWithHistory.status.DROP:
-                return KPIStatusWithHistory.kpiRedClass;
+                return colors.bad;
         }
     }
 
-    function GetGraphColorClassByStatus(status) {
+    function getGraphColorByStatus(status, colors: KPIColors) {
         switch (status) {
             case KPIStatusWithHistory.status.NOGOAL:
-                return KPIStatusWithHistory.kpiGraphGreyClass;
+                return colors.graphGrey;
 
             case KPIStatusWithHistory.status.INCREASE:
-                return KPIStatusWithHistory.kpiGreenClass;
+                return colors.good;
 
             case KPIStatusWithHistory.status.IN_BETWEEN:
-                return KPIStatusWithHistory.kpiYellowClass;
+                return colors.neutral;
 
             case KPIStatusWithHistory.status.DROP:
-                return KPIStatusWithHistory.kpiRedClass;
+                return colors.bad;
         }
     }
 }

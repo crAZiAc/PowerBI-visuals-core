@@ -86,7 +86,12 @@ module powerbi {
                 })
                 .append('text');
             canvasCtx = (<CanvasElement>$('<canvas/>').get(0)).getContext("2d");
-            fallbackFontFamily = window.getComputedStyle(svgTextElement.node()).fontFamily;
+            let style = window.getComputedStyle(svgTextElement.node());
+            if (style)
+                fallbackFontFamily = style.fontFamily;
+            else
+                fallbackFontFamily = "";
+
         }
 
         /**
@@ -249,6 +254,7 @@ module powerbi {
             debug.assertValue(svgElement, 'svgElement');
 
             let style = window.getComputedStyle(svgElement, null);
+            if (style)
             return {
                 text: svgElement.textContent,
                 fontFamily: style.fontFamily,
@@ -257,7 +263,13 @@ module powerbi {
                 fontStyle: style.fontStyle,
                 fontVariant: style.fontVariant,
                 whiteSpace: style.whiteSpace
-            };
+                };
+            else
+                return {
+                    text: svgElement.textContent,
+                    fontFamily: "",
+                    fontSize: "0",
+                };
         }
 
         /**
@@ -266,7 +278,11 @@ module powerbi {
          */
         export function getDivElementWidth(element: JQuery): string {
             debug.assert(element.is('div'), 'Given element is not a div type. Cannot get width');
-            return getComputedStyle(element[0]).width;
+            let style = getComputedStyle(element[0]);
+            if (style)
+                return style.width;
+            else
+                return "0";
         }
 
         /**

@@ -31,11 +31,19 @@ const powerBIAccessToken = "fooBarBaz";
 const powerBIAccessTokenExpiry = "2115-01-01 00:00:00Z";
 /* tslint:enable */
 
+import DataViewObjectDefinitions = powerbi.data.DataViewObjectDefinitions;
+import getObjectDefnValue = DataViewObjectDefinitions.getValue;
+
 declare interface JQuery {
-    d3Click(x: number, y: number, eventType?: powerbitests.helpers.ClickEventType): void;
-    d3TouchStart(): void;
+    d3Click(x: number, y: number, eventType?: powerbitests.helpers.ClickEventType, button?: number): void;
+    d3TouchStart(touchList?: TouchList): void;
+    d3TouchEnd(touchList?: TouchList): void;
     d3ContextMenu(x: number, y: number): void;
-    d3MouseDown(x: number, y: number): void;
+    d3MouseDown(x: number, y: number, eventType?: powerbitests.helpers.ClickEventType, button?: number): void;
+    d3MouseUp(x: number, y: number, eventType?: powerbitests.helpers.ClickEventType, button?: number): void;
+    d3MouseOver(x: number, y: number, eventType?: powerbitests.helpers.ClickEventType, button?: number): void;
+    d3MouseMove(x: number, y: number, eventType?: powerbitests.helpers.ClickEventType, button?: number): void;
+    d3MouseOut(x: number, y: number, eventType?: powerbitests.helpers.ClickEventType, button?: number): void;
     d3KeyEvent(typeArg: string, keyArg: string, keyCode: number): void;
 }
 
@@ -134,24 +142,51 @@ module powerbitests.helpers {
 
     export enum MouseEventType {
         click,
-        mousedown
+        mousedown,
+        mouseup,
+        mouseover,
+        mousemove,
+        mouseout,
     }
 
-    jQuery.fn.d3Click = function (x: number, y: number, eventType?: ClickEventType): void {
-        mouseEvent.call(this, MouseEventType.click, x, y, eventType);
+    jQuery.fn.d3Click = function (x: number, y: number, eventType?: ClickEventType, button?: number): void {
+        mouseEvent.call(this, MouseEventType.click, x, y, eventType, button);
     };
 
-    jQuery.fn.d3MouseDown = function (x: number, y: number, eventType?: ClickEventType): void {
-        mouseEvent.call(this, MouseEventType.mousedown, x, y, eventType);
+    jQuery.fn.d3MouseDown = function (x: number, y: number, eventType?: ClickEventType, button?: number): void {
+        mouseEvent.call(this, MouseEventType.mousedown, x, y, eventType, button);
+    };
+
+    jQuery.fn.d3MouseUp = function (x: number, y: number, eventType?: ClickEventType, button?: number): void {
+        mouseEvent.call(this, MouseEventType.mouseup, x, y, eventType);
+    };
+
+    jQuery.fn.d3MouseOver = function (x: number, y: number, eventType?: ClickEventType, button?: number): void {
+        mouseEvent.call(this, MouseEventType.mouseover, x, y, eventType, button);
+    };
+
+    jQuery.fn.d3MouseMove = function (x: number, y: number, eventType?: ClickEventType, button?: number): void {
+        mouseEvent.call(this, MouseEventType.mousemove, x, y, eventType, button);
+    };
+
+    jQuery.fn.d3MouseOut = function (x: number, y: number, eventType?: ClickEventType, button?: number): void {
+        mouseEvent.call(this, MouseEventType.mouseout, x, y, eventType, button);
     };
 
     jQuery.fn.d3KeyEvent = function (typeArg: string, keyArg: string, keyCode: number): void {
         keyEvent.call(this, typeArg, keyArg, keyCode);
     };
 
-    jQuery.fn.d3TouchStart = function (): void {
+    jQuery.fn.d3TouchStart = function (touchList?: TouchList): void {
         this.each(function (i, e) {
-            let evt = createTouchStartEvent();
+            let evt = createTouchStartEvent(touchList);
+            e.dispatchEvent(evt);
+        });
+    };
+
+    jQuery.fn.d3TouchEnd = function (touchList?: TouchList): void {
+        this.each(function (i, e) {
+            let evt = createTouchEndEvent(touchList);
             e.dispatchEvent(evt);
         });
     };
@@ -164,10 +199,10 @@ module powerbitests.helpers {
     };
 
     // Defining a simulated click event (see http://stackoverflow.com/questions/9063383/how-to-invoke-click-event-programmaticaly-in-d3)
-    function mouseEvent (mouseEventType: MouseEventType, x: number, y: number, eventType?: ClickEventType): void {
+    function mouseEvent(mouseEventType: MouseEventType, x: number, y: number, eventType?: ClickEventType, button?: number): void {
         let type = eventType || ClickEventType.Default;
         this.each(function (i, e) {
-            let evt = createMouseEvent(mouseEventType, type, x, y);
+            let evt = createMouseEvent(mouseEventType, type, x, y, button);
             e.dispatchEvent(evt);
         });
     };
@@ -270,7 +305,34 @@ module powerbitests.helpers {
         return date;
     }
 
-    export function createMouseWheelEvent(eventName: string, deltaX: number, deltaY: number, detail: number): MouseWheelEvent {
+    export function createWheelEvent(deltaX: number, deltaY: number, deltaZ?: number): WheelEvent {
+        let evt = document.createEvent("MouseEvents");
+        evt.initMouseEvent(
+            "wheel",
+            true,  // boolean canBubbleArg,
+            true,  // boolean cancelableArg,
+            null,  // views::AbstractView viewArg,
+            0,   // long detailArg,
+            0,     // long screenXArg,
+            0,     // long screenYArg,
+            0,     // long clientXArg,
+            0,     // long clientYArg,
+            false, // boolean ctrlKeyArg,
+            false, // boolean altKeyArg,
+            false, // boolean shiftKeyArg,
+            false, // boolean metaKeyArg,
+            0,     // unsigned short buttonArg,
+            null   // EventTarget relatedTargetArg
+        );
+        let mouseEvt: WheelEvent = <WheelEvent>evt;
+        mouseEvt.deltaX = deltaX;
+        mouseEvt.deltaY = deltaY;
+        mouseEvt.deltaZ = deltaZ || 0;
+
+        return mouseEvt;
+    }
+
+    export function createMouseWheelEvent(eventName: string, delta: number, deltaX: number, deltaY: number, detail: number): MouseWheelEvent {
         let evt = document.createEvent("MouseEvents");
         evt.initMouseEvent(
             eventName,
@@ -290,7 +352,7 @@ module powerbitests.helpers {
             null   // EventTarget relatedTargetArg
         );
         let mouseEvt = <MouseWheelEvent>evt;
-        mouseEvt.wheelDelta = deltaY == null ? deltaX : deltaY;
+        mouseEvt.wheelDelta = delta;
         mouseEvt.wheelDeltaX = deltaX;
         mouseEvt.wheelDeltaY = deltaY;
         mouseEvt.detail = detail;
@@ -305,7 +367,7 @@ module powerbitests.helpers {
      * @param y clientY.
      * @param eventName {string} Event name e.g click, mousedown ... 
      */
-    export function createMouseEvent(mouseEventType: MouseEventType, eventType: ClickEventType, x: number, y: number): MouseEvent {
+    export function createMouseEvent(mouseEventType: MouseEventType, eventType: ClickEventType, x: number, y: number, button: number = 0): MouseEvent {
         let type = eventType || ClickEventType.Default;
         let evt = document.createEvent("MouseEvents");
         evt.initMouseEvent(
@@ -322,16 +384,32 @@ module powerbitests.helpers {
             !!(type & ClickEventType.AltKey),  // altKey
             !!(type & ClickEventType.ShiftKey),  // shiftKey
             !!(type & ClickEventType.MetaKey),  // metaKey
-            0,      // button
+            button,      // button
             null);  // relatedTarget
 
         return evt;
     }
 
-    export function createTouchStartEvent(): UIEvent {
+    export function createTouchStartEvent(touchList?: TouchList): UIEvent {
+        // NOTE: phantomjs does not support TouchEvent
         let evt = document.createEvent("UIEvent");
         evt.initUIEvent("touchstart", true, true, window, 1);
-         
+
+        if (touchList)
+            (<any>evt).touches = touchList;
+
+        return evt;
+    }
+
+    export function createTouchEndEvent(touchList?: TouchList): UIEvent {
+        // NOTE: phantomjs does not support TouchEvent
+        let evt = document.createEvent("UIEvent");
+        evt.initUIEvent("touchend", true, true, window, 1);
+
+        
+        if (touchList)
+            (<any>evt).touches = touchList;
+
         return evt;
     }
 
@@ -465,6 +543,19 @@ module powerbitests.helpers {
         return touchesList;
     }
 
+    export function createTouch(x: number, y: number, element: JQuery, id: number = 0): Touch {
+        return {
+            pageX: x,
+            pageY: y,
+            screenX: x,
+            screenY: y,
+            clientX: x,
+            clientY: y,
+            target: element.get(0),
+            identifier: id
+        };
+    }
+
     export function touchStartSimulator(d3Element: any) {
         let evt: any = document.createEvent("TouchEvent");
         evt.initEvent("touchstart", true, true);
@@ -477,6 +568,98 @@ module powerbitests.helpers {
         evt1.initEvent("touchmove", true, true);
         evt1.eventName = "touchmove";
         d3Element.node().dispatchEvent(evt1);
+    }
+
+    export interface Coordinates {
+        x: number;
+        y: number;
+    };
+
+    /**
+     * Wrapper for performing actions on an element.
+     */
+    export class MouseActions {
+
+        private mouseX: number;
+        private mouseY: number;
+        private isMouseDown: boolean;
+
+        constructor(private $element: JQuery, private mouseStartX: number, private mouseStartY: number) {
+            this.mouseX = mouseStartX;
+            this.mouseY = mouseStartY;
+            this.isMouseDown = false;
+        }
+
+        public mouseDown(): void {
+            this.$element.d3MouseDown(this.mouseX, this.mouseY);
+            this.isMouseDown = true;
+        }
+
+        public mouseUp(): void {
+            this.$element.d3MouseUp(this.mouseX, this.mouseY);
+            this.isMouseDown = false;
+        }
+
+        public click(): void {
+            this.$element.d3Click(this.mouseX, this.mouseY);
+        }
+
+        public move(newX: number = this.mouseX, newY: number = this.mouseY): void {
+            this.$element.d3MouseMove(newX, newY);
+            this.mouseX = newX;
+            this.mouseY = newY;
+        }
+
+        public moveCoordinates(newCoordinates: Coordinates): void {
+            this.move(newCoordinates.x, newCoordinates.y);
+        }
+
+        public moveDelta(deltaX: number = 0, deltaY: number = 0): void {
+            this.move(this.mouseX + deltaX, this.mouseY + deltaY);
+        }
+
+        public moveDeltaCoordinates(deltaCoordinates: Coordinates): void {
+            this.moveDelta(deltaCoordinates.x, deltaCoordinates.y);
+        }
+
+        /**
+         * Brings the mouse up (if it was down) and moves the mouse back to the starting position.
+         */
+        public reset(): void {
+            if (this.isMouseDown) {
+                this.mouseUp();
+            }
+
+            this.move(this.mouseStartX, this.mouseStartY);
+        }
+
+        public getMouseCoordinates(): Coordinates {
+            return {
+                x: this.mouseX,
+                y: this.mouseY
+            };
+        }
+    }
+
+    export function assertSQConstantExpr(objectDefns: DataViewObjectDefinitions, objectName: string, propertyName: string, expected: any) {
+        let expr = <powerbi.data.SQConstantExpr>getObjectDefnValue(objectDefns, { objectName: objectName, propertyName: propertyName }, null);
+        expect(expr).toBeDefined();
+        expect(expr.kind).toBe(powerbi.data.SQExprKind.Constant);
+        expect(expr.value).toBe(expected);
+    }
+
+    export function assertSolidFillDefinition(objectDefns: DataViewObjectDefinitions, objectName: string, propertyName: string, expected: string) {
+        let defn = <powerbi.FillDefinition>getObjectDefnValue(objectDefns, { objectName: objectName, propertyName: propertyName }, null);
+        if (expected != null) {
+            expect(defn).toBeDefined();
+            expect(defn.solid).toBeDefined();
+            expect(defn.solid.color).toBeDefined();
+            expect(defn.solid.color.kind).toBe(powerbi.data.SQExprKind.Constant);
+            expect((<powerbi.data.SQConstantExpr>defn.solid.color).value).toBe(expected);
+        }
+        else {
+            expect(defn).toBeUndefined();
+        }
     }
 
     export class DataViewBuilder {

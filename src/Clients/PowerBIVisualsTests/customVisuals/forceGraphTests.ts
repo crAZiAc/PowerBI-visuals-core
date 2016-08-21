@@ -256,6 +256,25 @@ module powerbitests.customVisuals {
                     done();
                 });
             });
+
+            it("nodes labels format", done => {
+                var dates = _.range(defaultDataViewBuilder.valuesSourceTarget.length)
+                    .map(x => new Date(Math.random() * 10000000000000));
+
+                defaultDataViewBuilder.valuesSourceTarget.forEach((x, i) => x[1] = <any>dates[i]);
+                dataView = defaultDataViewBuilder.getDataView();
+
+                visualBuilder.updateRenderTimeout(dataView, () => {
+                    visualBuilder.nodeTexts.each((i, e) => {
+                        var text = $(e).text();
+                        dates.forEach(date => {
+                            expect(text).not.toEqual(date.toString());
+                        });
+                    });
+
+                    done();
+                });
+            });
         });
     });
 
@@ -274,6 +293,14 @@ module powerbitests.customVisuals {
 
         public get linkLabels() {
             return this.mainElement.children("g.linklabelholder");
+        }
+
+        public get nodes() {
+            return this.mainElement.children("g.node");
+        }
+
+        public get nodeTexts() {
+            return this.nodes.children("text");
         }
 
         public get linkLabelsText() {

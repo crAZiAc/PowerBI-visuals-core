@@ -86,7 +86,7 @@ module powerbi {
         public units: DisplayUnit[];
         public displayUnit: DisplayUnit;
         private unitBaseValue: number;
-        protected static UNSUPPORTED_FORMATS = /^(p\d*)|(.*\%)|(e\d*)$/i;
+        protected static UNSUPPORTED_FORMATS = /^(p\d*)|(e\d*)$/i;
 
         // Constructor
         constructor(units?: DisplayUnit[]) {
@@ -139,7 +139,7 @@ module powerbi {
         }
 
         public shouldRespectScalingUnit(format: string): boolean {
-            return !this.isPercentageFormat(format);
+            return true;
         }
 
         public getNumberOfDecimalsForFormatting(format: string, decimals?: number) {

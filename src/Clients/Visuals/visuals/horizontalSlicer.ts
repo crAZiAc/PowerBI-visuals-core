@@ -30,9 +30,11 @@ module powerbi.visuals {
     import PixelConverter = jsCommon.PixelConverter;
     import SlicerOrientation = slicerOrientation.Orientation;
     import SQExpr = powerbi.data.SQExpr;
+    import DisplayNameKeys = SlicerUtil.DisplayNameKeys;
 
     const ItemWidthSampleSize = 50;
     const MinTextWidth = 80;
+    const NavigationArrowWidth: number = 19;
     const LoadMoreDataThreshold = 0.8; // The value indicates the percentage of data already shown that triggers a loadMoreData call.
     const DefaultStyleProperties = {
         labelText: {
@@ -51,9 +53,8 @@ module powerbi.visuals {
         private hostServices: IVisualHostServices;
         private dataView: DataView;
         private container: D3.Selection;
-        private header: D3.Selection;
         private body: D3.Selection;
-        private bodyViewport: IViewport;
+        private settings: SlicerSettings;
         private itemsContainer: D3.Selection;
         private rightNavigationArrow: D3.Selection;
         private leftNavigationArrow: D3.Selection;
@@ -64,15 +65,17 @@ module powerbi.visuals {
             fontSize: '14px'
         };
         private maxItemWidth: number;
+        private availableWidth: number;
         private totalItemWidth: number;
         private loadMoreData: () => void;
         private domHelper: SlicerUtil.DOMHelper;
+        private searchContainer: D3.Selection;
 
         constructor(options?: SlicerConstructorOptions) {
             if (options) {
                 this.behavior = options.behavior;
             }
-            this.domHelper = options.domHelper;
+            this.domHelper = new SlicerUtil.DOMHelper();
             this.dataStartIndex = 0;
         }
 
@@ -94,11 +97,20 @@ module powerbi.visuals {
             return SlicerUtil.getUpdatedSelfFilter(searchKey, metadata);
         }
 
-        public init(slicerInitOptions: SlicerInitOptions): IInteractivityService {
-            this.element = slicerInitOptions.visualInitOptions.element;
+        public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] {
+            return SlicerUtil.ObjectEnumerator.enumerateObjectInstances(options, this.data, this.settings, this.dataView);
+        }
+
+        public onModeChange(mode: string): void {
+            // Doesn't require any changes except handle update on visual.
+            this.hostServices.persistProperties({});
+        }
+
+        public init(slicerInitOptions: SlicerInitOptions, element: JQuery): IInteractivityService {
+            this.element = element;
             this.currentViewport = slicerInitOptions.visualInitOptions.viewport;
             let hostServices = this.hostServices = slicerInitOptions.visualInitOptions.host;
-
+            this.settings = DataConversion.DefaultSlicerProperties();
             if (this.behavior) {
                 this.interactivityService = createInteractivityService(hostServices);
             }
@@ -107,11 +119,7 @@ module powerbi.visuals {
             let containerDiv = document.createElement('div');
             containerDiv.className = Selectors.container.class;
             let container: D3.Selection = this.container = d3.select(containerDiv);
-
-            let header = this.domHelper.createSlicerHeader(this.hostServices);
-            containerDiv.appendChild(header);
-            this.header = d3.select(header);
-
+            this.searchContainer = this.domHelper.addSearch(hostServices, container);
             let body = this.body = container.append('div').classed(SlicerUtil.Selectors.Body.class + " " + Selectors.FlexDisplay.class, true);
 
             this.leftNavigationArrow = body.append("button")
@@ -132,16 +140,16 @@ module powerbi.visuals {
         }
 
         public render(options: SlicerRenderOptions): void {
-            let data = options.data;
+            let localizedSelectAllText = this.hostServices.getLocalizedString(DisplayNameKeys.SelectAll);
             let dataView = options.dataView;
-
-            if (!dataView || !data) {
+            this.data = DataConversion.convert(dataView, localizedSelectAllText, this.interactivityService, this.hostServices);
+            if (!dataView || !this.data || _.isEmpty(this.data.slicerDataPoints)) {
                 this.itemsContainer.selectAll("*").remove();
                 return;
             }
 
-            this.data = data;
             this.dataView = dataView;
+            this.settings = this.data.slicerSettings;
             let resized = this.currentViewport && options.viewport
                 && (this.currentViewport.height !== options.viewport.height || this.currentViewport.width !== options.viewport.width);
             if (!(this.isMaxWidthCalculated() && resized)) {
@@ -153,8 +161,8 @@ module powerbi.visuals {
 
             this.currentViewport = options.viewport;
             this.updateStyle();
-            let availableWidthForItemsContainer = this.element.find(Selectors.ItemsContainer.selector).width();
-            this.itemsToDisplay = this.getNumberOfItemsToDisplay(availableWidthForItemsContainer);
+            this.availableWidth = this.element.find(SlicerUtil.Selectors.Body.selector).width() - 2 * NavigationArrowWidth;
+            this.itemsToDisplay = this.getNumberOfItemsToDisplay(this.availableWidth);
             if (this.itemsToDisplay === 0)
                 return;
 
@@ -187,29 +195,12 @@ module powerbi.visuals {
         }
 
         private updateStyle(): void {
-            let viewport = this.currentViewport;
             let data = this.data;
-            let defaultSettings: SlicerSettings = data.slicerSettings;
-            let domHelper = this.domHelper;
-
+            let settings: SlicerSettings = data.slicerSettings;
             this.container
-                .classed(Selectors.MultiSelectEnabled.class, !defaultSettings.selection.singleSelect)
-                .style({
-                    "width": PixelConverter.toString(viewport.width),
-                    "height": PixelConverter.toString(viewport.height),
-                });
-
-            // Style Slicer Header
-            domHelper.styleSlicerHeader(this.header, defaultSettings, data.categorySourceName);
-            let headerTextProperties = domHelper.getHeaderTextProperties(defaultSettings);
-            this.header.attr('title', data.categorySourceName);
-            
-             // Update body width and height
-            let bodyViewport = this.bodyViewport = domHelper.getSlicerBodyViewport(viewport, defaultSettings, headerTextProperties);
-            this.body.style({
-                "height": PixelConverter.toString(bodyViewport.height),
-                "width": PixelConverter.toString(bodyViewport.width),
-            });
+                .classed(Selectors.MultiSelectEnabled.class, !settings.selection.singleSelect);
+            this.searchContainer.classed(SlicerUtil.Selectors.SearchHeaderShow.class, settings.search.enabled);
+            this.searchContainer.classed(SlicerUtil.Selectors.SearchHeaderCollapsed.class, !settings.search.enabled);
         }
 
         private renderItems(defaultSettings: SlicerSettings): void {
@@ -248,8 +239,8 @@ module powerbi.visuals {
                 // Wrap long text into multiple columns based on height availbale
                 let labels = this.element.find(SlicerUtil.Selectors.LabelText.selector);
                 let item = labels.first();
-                let itemWidth = item.width();
                 let itemHeight = item.height();
+                let itemWidth = item.width();
                 labels.each((i, element) => {
                     TextMeasurementService.wordBreakOverflowingText(element, itemWidth, itemHeight);
                 });
@@ -261,9 +252,8 @@ module powerbi.visuals {
                 let body = this.body;
                 let itemsContainer = body.selectAll(Selectors.ItemsContainer.selector);
                 let itemLabels = body.selectAll(SlicerUtil.Selectors.LabelText.selector);
-                let clear = this.header.select(SlicerUtil.Selectors.Clear.selector);
                 let data = this.data;
-                let searchInput = this.header.select('input');
+                let searchInput = this.searchContainer.select('input');
                 if (!searchInput.empty()) {
                     let element: HTMLInputElement = <HTMLInputElement>searchInput.node();
                     let existingSearchKey: string = element.value;
@@ -280,7 +270,6 @@ module powerbi.visuals {
                     slicerContainer: this.container,
                     itemsContainer: itemsContainer,
                     itemLabels: itemLabels,
-                    clear: clear,
                     interactivityService: this.interactivityService,
                     settings: data.slicerSettings,
                     slicerValueHandler: this,
@@ -387,11 +376,11 @@ module powerbi.visuals {
         private scrollLeft(): void {
             let itemsToDisplay = this.itemsToDisplay;
             let startIndex = this.dataStartIndex;
-            let firstItemIndex = 0;           
+            let firstItemIndex = 0;
             // If it is the first page stay on the same page and don't navigate
             if (startIndex === 0) {
                 return;
-            }                  
+            }
 
             // If there is only item shown when left navigation button is clicked we want to navigate back to show previous item
             if (itemsToDisplay === 1) {
@@ -421,7 +410,7 @@ module powerbi.visuals {
         }
 
         // Sampling a subset of total datapoints to calculate max item width
-        private calculateAndSetMaxItemWidth(): void {           
+        private calculateAndSetMaxItemWidth(): void {
             let dataPointsLength: number = this.getDataPointsCount();
             let maxItemWidth = 0;
             if (dataPointsLength === 0) {
@@ -432,7 +421,7 @@ module powerbi.visuals {
             let dataPoints = data.slicerDataPoints;
             let sampleSize = Math.min(dataPointsLength, ItemWidthSampleSize);
             let properties = jQuery.extend(true, {}, this.textProperties);
-            let textSize = data.slicerSettings.slicerText.textSize;          
+            let textSize = data.slicerSettings.slicerText.textSize;
             // Update text properties from formatting pane values
             properties.fontSize = PixelConverter.fromPoint(textSize);
             let getMaxWordWidth = jsCommon.WordBreaker.getMaxWordWidth;
@@ -442,10 +431,12 @@ module powerbi.visuals {
                 properties.text = itemText;
                 maxItemWidth = Math.max(maxItemWidth, getMaxWordWidth(itemText, TextMeasurementService.measureSvgTextWidth, properties));
             }
-
             this.maxItemWidth = Math.min(maxItemWidth, this.getScaledTextWidth(textSize));
         }
 
+        /**
+         * Adds to the text width boders, margin, padding.
+         */
         private calculateAndSetTotalItemWidth(): void {
             let data = this.data;
             let itemPadding = DefaultStyleProperties.labelText.paddingLeft + DefaultStyleProperties.labelText.paddingRight + DefaultStyleProperties.labelText.marginRight;

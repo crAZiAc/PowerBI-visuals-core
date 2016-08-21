@@ -39,6 +39,7 @@ module powerbi.visuals {
         id: string;
         points: PointWithError[];
         show: boolean;
+        displayName: string;
         lineColor: Fill;
         confidenceBandStyle: string;
         transparency: number;
@@ -48,6 +49,7 @@ module powerbi.visuals {
     export module ForecastHelper {
         module ForecastPropertyNames {
             export const show: string = 'show';
+            export const displayName: string = 'displayName';
             export const lineColor: string = 'lineColor';
             export const confidenceBandStyle: string = 'confidenceBandStyle';
             export const transparency: string = 'transparency';
@@ -61,6 +63,7 @@ module powerbi.visuals {
 
         export const defaults = {
             lineColor: <Fill>{ solid: { color: '#000' } },
+            displayName: '',
             confidenceBandStyle: confidenceBandStyle.fill,
             transparency: 80,
             style: lineStyle.solid
@@ -70,8 +73,12 @@ module powerbi.visuals {
         const ForecastErrorRangeClassSelector: ClassAndSelector = createClassAndSelector('forecast-error-range');
         const ForecastLayerClassSelector: ClassAndSelector = createClassAndSelector('forecast-line-layer');
 
-        export function enumerateObjectInstances(enumeration: ObjectEnumerationBuilder, forecast: Forecast): void {
+        export function enumerateObjectInstances(enumeration: ObjectEnumerationBuilder, forecasts: Forecast[]): void {
             debug.assertValue(enumeration, 'enumeration');
+
+            let forecast: Forecast;
+            if (!_.isEmpty(forecasts))
+                forecast = forecasts[0];
 
             if (!forecast) {
                 enumeration.pushInstance({
@@ -93,6 +100,7 @@ module powerbi.visuals {
 
             let properties: _.Dictionary<DataViewPropertyValue> = {
                 [ForecastPropertyNames.show]: forecast.show,
+                [ForecastPropertyNames.displayName]: forecast.displayName,
                 [ForecastPropertyNames.lineColor]: forecast.lineColor,
                 [ForecastPropertyNames.confidenceBandStyle]: forecast.confidenceBandStyle,
                 [ForecastPropertyNames.transparency]: forecast.transparency,
@@ -122,7 +130,7 @@ module powerbi.visuals {
             return false;
         }
 
-        export function readDataView(dataView: DataView, sourceDataView: DataView, colors: IDataColorPalette): Forecast {
+        export function readDataView(dataView: DataView, sourceDataView: DataView, colors: IDataColorPalette): Forecast[] {
             if (!dataView || !dataView.categorical || !sourceDataView || !sourceDataView.categorical)
                 return;
 
@@ -140,15 +148,16 @@ module powerbi.visuals {
             let lowerBoundColumnIndex = DataRoleHelper.getMeasureIndexOfRole(groups, forecastConfidenceLowBoundRole);
 
             let forecastLines: Forecast[] = [];
-            let forecastProperties = DataViewObjects.getUserDefinedObjects(dataView.metadata.objects, forecastObjectName);
+            let forecastLineObjects = DataViewObjects.getUserDefinedObjects(dataView.metadata.objects, forecastObjectName);
             let groupIndex = 0;
-            for (let forecastProperty of forecastProperties) {
-                let forecastObjects = forecastProperty.object;
-                let show = DataViewObject.getValue<boolean>(forecastObjects, ForecastPropertyNames.show, false);
-                let lineColor = DataViewObject.getValue<Fill>(forecastObjects, ForecastPropertyNames.lineColor, defaults.lineColor);
-                let confidenceBandStyle = DataViewObject.getValue<string>(forecastObjects, ForecastPropertyNames.confidenceBandStyle, defaults.confidenceBandStyle);
-                let transparency = DataViewObject.getValue<number>(forecastObjects, ForecastPropertyNames.transparency, defaults.transparency);
-                let style = DataViewObject.getValue<string>(forecastObjects, ForecastPropertyNames.style, defaults.style);
+            for (let id in forecastLineObjects) {
+                let forecastObject = forecastLineObjects[id];
+                let show = DataViewObject.getValue<boolean>(forecastObject, ForecastPropertyNames.show, false);
+                let displayName = DataViewObject.getValue<string>(forecastObject, ForecastPropertyNames.displayName);
+                let lineColor = DataViewObject.getValue<Fill>(forecastObject, ForecastPropertyNames.lineColor, defaults.lineColor);
+                let confidenceBandStyle = DataViewObject.getValue<string>(forecastObject, ForecastPropertyNames.confidenceBandStyle, defaults.confidenceBandStyle);
+                let transparency = DataViewObject.getValue<number>(forecastObject, ForecastPropertyNames.transparency, defaults.transparency);
+                let style = DataViewObject.getValue<string>(forecastObject, ForecastPropertyNames.style, defaults.style);
                 let colorHelper = new ColorHelper(colors, { objectName: 'dataPoint', propertyName: 'fill' }, defaults.lineColor.solid.color);
 
                 let group = groups[groupIndex];
@@ -193,9 +202,10 @@ module powerbi.visuals {
                 }
 
                 forecastLines.push({
-                    id: forecastProperty.id,
+                    id: id,
                     points: points,
                     show: show,
+                    displayName: displayName,
                     lineColor: seriesLineColor,
                     confidenceBandStyle: confidenceBandStyle,
                     transparency: transparency,
@@ -205,10 +215,10 @@ module powerbi.visuals {
                 groupIndex++;
             }
             
-            return forecastLines[0];
+            return forecastLines;
         }
 
-        export function render(forecastLine: Forecast, graphicsContext: D3.Selection, axes: CartesianAxisProperties, viewport: IViewport, animator: IGenericAnimator, suppressAnimations: boolean): void {
+        export function render(forecastLines: Forecast[], graphicsContext: D3.Selection, axes: CartesianAxisProperties, viewport: IViewport, animator: IGenericAnimator, suppressAnimations: boolean): void {
             let duration = AnimatorCommon.GetAnimationDuration(animator, suppressAnimations);
             let layer = graphicsContext.select(ForecastLayerClassSelector.selector);
             if (layer.empty()) {
@@ -220,7 +230,7 @@ module powerbi.visuals {
                 width: viewport.width
             });
 
-            let errorRange = layer.selectAll(ForecastErrorRangeClassSelector.selector).data(forecastLine ? [forecastLine] : []);
+            let errorRange = layer.selectAll(ForecastErrorRangeClassSelector.selector).data(forecastLines);
             errorRange.enter().insert('path', ':first-child').classed(ForecastErrorRangeClassSelector.class, true);
 
             errorRange
@@ -265,7 +275,7 @@ module powerbi.visuals {
 
             errorRange.exit().remove();
 
-            let lines = layer.selectAll(ForecastClassSelector.selector).data(forecastLine ? [forecastLine] : []);
+            let lines = layer.selectAll(ForecastClassSelector.selector).data(forecastLines);
             lines.enter().append('path').classed(ForecastClassSelector.class, true);
 
             lines

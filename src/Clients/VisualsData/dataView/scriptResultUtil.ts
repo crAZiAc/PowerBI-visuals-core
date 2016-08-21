@@ -43,54 +43,105 @@ module powerbi {
     import FieldExprPercentilePattern = powerbi.data.FieldExprPercentilePattern;
     import FieldExprSelectRefPattern = powerbi.data.FieldExprSelectRefPattern;
     import FieldExprPercentOfGrandTotalPattern = powerbi.data.FieldExprPercentOfGrandTotalPattern;
+    import FieldExprTransformOutputRoleRefPattern = powerbi.data.FieldExprTransformOutputRoleRefPattern;
     import IFieldExprPatternVisitor = powerbi.data.IFieldExprPatternVisitor;
     import QueryProjectionsByRole = data.QueryProjectionsByRole;
 
     export interface ScriptResult {
         source: string;
         provider: string;
+        outputType: string;
     }
 
     export module ScriptResultUtil {
+        
+        const DefaultOutputType = 'png';
 
-        export function findScriptResult(dataViewMappings: DataViewMapping[] | data.CompiledDataViewMapping[]): DataViewScriptResultMapping | data.CompiledDataViewScriptResultMapping {
-            if (dataViewMappings && dataViewMappings.length === 1) {
+        export function findScriptResultMapping(dataViewMappings: DataViewMapping[] | data.CompiledDataViewMapping[]): DataViewScriptResultMapping | data.CompiledDataViewScriptResultMapping {
+            debug.assertAnyValue(dataViewMappings, 'dataViewMappings');
+
+            if (dataViewMappings && dataViewMappings.length === 1 && dataViewMappings[0]) {
                 return dataViewMappings[0].scriptResult;
             }
 
-            return undefined;
+            return;
         }
 
         export function extractScriptResult(dataViewMappings: data.CompiledDataViewMapping[]): ScriptResult {
-            let scriptResult = findScriptResult(dataViewMappings);
-            if (scriptResult) {
-                let objects = dataViewMappings[0].metadata.objects;
-                let source: string = DataViewObjects.getValue<string>(objects, scriptResult.script.source);
-                let provider: string = DataViewObjects.getValue<string>(objects, scriptResult.script.provider);
-                return {
-                    source: source,
-                    provider: provider
-                };
-            }
+            debug.assertAnyValue(dataViewMappings, 'dataViewMappings');
 
-            return undefined;
+            let scriptResultMapping = findScriptResultMapping(dataViewMappings);
+            if (!scriptResultMapping)
+                return;
+
+            let objects = dataViewMappings[0].metadata && dataViewMappings[0].metadata.objects;
+            return extractScriptResultFromDataViewObjects(scriptResultMapping, objects);
         }
 
-        export function extractScriptResultFromVisualConfig(dataViewMappings: DataViewMapping[], objects: powerbi.data.DataViewObjectDefinitions): ScriptResult {
-            let scriptResult = findScriptResult(dataViewMappings);
-            if (scriptResult && objects) {
-                let scriptSource = <data.SQConstantExpr>data.DataViewObjectDefinitions.getValue(objects, scriptResult.script.source, null);
-                let provider = <data.SQConstantExpr>data.DataViewObjectDefinitions.getValue(objects, scriptResult.script.provider, null);
-                return {
-                    source: scriptSource ? scriptSource.value : null,
-                    provider: provider ? provider.value : null
-                };
-            }
+        export function extractScriptResultFromVisualConfig(dataViewMappings: DataViewMapping[], objects: data.DataViewObjectDefinitions): ScriptResult {
+            debug.assertAnyValue(dataViewMappings, 'dataViewMappings');
+            debug.assertAnyValue(objects, 'objects');
 
-            return undefined;
+            if (!objects)
+                return;
+
+            let scriptResultMapping = findScriptResultMapping(dataViewMappings);
+            if (!scriptResultMapping || !scriptResultMapping.script || !scriptResultMapping.script.source || !scriptResultMapping.script.provider)
+                return;
+
+            let sourceExpr = <data.SQConstantExpr>data.DataViewObjectDefinitions.getValue(objects, scriptResultMapping.script.source, null);
+            let providerExpr = <data.SQConstantExpr>data.DataViewObjectDefinitions.getValue(objects, scriptResultMapping.script.provider, null);
+            let source = sourceExpr ? sourceExpr.value : null;
+            let provider = providerExpr ? providerExpr.value : null;
+            return getScriptInfo(source, provider);
         }
 
-        export function getScriptInput(projections: QueryProjectionsByRole, selects: ArrayNamedItems<data.NamedSQExpr>, schema: FederatedConceptualSchema): data.ScriptInput {
+        export function extractScriptResultDefaultFromDataViewMappings(dataViewMappings: DataViewMapping[] | data.CompiledDataViewMapping[]): ScriptResult {
+            debug.assertAnyValue(dataViewMappings, 'dataViewMappings');
+
+            return extractScriptResultDefault(findScriptResultMapping(dataViewMappings));
+        }
+
+        function extractScriptResultFromDataViewObjects(scriptResultMapping: DataViewScriptResultMapping | data.CompiledDataViewScriptResultMapping, dataViewObjects: DataViewObjects): ScriptResult {
+            if (!scriptResultMapping || !scriptResultMapping.script || !scriptResultMapping.script.source || !scriptResultMapping.script.provider || !dataViewObjects)
+                return;
+
+            let source = DataViewObjects.getValue<string>(dataViewObjects, scriptResultMapping.script.source);
+            let provider = DataViewObjects.getValue<string>(dataViewObjects, scriptResultMapping.script.provider);
+            return getScriptInfo(source, provider);
+        }
+
+        function extractScriptResultDefault(scriptResultMapping: DataViewScriptResultMapping | data.CompiledDataViewScriptResultMapping): ScriptResult {
+            return extractScriptResultDefaultFromDataViewMappingScriptDefinition(scriptResultMapping && scriptResultMapping.script);
+        }
+
+        export function extractScriptResultDefaultFromDataViewMappingScriptDefinition(scriptMapping: DataViewMappingScriptDefinition | data.CompiledDataViewMappingScriptDefinition): ScriptResult {
+            debug.assertAnyValue(scriptMapping, 'scriptMapping');
+
+            if (!scriptMapping)
+                return;
+
+            let scriptSourceDefault = scriptMapping.scriptSourceDefault;
+            let scriptProviderDefault = scriptMapping.scriptProviderDefault;
+            return getScriptInfo(scriptSourceDefault, scriptProviderDefault);
+        }
+
+        function getScriptInfo(source: string, provider: string): ScriptResult {
+            if (StringExtensions.isNullOrUndefinedOrWhiteSpaceString(source) || StringExtensions.isNullOrUndefinedOrWhiteSpaceString(provider))
+                return;
+
+            return {
+                source: source,
+                provider: provider,
+                outputType: DefaultOutputType
+            };
+        }
+
+        export function getScriptInput(projections: QueryProjectionsByRole, selects: ArrayNamedItems<data.NamedSQExpr>, schema: FederatedConceptualSchema, customRoleSupport: boolean): data.ScriptInput {
+            debug.assertAnyValue(projections, 'projections');
+            debug.assertAnyValue(selects, 'selects');
+            debug.assertAnyValue(schema, 'schema');
+
             let scriptInput: data.ScriptInput = {
                 VariableName: "dataset",
                 Columns: []
@@ -106,12 +157,18 @@ module powerbi {
                         let select = selects.withName(projection.queryRef);
                         if (select) {
                             let scriptInputColumn = <data.ScriptInputColumn>{
-                                QueryName: select.name,
-                                Name: FieldExprPattern.visit(select.expr, new ScriptInputColumnNameVisitor(schema))
+                                QueryName: select.name
                             };
 
+                            let name = FieldExprPattern.visit(select.expr, new ScriptInputColumnNameVisitor(schema));
+
+                            if (customRoleSupport) {
+                                scriptInputColumn.Role = role;
+                                name = role + "." + name;
+                            }
+
                             scriptInputColumns.push(scriptInputColumn);
-                            scriptInputColumnNames.push(scriptInputColumn.Name);
+                            scriptInputColumnNames.push(name);
                         }
                     }
                 }
@@ -186,6 +243,10 @@ module powerbi {
 
             public visitPercentOfGrandTotal(percentOfGrandTotal: FieldExprPercentOfGrandTotalPattern): string {
                 return FieldExprPattern.visit(percentOfGrandTotal.baseExpr, this);
+            }
+
+            public visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): string {
+                return FieldExprPattern.visit(transformOutputRoleRef, this);
             }
 
             private static getNameForHierarchy(pattern: FieldExprHierarchyPattern, federatedScheam: FederatedConceptualSchema): string {

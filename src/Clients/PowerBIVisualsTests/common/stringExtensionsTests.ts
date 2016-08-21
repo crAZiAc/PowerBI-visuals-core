@@ -110,7 +110,19 @@ module powerbitests {
 
             expect(result).toBe('one{1}, two{1}');
         });
+        
+        it('constructNameFromList not exceeding max value', () => {
+            let result = StringExtensions.constructNameFromList(['FirstName', 'SecondName'], "&", 50);
 
+            expect(result).toBe('FirstName & SecondName');
+        });
+
+        it('constructNameFromList exceeding max value', () => {
+            let result = StringExtensions.constructNameFromList(['The first category name', 'The second category name', 'The third category name'], "&", 50);
+
+            expect(result).toBe('The first category name & The second category name & ...');
+        });
+        
         it('startsWith - positive test', () => {
             let result = StringExtensions.startsWith("abcdefg", "abcd");
             expect(result).toBe(true);

@@ -33,22 +33,19 @@ module powerbi {
         export function getValue<T>(objects: DataViewObjects, propertyId: DataViewObjectPropertyIdentifier, defaultValue?: T): T {
             debug.assertAnyValue(objects, 'objects');
             debug.assertValue(propertyId, 'propertyId');
+            debug.assert(propertyId.propertyName.charAt(0) !== '$', 'Properties starting with $ are reserved.');
 
             if (!objects)
                 return defaultValue;
 
-            let objectOrMap = objects[propertyId.objectName];
-            debug.assert(!isUserDefined(objectOrMap), 'expected DataViewObject');
-
-            let object = <DataViewObject>objectOrMap;
+            let object = objects[propertyId.objectName];
             return DataViewObject.getValue(object, propertyId.propertyName, defaultValue);
         }
 
         /** Gets an object from objects. */
         export function getObject(objects: DataViewObjects, objectName: string, defaultValue?: DataViewObject): DataViewObject {
             if (objects && objects[objectName]) {
-                let object = <DataViewObject>objects[objectName];
-                debug.assert(!isUserDefined(object), 'expected DataViewObject');
+                let object = objects[objectName];
                 return object;
             }
             else {
@@ -58,11 +55,11 @@ module powerbi {
 
         /** Gets a map of user-defined objects. */
         export function getUserDefinedObjects(objects: DataViewObjects, objectName: string): DataViewObjectMap {
-            if (objects && objects[objectName]) {
-                let map = <DataViewObjectMap>objects[objectName];
-                debug.assert(isUserDefined(map), 'expected DataViewObjectMap');
-                return map;
-            }
+            let object = getObject(objects, objectName);
+            if (!object)
+                return;
+
+            return object.$instances;
         }
 
         /** Gets the solid color from a fill property. */
@@ -72,11 +69,6 @@ module powerbi {
                 return defaultColor;
 
             return value.solid.color;
-        }
-
-        /** Returns true if the given object represents a collection of user-defined objects */
-        export function isUserDefined(objectOrMap: DataViewObject | DataViewObjectMap): boolean {
-            return _.isArray(objectOrMap);
         }
     }
 
@@ -96,8 +88,8 @@ module powerbi {
         }
 
         /** Gets the solid color from a fill property using only a propertyName */
-        export function getFillColorByPropertyName(objects: DataViewObjects, propertyName: string, defaultColor?: string): string {
-            let value: Fill = DataViewObject.getValue(objects, propertyName);
+        export function getFillColorByPropertyName(object: DataViewObject, propertyName: string, defaultColor?: string): string {
+            let value: Fill = getValue(object, propertyName);
             if (!value || !value.solid)
                 return defaultColor;
 

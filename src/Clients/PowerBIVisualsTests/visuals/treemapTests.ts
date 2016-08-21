@@ -4033,7 +4033,7 @@ module powerbitests {
 
             let dataLabelSettings = powerbi.visuals.dataLabelUtils.getDefaultLabelSettings();
             let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
-            let rootNode = Treemap.converter(dataView, colors, dataLabelSettings, /*interactivityService*/null, viewport, /*legendObjectProperties*/undefined, /*tooltipsEnabled*/false, /*tooltipBucketEnabled*/true).root;
+            let rootNode = Treemap.converter(dataView, colors, dataLabelSettings, /*interactivityService*/null, viewport, /*legendObjectProperties*/undefined, /*tooltipsEnabled*/false).root;
 
             let node1: TreemapNode = <TreemapNode>rootNode.children[0];
             let node2: TreemapNode = <TreemapNode>rootNode.children[1];

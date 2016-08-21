@@ -37,7 +37,6 @@ module powerbitests {
     import ScalarKeys = powerbi.visuals.ScalarKeys;
     import DataViewTransform = powerbi.data.DataViewTransform;
     import LineChart = powerbi.visuals.LineChart;
-    import lineChartProps = powerbi.visuals.lineChartProps;
     import lineStyle = powerbi.visuals.lineStyle;
     import SVGUtil = powerbi.visuals.SVGUtil;
     import SelectionId = powerbi.visuals.SelectionId;
@@ -47,7 +46,6 @@ module powerbitests {
     import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
     import PixelConverter = jsCommon.PixelConverter;
     import LabelParentRect = powerbi.LabelParentRect;
-    import SortDirection = powerbi.SortDirection;
     import TrendLineHelper = powerbi.visuals.TrendLineHelper;
     import buildSelectorForColumn = powerbitests.helpers.buildSelectorForColumn;
 
@@ -108,7 +106,7 @@ module powerbitests {
         };
 
         it('LineChart registered capabilities', () => {
-            expect(powerbi.visuals.plugins.lineChart.capabilities).toBe(powerbi.visuals.lineChartCapabilities);
+            expect(powerbi.visuals.plugins.lineChart.capabilities).toEqualDeep(powerbi.visuals.getLineChartCapabilities(false /*isStacked*/));
         });
 
         it('LineChart registered customizeQuery', () => {
@@ -116,19 +114,27 @@ module powerbitests {
         });
 
         it('Capabilities should include dataViewMappings', () => {
-            expect(powerbi.visuals.lineChartCapabilities.dataViewMappings).toBeDefined();
+            expect(powerbi.visuals.getLineChartCapabilities(false /*isStacked*/).dataViewMappings).toBeDefined();
         });
 
         it('Capabilities should include dataRoles', () => {
-            expect(powerbi.visuals.lineChartCapabilities.dataRoles).toBeDefined();
+            expect(powerbi.visuals.getLineChartCapabilities(false /*isStacked*/).dataRoles).toBeDefined();
         });
 
         it('Capabilities should not suppressDefaultTitle', () => {
-            expect(powerbi.visuals.lineChartCapabilities.suppressDefaultTitle).toBeUndefined();
+            expect(powerbi.visuals.getLineChartCapabilities(false /*isStacked*/).suppressDefaultTitle).toBeUndefined();
+        });
+
+        it('Capabilities should support reference lines for not stacked charts', () => {
+            expect(powerbi.visuals.getLineChartCapabilities(false /*isStacked*/).objects['referenceLine']).toBeDefined();
+        });
+
+        it('Capabilities should not support reference lines if stacked', () => {
+            expect(powerbi.visuals.getLineChartCapabilities(true /*isStacked*/).objects['referenceLine']).toBeUndefined();
         });
 
         it('FormatString property should match calculated', () => {
-            expect(powerbi.data.DataViewObjectDescriptors.findFormatString(powerbi.visuals.lineChartCapabilities.objects)).toEqual(powerbi.visuals.lineChartProps.general.formatString);
+            expect(powerbi.data.DataViewObjectDescriptors.findFormatString(powerbi.visuals.getLineChartCapabilities(false /*isStacked*/).objects)).toEqual(powerbi.visuals.lineChartProps.general.formatString);
         });
 
         describe('CustomizeQuery', () => {
@@ -241,21 +247,6 @@ module powerbitests {
                 });
             });
 
-            it('uses scalar key if sorted by category', () => {
-                let scalarKeyUsed = runCustomizeQueryWithForcedScalarKey(undefined, true);
-                expect(scalarKeyUsed).toBe(true);
-            });
-
-            it('does not use scalar key if sorted by non-category', () => {
-                let scalarKeyUsed = runCustomizeQueryWithForcedScalarKey(undefined, false);
-                expect(scalarKeyUsed).toBe(false);
-            });
-
-            it('uses scalar key if there is no explicit sort', () => {
-                let scalarKeyUsed = runCustomizeQueryWithForcedScalarKey(undefined, undefined);
-                expect(scalarKeyUsed).toBe(true);
-            });
-
             it('removes forecast dataViewMapping if present on non-scalar axis', () => {
                 let objects: DataViewObjects = {
                     categoryAxis: {}
@@ -288,7 +279,7 @@ module powerbitests {
             });
 
             // Runs the line chart by forcing the scalar key property to true and returns whether customizeQuery decided to use it
-            function runCustomizeQueryWithForcedScalarKey(axisType: string, sortByCategory?: boolean): boolean {
+            function runCustomizeQueryWithForcedScalarKey(axisType: string): boolean {
                 let objects: DataViewObjects = {
                     categoryAxis: {
                         axisType: axisType
@@ -296,14 +287,6 @@ module powerbitests {
                 };
 
                 let dataViewMapping = createCompiledDataViewMapping(ValueType.fromPrimitiveTypeAndCategory(PrimitiveType.DateTime), objects);
-
-                // Set sort
-                if (sortByCategory !== undefined) {
-                    if (sortByCategory)
-                        _.find(dataViewMapping.metadata.columns, (c) => c.queryName === 'c1').sort = SortDirection.Ascending;
-                    else
-                        _.find(dataViewMapping.metadata.columns, (c) => c.queryName === 's1').sort = SortDirection.Ascending;
-                }
 
                 // Force scalar key support
                 let dataViewCategories = <powerbi.data.CompiledDataViewRoleForMappingWithReduction>dataViewMapping.categorical.categories;
@@ -314,7 +297,7 @@ module powerbitests {
                     dataViewMappings: [dataViewMapping]
                 });
 
-                return compiledRoleItem.scalarKeyMinProperty === powerbi.visuals.lineChartProps.scalarKey.scalarKeyMin;
+                return compiledRoleItem.scalarKeyMinProperty === powerbi.visuals.cartesianChartProps.scalarKey.scalarKeyMin;
             }
 
             function customizeQuery(): void {
@@ -552,7 +535,7 @@ module powerbitests {
                 },
             };
 
-            let actualData = LineChart.converter(dataView, blankCategoryValue, colors, /*isScalar*/false, /*interactivityService*/undefined, /*shouldCalculateStacked*/undefined, /*isComboChart*/undefined, /*tooltipsEnabled*/false, /*tooltipBucketEnabled*/true);
+            let actualData = LineChart.converter(dataView, blankCategoryValue, colors, /*isScalar*/false, /*interactivityService*/undefined, /*shouldCalculateStacked*/undefined, /*isComboChart*/undefined, /*tooltipsEnabled*/false);
             expect(actualData.series[0].data[0].tooltipInfo).toBeUndefined();
             expect(actualData.series[0].data[0].extraTooltipInfo).toBeUndefined();
         });
@@ -1225,8 +1208,8 @@ module powerbitests {
                 colors.getColorByIndex(2).value,
             ];
             let defaultLabelSettings = powerbi.visuals.dataLabelUtils.getDefaultLineChartLabelSettings();
-
-            let actualData = LineChart.converter(dataView, blankCategoryValue, colors, false, undefined, undefined, undefined, undefined, true).series;
+ 
+            let actualData = LineChart.converter(dataView, blankCategoryValue, colors, /*isScalar*/false, /*interactivityService*/undefined, /*shouldCalculateStacked*/undefined, /*isComboChart*/undefined, /*tooltipsEnabled*/true).series;
             let expectedData: powerbi.visuals.LineChartSeries[] =
                 [
                     {
@@ -1729,7 +1712,7 @@ module powerbitests {
             ];
             let key = selectionId.getKey();
             let defaultLabelSettings = powerbi.visuals.dataLabelUtils.getDefaultLineChartLabelSettings();
-            let actualData = LineChart.converter(dataView, blankCategoryValue, colors, true /*isScalar*/, null /*interactivity*/, false /*isStacked*/, false /*isComboChart*/, true /* toolTipEnabled*/, false /*tooltipBucketEnabled*/);
+            let actualData = LineChart.converter(dataView, blankCategoryValue, colors, true /*isScalar*/, null /*interactivity*/, false /*isStacked*/, false /*isComboChart*/, true /* toolTipEnabled*/);
             let seriesColor = colors.getColorByIndex(0).value;
 
             expect(actualData.isScalar).toBe(true);
@@ -2387,7 +2370,7 @@ module powerbitests {
                         specificSelectionIds.push(SelectionId.createWithSelectorForColumnAndMeasure(buildSelectorForColumn('series', seriesIdentities[seriesIndex], buildSelectorForColumn('category', categoryIdentities[categoryIndex])), 'value'));
                     }
                 }
-                viewModel = LineChart.converter(dataView, '(Blank)', colors, false /* isScalar */, null /* interactivityService */, false /* stacked */, false /* isCombo */, true /* tooltipsEnabled */, true /* tooltipBucketEnabled */);
+                viewModel = LineChart.converter(dataView, '(Blank)', colors, false /* isScalar */, null /* interactivityService */, false /* stacked */, false /* isCombo */, true /* tooltipsEnabled */);
             });
 
             it('Category count', () => {
@@ -2462,7 +2445,7 @@ module powerbitests {
                         specificSelectionIds.push(SelectionId.createWithSelectorForColumnAndMeasure(buildSelectorForColumn('category', categoryIdentities[categoryIndex]), 'value' + (seriesIndex + 1).toString()));
                     }
                 }
-                viewModel = LineChart.converter(dataView, '(Blank)', colors, false /* isScalar */, null /* interactivityService */, false /* stacked */, true /* isCombo */, true /* tooltipsEnabled */, true /* tooltipBucketEnabled */);
+                viewModel = LineChart.converter(dataView, '(Blank)', colors, false /* isScalar */, null /* interactivityService */, false /* stacked */, true /* isCombo */, true /* tooltipsEnabled */);
             });
 
             it('Category count', () => {
@@ -4047,23 +4030,24 @@ module powerbitests {
                         dataViewMetadata.columns[1],
                     ],
                     objects: {
-                        y1AxisReferenceLine: [{
-                            id: '0',
-                            object: {
-                                show: true,
-                                value: 450,
-                                lineColor: { solid: { color: refLineColor1 } },
-                                transparency: 60,
-                                style: lineStyle.dashed,
-                                position: powerbi.visuals.referenceLinePosition.back,
-                                dataLabelShow: true,
-                                dataLabelColor: { solid: { color: refLineColor1 } },
-                                dataLabelDecimalPoints: 0,
-                                dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
-                                dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
-                            },
-                        },
-                    ]},
+                        y1AxisReferenceLine: {
+                            $instances: {
+                                '0': {
+                                    show: true,
+                                    value: 450,
+                                    lineColor: { solid: { color: refLineColor1 } },
+                                    transparency: 60,
+                                    style: lineStyle.dashed,
+                                    position: powerbi.visuals.referenceLinePosition.back,
+                                    dataLabelShow: true,
+                                    dataLabelColor: { solid: { color: refLineColor1 } },
+                                    dataLabelDecimalPoints: 0,
+                                    dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                                    dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                                },
+                            }
+                        }
+                    }
                 };
 
                 let dataView: powerbi.DataView = {
@@ -4090,22 +4074,23 @@ module powerbitests {
                     let yAxisMaxValueBefore: number = parseInt(labels[labels.length - 1].textContent, 10);
 
                     metadata.objects = {
-                        y1AxisReferenceLine: [{
-                            id: '0',
-                            object: {
-                                show: true,
-                                value: maxValue + 500,
-                                lineColor: { solid: { color: refLineColor1 } },
-                                transparency: 0,
-                                style: lineStyle.dotted,
-                                position: powerbi.visuals.referenceLinePosition.front,
-                                dataLabelShow: true,
-                                dataLabelColor: { solid: { color: refLineColor1 } },
-                                dataLabelDecimalPoints: 0,
-                                dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
-                                dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
-                            },
-                        }],
+                        y1AxisReferenceLine: {
+                            $instances: {
+                                '0': {
+                                    show: true,
+                                    value: maxValue + 500,
+                                    lineColor: { solid: { color: refLineColor1 } },
+                                    transparency: 0,
+                                    style: lineStyle.dotted,
+                                    position: powerbi.visuals.referenceLinePosition.front,
+                                    dataLabelShow: true,
+                                    dataLabelColor: { solid: { color: refLineColor1 } },
+                                    dataLabelDecimalPoints: 0,
+                                    dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                                    dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                                },
+                            }
+                        }
                     };
 
                     v.onDataChanged({
@@ -4164,12 +4149,11 @@ module powerbitests {
                 };
 
                 dataView.metadata.objects = {
-                    y1AxisReferenceLine: [
-                        {
-                            id: '0',
-                            object: yAxisReferenceLine,
+                    y1AxisReferenceLine: {
+                        $instances: {
+                            '0': yAxisReferenceLine,
                         }
-                    ]
+                    }
                 };
 
                 v.onDataChanged({
@@ -4179,7 +4163,7 @@ module powerbitests {
                 setTimeout(() => {
                     let graphicsContext = $('.lineChart .lineChartSVG');
 
-                    let yLine = $('.y1-ref-line');
+                    let yLine = $('[class^="reference-line"]');
                     let yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -4212,7 +4196,7 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        yLine = $('.y1-ref-line');
+                        yLine = $('[class^="reference-line"]');
                         yLabel = $('.labelGraphicsContext .label').eq(0);
                         helpers.verifyReferenceLine(
                             yLine,
@@ -4241,12 +4225,120 @@ module powerbitests {
                         });
 
                         setTimeout(() => {
-                            expect($('.y1-ref-line').length).toBe(0);
+                            expect($('[class^="reference-line"]').length).toBe(0);
                             expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                             done();
                         }, DefaultWaitForRender);
                     }, DefaultWaitForRender);
+                }, DefaultWaitForRender);
+            });
+
+            it('line chart should support multiple reference lines', (done) => {
+                let refLineColor1 = '#ff0000';
+                let metadata: powerbi.DataViewMetadata = {
+                    columns: [
+                        dataViewMetadata.columns[0],
+                        dataViewMetadata.columns[1],
+                    ],
+                };
+
+                let dataView: powerbi.DataView = {
+                    metadata: metadata,
+                    categorical: {
+                        categories: [{
+                            source: metadata.columns[0],
+                            values: ['John Domo', 'Delta Force', 'Jean Tablau']
+                        }],
+                        values: DataViewTransform.createValueColumns([
+                            {
+                                source: metadata.columns[1],
+                                values: [100, 200, 700],
+                            }],
+                            undefined,
+                            metadata.columns[2])
+                    },
+                };
+
+                let yAxisReferenceLine: powerbi.DataViewObject = {
+                    show: true,
+                    value: 450,
+                    lineColor: { solid: { color: refLineColor1 } },
+                    transparency: 60,
+                    style: lineStyle.dashed,
+                    position: powerbi.visuals.referenceLinePosition.back,
+                    dataLabelShow: true,
+                    dataLabelColor: { solid: { color: refLineColor1 } },
+                    dataLabelDecimalPoints: 0,
+                    dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                    dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                    dataLabelDisplayUnits: 0,
+                };
+
+                let referenceLine: powerbi.DataViewObject = {
+                    show: true,
+                    value: 500,
+                    lineColor: { solid: { color: refLineColor1 } },
+                    transparency: 60,
+                    style: lineStyle.dashed,
+                    position: powerbi.visuals.referenceLinePosition.back,
+                    dataLabelShow: false,
+                    dataLabelColor: { solid: { color: refLineColor1 } },
+                    dataLabelDecimalPoints: 0,
+                    dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                    dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                    dataLabelDisplayUnits: 0,
+                };
+
+                dataView.metadata.objects = {
+                    y1AxisReferenceLine: {
+                        $instances: {
+                            '0': yAxisReferenceLine,
+                            '1': referenceLine,
+                        }
+                    }
+                };
+
+                v.onDataChanged({
+                    dataViews: [dataView]
+                });
+
+                setTimeout(() => {
+                    let graphicsContext = $('.lineChart .lineChartSVG');
+                    let yLines = $('[class^="reference-line"]');
+                    helpers.verifyReferenceLine(
+                        yLines.eq(0),
+                        null,
+                        graphicsContext,
+                        {
+                            inFront: false,
+                            isHorizontal: true,
+                            color: refLineColor1,
+                            style: lineStyle.dashed,
+                            opacity: 0.4,
+                            label: null,
+                        });
+
+                    let yLabel = $('.labelGraphicsContext .label').eq(0);
+                    helpers.verifyReferenceLine(
+                        yLines.eq(1),
+                        yLabel,
+                        graphicsContext,
+                        {
+                            inFront: false,
+                            isHorizontal: true,
+                            color: refLineColor1,
+                            style: lineStyle.dashed,
+                            opacity: 0.4,
+                            label: {
+                                color: refLineColor1,
+                                horizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                                text: '450',
+                                verticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                                displayUnits: 0,
+                            },
+                        });
+                    done();
                 }, DefaultWaitForRender);
             });
 
@@ -4293,12 +4385,11 @@ module powerbitests {
                 };
 
                 dataView.metadata.objects = {
-                    y1AxisReferenceLine: [
-                        {
-                            id: '0',
-                            object: yAxisReferenceLine,
+                    y1AxisReferenceLine: {
+                        $instances: {
+                            '0': yAxisReferenceLine,
                         }
-                    ]
+                    }
                 };
 
                 v.onDataChanged({
@@ -4308,7 +4399,7 @@ module powerbitests {
                 setTimeout(() => {
                     let graphicsContext = $('.lineChart .lineChartSVG');
 
-                    let yLine = $('.y1-ref-line');
+                    let yLine = $('[class^="reference-line"]');
                     let yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -4341,7 +4432,7 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        yLine = $('.y1-ref-line');
+                        yLine = $('[class^="reference-line"]');
                         yLabel = $('.labelGraphicsContext .label').eq(0);
                         helpers.verifyReferenceLine(
                             yLine,
@@ -4370,7 +4461,7 @@ module powerbitests {
                         });
 
                         setTimeout(() => {
-                            expect($('.y1-ref-line').length).toBe(0);
+                            expect($('[class^="reference-line"]').length).toBe(0);
                             expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                             done();
@@ -4422,12 +4513,11 @@ module powerbitests {
                 };
 
                 dataView.metadata.objects = {
-                    y1AxisReferenceLine: [
-                        {
-                            id: '0',
-                            object: yAxisReferenceLine,
+                    y1AxisReferenceLine: {
+                        $instances: {
+                            '0': yAxisReferenceLine,
                         }
-                    ]
+                    }
                 };
 
                 v.onDataChanged({
@@ -4437,7 +4527,7 @@ module powerbitests {
                 setTimeout(() => {
                     let graphicsContext = $('.lineChart .lineChartSVG');
 
-                    let yLine = $('.y1-ref-line');
+                    let yLine = $('[class^="reference-line"]');
                     let yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -4470,7 +4560,7 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        yLine = $('.y1-ref-line');
+                        yLine = $('[class^="reference-line"]');
                         yLabel = $('.labelGraphicsContext .label').eq(0);
                         helpers.verifyReferenceLine(
                             yLine,
@@ -4499,7 +4589,7 @@ module powerbitests {
                         });
 
                         setTimeout(() => {
-                            expect($('.y1-ref-line').length).toBe(0);
+                            expect($('[class^="reference-line"]').length).toBe(0);
                             expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                             done();
@@ -4610,17 +4700,18 @@ module powerbitests {
                 it('single series', (done) => {
                     let forecastLineColor = '#FF0000';
                     let objects: DataViewObjects = {
-                        forecast: [{
-                            id: '1',
-                            object: {
-                                show: true,
-                                lineColor: {
-                                    solid: {
-                                        color: forecastLineColor,
+                        forecast: {
+                            $instances: {
+                                '1': {
+                                    show: true,
+                                    lineColor: {
+                                        solid: {
+                                            color: forecastLineColor,
+                                        }
                                     }
-                                }
-                            },
-                        }]
+                                },
+                            }
+                        }
                     };
 
                     let dataViews = new helpers.ForecastBuilder().withObjects(objects).buildDataViews();
@@ -4959,8 +5050,7 @@ module powerbitests {
                 setTimeout(() => {
                     expect($('.cat')).toBeDefined();
                     expect($('.catArea')).toBeDefined();
-                    expect(helpers.findElementText(helpers.getAxisTicks('y').find('text'))).toBe('0.98');
-                    expect(helpers.findElementText(helpers.getAxisTicks('y').find('text'))).toBe('0.98');
+                    expect(helpers.findElementText(helpers.getAxisTicks('y').find('text'))).toBe('0.984');
                     done();
                 }, DefaultWaitForRender);
             });
@@ -5180,12 +5270,11 @@ module powerbitests {
                 };
 
                 dataView.metadata.objects = {
-                    y1AxisReferenceLine: [
-                        {
-                            id: '0',
-                            object: yAxisReferenceLine,
+                    y1AxisReferenceLine: {
+                        $instances: {
+                            '0': yAxisReferenceLine,
                         }
-                    ]
+                    }
                 };
 
                 v.onDataChanged({
@@ -5195,7 +5284,7 @@ module powerbitests {
                 setTimeout(() => {
                     let graphicsContext = $('.lineChart .lineChartSVG');
 
-                    let yLine = $('.y1-ref-line');
+                    let yLine = $('[class^="reference-line"]');
                     let yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -5228,7 +5317,7 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        yLine = $('.y1-ref-line');
+                        yLine = $('[class^="reference-line"]');
                         yLabel = $('.labelGraphicsContext .label').eq(0);
                         helpers.verifyReferenceLine(
                             yLine,
@@ -5257,7 +5346,7 @@ module powerbitests {
                         });
 
                         setTimeout(() => {
-                            expect($('.y1-ref-line').length).toBe(0);
+                            expect($('[class^="reference-line"]').length).toBe(0);
                             expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                             done();
@@ -5706,7 +5795,7 @@ module powerbitests {
         });
     });
 
-    describe("Line Chart Interactivity", () => {
+    describe("Line Chart Mobile Interactivity", () => {
         let hostServices = powerbitests.mocks.createVisualHostServices();
         let v: powerbi.IVisual, element: JQuery;
         let dataViewMetadata: powerbi.DataViewMetadata = {
@@ -5802,7 +5891,7 @@ module powerbitests {
         });
     });
 
-    describe("Line Chart Interactivity - Creation", () => {
+    describe("Line Chart Mobile Interactivity - Creation", () => {
         let hostServices = powerbitests.mocks.createVisualHostServices();
         let v: powerbi.IVisual, element: JQuery;
         let dataViewMetadata: powerbi.DataViewMetadata = {
@@ -7876,6 +7965,142 @@ module powerbitests {
             expect((<LabelParentRect>labelDataPoints[4].parentShape).rect.width).toBeGreaterThan(0);
         });
     });
+
+    describe("Line Chart Web Interactivity", () => {
+        let v: powerbi.IVisual, element: JQuery;
+        let dataViewMetadataTwoColumn: powerbi.DataViewMetadata = {
+            columns: [
+                {
+                    displayName: 'col1',
+                    queryName: 'col1',
+                    type: ValueType.fromPrimitiveTypeAndCategory(PrimitiveType.Text),
+                    roles: { Category: true }
+                },
+                {
+                    displayName: 'col2',
+                    queryName: 'col2',
+                    isMeasure: true,
+                    type: ValueType.fromPrimitiveTypeAndCategory(PrimitiveType.Double),
+                    roles: { Y: true }
+                }
+            ],
+        };
+
+        beforeEach(() => {
+            element = powerbitests.helpers.testDom('200', '300');
+            v = new LineChartVisualBuilder().build(true);
+        });
+
+        it('context menu for line', () => {
+            let hostServices = mocks.createVisualHostServices();
+            v.init({
+                element: element,
+                host: hostServices,
+                style: powerbi.visuals.visualStyles.create(),
+                viewport: {
+                    height: element.height(),
+                    width: element.width()
+                },
+                animation: { transitionImmediate: true },
+                interactivity: { selection: true },
+            });
+
+            let identities: powerbi.DataViewScopeIdentity[] = [
+                mocks.dataViewScopeIdentity('a'),
+                mocks.dataViewScopeIdentity('b'),
+                mocks.dataViewScopeIdentity('c'),
+                mocks.dataViewScopeIdentity('d'),
+                mocks.dataViewScopeIdentity('e'),
+            ];
+            v.onDataChanged({
+                dataViews: [{
+                    metadata: dataViewMetadataTwoColumn,
+                    categorical: {
+                        categories: [{
+                            source: dataViewMetadataTwoColumn.columns[0],
+                            values: ['a', 'b', 'c', 'd', 'e'],
+                            identity: identities,
+                        }],
+                        values: DataViewTransform.createValueColumns([{
+                            source: dataViewMetadataTwoColumn.columns[1],
+                            values: [0.5, 2.0, 1.5, 1.0, 2.5]
+                        }])
+                    }
+                }]
+            });
+
+            let line = element.find('.interactivity-line');
+            
+            spyOn(hostServices, 'onContextMenu').and.callThrough();
+
+            line.eq(0).d3ContextMenu(5, 15);
+            expect(hostServices.onContextMenu).toHaveBeenCalledWith(
+                {
+                    data: [
+                        {
+                            dataMap: buildSelectorForColumn('col1', identities[0]),
+                            metadata: 'col2',
+                        }
+                    ],
+                    position: { x: 5, y: 15 }
+                });
+        });
+
+        it('context menu for background', () => {
+            let hostServices = mocks.createVisualHostServices();
+            v.init({
+                element: element,
+                host: hostServices,
+                style: powerbi.visuals.visualStyles.create(),
+                viewport: {
+                    height: element.height(),
+                    width: element.width()
+                },
+                animation: { transitionImmediate: true },
+                interactivity: { selection: true },
+            });
+
+            let identities: powerbi.DataViewScopeIdentity[] = [
+                mocks.dataViewScopeIdentity('a'),
+                mocks.dataViewScopeIdentity('b'),
+                mocks.dataViewScopeIdentity('c'),
+                mocks.dataViewScopeIdentity('d'),
+                mocks.dataViewScopeIdentity('e'),
+            ];
+            v.onDataChanged({
+                dataViews: [{
+                    metadata: dataViewMetadataTwoColumn,
+                    categorical: {
+                        categories: [{
+                            source: dataViewMetadataTwoColumn.columns[0],
+                            values: ['a', 'b', 'c', 'd', 'e'],
+                            identity: identities,
+                        }],
+                        values: DataViewTransform.createValueColumns([{
+                            source: dataViewMetadataTwoColumn.columns[1],
+                            values: [0.5, 2.0, 1.5, 1.0, 2.5]
+                        }])
+                    }
+                }]
+            });
+
+            let background = element.find('.tooltip-overlay');
+
+            spyOn(hostServices, 'onContextMenu').and.callThrough();
+
+            background.eq(0).d3ContextMenu(5, 15);
+            expect(hostServices.onContextMenu).toHaveBeenCalledWith(
+                {
+                    data: [
+                        {
+                            dataMap: buildSelectorForColumn('col1', identities[0]),
+                            metadata: 'col2',
+                        }
+                    ],
+                    position: { x: 5, y: 15 }
+                });
+        });
+    });
     
     function callCreateLabelDataPoints(v: powerbi.IVisual): powerbi.LabelDataPoint[] {
         let labelDataPointsGroups = (<any>v).layers[0].createLabelDataPoints();
@@ -7916,8 +8141,8 @@ module powerbitests {
         for (let i = 0; i < scalarKeys.values.length; i++) {
             let objectsForScalarKeys: DataViewObjects = {};
             let scalarKeyObject: powerbi.DataViewObject = {};
-            scalarKeyObject[lineChartProps.scalarKey.scalarKeyMin.propertyName] = scalarKeys.values[i].min;
-            objectsForScalarKeys[lineChartProps.scalarKey.scalarKeyMin.objectName] = scalarKeyObject;
+            scalarKeyObject[powerbi.visuals.cartesianChartProps.scalarKey.scalarKeyMin.propertyName] = scalarKeys.values[i].min;
+            objectsForScalarKeys[powerbi.visuals.cartesianChartProps.scalarKey.scalarKeyMin.objectName] = scalarKeyObject;
             objects[i] = objectsForScalarKeys;
         }
     }
@@ -7942,7 +8167,7 @@ module powerbitests {
             return this;
         }
 
-        public build(): powerbi.visuals.CartesianChart {
+        public build(useBehavior?: boolean): powerbi.visuals.CartesianChart {
             let chartType = CartesianChartType.Line;
             if (this.isAreaChart) {
                 chartType = this.isStacked
@@ -7955,6 +8180,7 @@ module powerbitests {
                 trimOrdinalDataOnOverflow: this.isMobile ? false : true,
                 isScrollable: this.isMobile ? false : true,
                 advancedLineLabelsEnabled: true,
+                behavior: useBehavior ? new powerbi.visuals.CartesianChartBehavior([new powerbi.visuals.LineChartWebBehavior()]) : undefined,
             });
         }
     }

@@ -133,6 +133,59 @@ module powerbi.visuals {
                 'margin-top': Legend.isTop(legendOrientation) ? legendMargins.height + 'px' : null,
             });
         }
+
+        export function buildSeriesLegendData(dataView: DataView, colorHelper: ColorHelper, formatStringProp: DataViewObjectPropertyIdentifier): LegendData {
+            let reader = powerbi.data.createIDataViewCategoricalReader(dataView);
+            let legendDataPoints: LegendDataPoint[] = [];
+            let legendTitle: string;
+            debug.assert(reader.hasDynamicSeries(), 'convertSeries only supports dynamic series currently; it needs to be updated to support static.');
+            legendTitle = reader.getSeriesDisplayName();
+            let seriesColumnIdentifier = reader.getSeriesColumnIdentityFields();
+            for (let seriesIndex = 0, seriesCount = reader.getSeriesCount(); seriesIndex < seriesCount; seriesIndex++) {
+                let seriesName = converterHelper.formatFromMetadataColumn(reader.getSeriesName(seriesIndex), reader.getSeriesMetadataColumn(), formatStringProp);
+                let color = colorHelper.getColorForSeriesValue(reader.getSeriesObjects(seriesIndex), seriesColumnIdentifier, seriesName);
+                let identity = new SelectionIdBuilder().withSeries(reader.getSeriesValueColumns(), reader.getSeriesValueColumnGroup(seriesIndex)).createSelectionId();
+                legendDataPoints.push({
+                    color: color,
+                    label: seriesName,
+                    icon: LegendIcon.Circle,
+                    identity: identity,
+                    selected: false,
+                });
+            }
+            let legendData: LegendData = {
+                dataPoints: legendDataPoints,
+                title: legendTitle,
+            };
+            return legendData;
+        }
+
+        export function buildCategoryLegendData(dataView: DataView, colorHelper: ColorHelper, formatStringProp: DataViewObjectPropertyIdentifier, categoryRole: string): LegendData {
+            let reader = powerbi.data.createIDataViewCategoricalReader(dataView);
+            let legendDataPoints: LegendDataPoint[] = [];
+            let legendTitle: string;
+            if (reader.hasCategories()) {
+                legendTitle = reader.getCategoryDisplayName(categoryRole);
+                let categoryColumnIdentifier = reader.getCategoryColumnIdentityFields(categoryRole);
+                for (let categoryIndex = 0, categoryCount = reader.getCategoryCount(); categoryIndex < categoryCount; categoryIndex++) {
+                    let categoryValue = converterHelper.formatFromMetadataColumn(reader.getCategoryValue(categoryRole, categoryIndex), reader.getCategoryMetadataColumn(categoryRole), formatStringProp);
+                    let color = colorHelper.getColorForSeriesValue(reader.getCategoryObjects(categoryRole, categoryIndex), categoryColumnIdentifier, categoryValue);
+                    let identity = new SelectionIdBuilder().withCategory(reader.getCategoryColumn(categoryRole), categoryIndex).createSelectionId();
+                    legendDataPoints.push({
+                        color: color,
+                        label: categoryValue,
+                        icon: LegendIcon.Circle,
+                        identity: identity,
+                        selected: false,
+                    });
+                }
+            }
+            let legendData: LegendData = {
+                dataPoints: legendDataPoints,
+                title: legendTitle,
+            };
+            return legendData;
+        }
     }
 
     interface TitleLayout {
@@ -325,12 +378,6 @@ module powerbi.visuals {
 
             if (this.getOrientation() === LegendPosition.None) {
                 data.dataPoints = [];
-            }
-
-            // Adding back the workaround for Legend Left/Right position for Map
-            let mapControl = this.element.children(".mapControl");
-            if (mapControl.length > 0 && !this.isTopOrBottom(this.orientation)) {
-                mapControl.css("display", "inline-block");
             }
 
             this.calculateViewport();

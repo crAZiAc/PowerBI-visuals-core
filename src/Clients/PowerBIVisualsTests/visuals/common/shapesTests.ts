@@ -372,6 +372,29 @@ module powerbitests {
             expect(newSize.height).toBe(sizeA.height);
         });
 
+        it("Rect: add", () => {
+            let rect1: IRect = {
+                left: 10,
+                top: 5,
+                height: 20,
+                width: 30
+            };
+
+            let rect2: IRect = {
+                left: 1,
+                top: 2,
+                height: 3,
+                width: 4
+            };
+
+            expect(Rect.add(rect1, rect2)).toEqual({
+                left: 10 + 1,
+                top: 5 + 2,
+                height: 20 + 3,
+                width: 30 + 4
+            });
+        });
+
         it("To Rect", () => {
             let size: Shapes.ISize = { width: 120, height: 100 };
             let sizeToRect = Size.toRect(size);

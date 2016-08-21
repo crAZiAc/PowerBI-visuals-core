@@ -2,7 +2,7 @@
  *  Power BI Visualizations
  *
  *  Copyright (c) Microsoft Corporation
- *  All rights reserved. 
+ *  All rights reserved.
  *  MIT License
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -11,14 +11,14 @@
  *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  *  copies of the Software, and to permit persons to whom the Software is
  *  furnished to do so, subject to the following conditions:
- *   
- *  The above copyright notice and this permission notice shall be included in 
+ *
+ *  The above copyright notice and this permission notice shall be included in
  *  all copies or substantial portions of the Software.
- *   
- *  THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
- *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
- *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
- *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ *
+ *  THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
@@ -130,7 +130,12 @@ module powerbitests.customVisuals {
                     expect(firstPoint.css("opacity")).toBe("1");
 
                     // The value is approximate because of the chutzpah test. In the browser, the test passes with the specific value (0.4).
-                    expect(Math.round((parseFloat(secondPoint.css("opacity"))*100))/100).toBe(0.4);
+                    expect(Math.round((parseFloat(secondPoint.css("opacity")) * 100)) / 100).toBe(0.4);
+
+                    //reset selection
+                    firstPoint.d3Click(parseInt(firstPoint.attr("cx"), 10), parseInt(firstPoint.attr("cy"), 10));
+                    expect(firstPoint.css("opacity")).toBe("1");
+                    expect(secondPoint.css("opacity")).toBe("1");
 
                     done();
                 });
@@ -219,6 +224,49 @@ module powerbitests.customVisuals {
                         visualBuilder.update(dataView);
                         let polygonAfterUpdate = visualBuilder.mainElement.find('.chartPolygon').first();
                         ColorAssert(polygonAfterUpdate.css("fill"), "#ab1234");
+                        done();
+                    });
+                });
+            });
+
+            describe('Draw Lines', () => {
+
+                it("draw lines on", (done) => {
+
+                    RadarChartBuilder.changeDataColor(dataView, "#123123");
+                    // Init by one color
+                    dataView.metadata.objects =
+                    {
+                        line: {
+                            show: true,
+                            lineWidth: 5
+                        }
+                    };
+
+                    visualBuilder.updateRenderTimeout(dataView, () => {
+                        let polygon = visualBuilder.mainElement.find('.chartPolygon').first();
+                        ColorAssert(polygon.css("stroke"), "#123123");
+                        expect(polygon.css("fill")).toBe('none');
+                        expect(polygon.css("stroke-width")).toBe(PixelConverter.toString(5));
+                        done();
+                    });
+                });
+
+                it("draw lines off", (done) => {
+
+                    RadarChartBuilder.changeDataColor(dataView, "#123123");
+                    // Init by one color
+                    dataView.metadata.objects =
+                    {
+                        line: {
+                            show: false
+                        }
+                    };
+
+                    visualBuilder.updateRenderTimeout(dataView, () => {
+                        let polygon = visualBuilder.mainElement.find('.chartPolygon').first();
+                        ColorAssert(polygon.css("fill"), "#123123");
+                        expect(polygon.css("stroke-width")).toBe(PixelConverter.toString(0));
                         done();
                     });
                 });
@@ -369,15 +417,15 @@ module powerbitests.customVisuals {
 
                 it("dataPoints is defined", () => {
                     radarChartData.series.forEach((series: RadarChartSeries) => {
-                        expect(series.data).toBeDefined();
-                        expect(series.data).not.toBeNull();
-                        expect(series.data.length).toBeGreaterThan(0);
+                        expect(series.dataPoints).toBeDefined();
+                        expect(series.dataPoints).not.toBeNull();
+                        expect(series.dataPoints.length).toBeGreaterThan(0);
                     });
                 });
 
                 it("every dataPoint is defined", () => {
                     radarChartData.series.forEach((series: RadarChartSeries) => {
-                        series.data.forEach((dataPoint: RadarChartDatapoint) => {
+                        series.dataPoints.forEach((dataPoint: RadarChartDatapoint) => {
                             expect(dataPoint).toBeDefined();
                             expect(dataPoint).not.toBeNull();
                         });
@@ -386,7 +434,7 @@ module powerbitests.customVisuals {
 
                 it("every dataPoint is defined", () => {
                     radarChartData.series.forEach((series: RadarChartSeries) => {
-                        series.data.forEach((dataPoint: RadarChartDatapoint) => {
+                        series.dataPoints.forEach((dataPoint: RadarChartDatapoint) => {
                             expect(dataPoint).toBeDefined();
                             expect(dataPoint).not.toBeNull();
                         });
@@ -395,7 +443,7 @@ module powerbitests.customVisuals {
 
                 it("every identity of dataPoint is defined", () => {
                     radarChartData.series.forEach((series: RadarChartSeries) => {
-                        series.data.forEach((dataPoint: RadarChartDatapoint) => {
+                        series.dataPoints.forEach((dataPoint: RadarChartDatapoint) => {
                             let identity: SelectionId = dataPoint.identity;
 
                             expect(identity).toBeDefined();

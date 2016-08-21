@@ -257,7 +257,7 @@ module powerbi.visuals.plugins {
     export let stackedAreaChart: IVisualPlugin = {
         name: 'stackedAreaChart',
         watermarkKey: 'stackedarea',
-        capabilities: capabilities.lineChart,
+        capabilities: capabilities.stackedAreaChart,
         create: () => new CartesianChart({ chartType: CartesianChartType.StackedArea }),
         customizeQuery: LineChart.customizeQuery,
         getSortableRoles: (visualSortableOptions?: VisualSortableOptions) => ColumnChart.getSortableRoles(visualSortableOptions),
@@ -332,7 +332,7 @@ module powerbi.visuals.plugins {
         name: 'scriptVisual',
         watermarkKey: 'scriptvisual',
         capabilities: capabilities.scriptVisual,
-        create: () => new ScriptVisual({ canRefresh: false })
+        create: () => new ScriptVisual()
     };
 
     export let kpi: IVisualPlugin = {

@@ -47,6 +47,11 @@ module powerbi.visuals {
                 description: data.createDisplayNameGetter('Role_DisplayName_GradientDescription'),
                 requiredTypes: [{ numeric: true }, { integer: true }],
                 joinPredicate: JoinPredicateBehavior.None,
+            },  {
+                name: 'Tooltips',
+                kind: VisualDataRoleKind.Measure,
+                displayName: data.createDisplayNameGetter('Role_DisplayName_Tooltips'),
+                joinPredicate: JoinPredicateBehavior.None,
             }
         ],
         dataViewMappings: [{
@@ -61,7 +66,7 @@ module powerbi.visuals {
                     dataReductionAlgorithm: { top: {} }
                 },
                 values: {
-                    select: [{ for: { in: 'Y' } }, { bind: { to: 'Gradient' } }],
+                    select: [{ for: { in: 'Y' } }, { bind: { to: 'Gradient' } }, { for: { in: 'Tooltips' } }],
                 },
                 rowCount: { preferred: { min: 1 } }
             },

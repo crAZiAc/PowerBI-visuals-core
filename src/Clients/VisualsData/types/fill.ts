@@ -43,7 +43,7 @@ module powerbi {
         };
     }
 
-    export module FillDefinitionHelpers {
+    export module fillDefinitionHelpers {
         export function createSolidFillDefinition(color: string): FillDefinition {
             if (color)
                 return { solid: { color: data.SQExprBuilder.text(color) } };

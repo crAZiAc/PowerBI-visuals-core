@@ -101,6 +101,10 @@ module powerbi.visuals {
             ListView.SetDefaultOptions(options);
         }
 
+        private getContainerHeight(): number {
+            return $(this.options.baseContainer.node()).outerHeight();
+        }
+
         private static SetDefaultOptions(options: ListViewOptions) {
             options.rowHeight = options.rowHeight || ListView.defaultRowHeight;
         }
@@ -121,8 +125,11 @@ module powerbi.visuals {
             return this;
         }
 
+        /**
+         * ToDo: we need to rename this method beacause it also calls render not only sets viewport.
+         */
         public viewport(viewport: IViewport): IListView {
-            this.options.viewport = viewport;
+            //debug.assertFail("Viewport is calculated internally based on options.baseContainer height");
             this.render();
             return this;
         }
@@ -145,7 +152,7 @@ module powerbi.visuals {
         }
 
         private renderImpl(rowHeight: number): void {
-            let totalHeight = this.options.scrollEnabled ? Math.max(0, (this._totalRows * rowHeight)) : this.options.viewport.height;
+            let totalHeight = this.options.scrollEnabled ? Math.max(0, (this._totalRows * rowHeight)) : this.getContainerHeight();
             this.scrollContainer
                 .style('height', totalHeight + "px")
                 .attr('height', totalHeight);
@@ -227,13 +234,13 @@ module powerbi.visuals {
             const minimumVisibleRows = 1;
             let options = this.options;
             let rowHeight = options.rowHeight;
-            let viewportHeight = options.viewport.height;
+            let containerHeight = this.getContainerHeight();
 
             if (!rowHeight || rowHeight < 1)
                 return minimumVisibleRows;
 
             // How many rows of space the viewport can hold (not the number of rows it can display).
-            let viewportRowCount = viewportHeight / rowHeight;
+            let viewportRowCount = containerHeight / rowHeight;
             
             if (this.options.scrollEnabled) {
                 // Ceiling the count since we can have items be partially displayed when scrolling.

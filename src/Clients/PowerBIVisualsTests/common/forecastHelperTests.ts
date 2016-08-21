@@ -76,13 +76,14 @@ module powerbitests {
                         lowerBound: { x: 0, y: 0 },
                     }],
                     show: true,
+                    displayName: '',
                     lineColor: { solid: { color: 'red' } },
                     confidenceBandStyle: powerbi.visuals.confidenceBandStyle.fill,
                     transparency: 80,
                     style: lineStyle.solid
                 };
 
-                ForecastHelper.enumerateObjectInstances(enumerationBuilder, forecast);
+                ForecastHelper.enumerateObjectInstances(enumerationBuilder, [forecast]);
                 let instances = enumerationBuilder.complete().instances;
 
                 expect(instances[0]).toEqual({
@@ -91,6 +92,7 @@ module powerbitests {
                     },
                     properties: {
                         show: true,
+                        displayName: '',
                         lineColor: { solid: { color: 'red' } },
                         confidenceBandStyle: powerbi.visuals.confidenceBandStyle.fill,
                         transparency: 80,
@@ -175,7 +177,7 @@ module powerbitests {
                 let defaultColors = new DataColorPalette();
                 let dataViews = new helpers.ForecastBuilder().buildDataViews();
 
-                expect(ForecastHelper.readDataView(dataViews[1], dataViews[0], defaultColors)).toEqual({
+                expect(ForecastHelper.readDataView(dataViews[1], dataViews[0], defaultColors)).toEqual([{
                     id: '1',
                     points: [
                         {
@@ -193,11 +195,12 @@ module powerbitests {
                         }
                     ],
                     show: true,
+                    displayName: undefined,
                     lineColor: { solid: { color: '#000' } },
                     confidenceBandStyle: powerbi.visuals.confidenceBandStyle.fill,
                     transparency: 80,
                     style: lineStyle.solid
-                });
+                }]);
             });
         });
 

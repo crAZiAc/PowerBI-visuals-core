@@ -179,6 +179,7 @@ declare module jsCommon {
         function findUniqueName(usedNames: {
             [name: string]: boolean;
         }, baseName: string): string;
+        function constructNameFromList(list: string[], separator: string, maxCharacter: number): string;
         function constructCommaSeparatedList(list: string[], resourceProvider: IStringResourceProvider, maxValue?: number): string;
         function escapeStringForRegex(s: string): string;
         /**
@@ -503,12 +504,6 @@ declare module jsCommon {
         [key: number]: T;
     }
     /**
-     * Interface to help define objects indexed by name to a particular type.
-     */
-    interface IStringDictionary<T> {
-        [key: string]: T;
-    }
-    /**
      * Extensions for Enumerations.
      */
     module EnumExtensions {
@@ -604,6 +599,7 @@ declare module jsCommon {
         function run(regex: RegExp, value: string, start?: number): RegExpExecArray;
     }
 }
+
 
 
 
@@ -1011,7 +1007,7 @@ declare module jsCommon {
         /**
          * Returns a value indicating whether the arrays have the same values in the same sequence.
          */
-        function sequenceEqual<T>(left: T[], right: T[], comparison: (x: T, y: T) => boolean): boolean;
+        function sequenceEqual<T, U>(left: T[], right: U[], comparison: (x: T, y: U) => boolean): boolean;
         /**
          * Returns null if the specified array is empty.
          * Otherwise returns the specified array.
@@ -1308,6 +1304,7 @@ declare module jsCommon {
         const backgroundImageProperty: string;
         const textShadowProperty: string;
         const textAlignProperty: string;
+        const borderProperty: string;
         const borderTopWidthProperty: string;
         const borderBottomWidthProperty: string;
         const borderLeftWidthProperty: string;
@@ -1712,11 +1709,18 @@ declare module jsCommon {
     }
 }
 
+declare module powerbi.visuals.TouchUtils {
+    function touchStartEventName(): string;
+    function touchEndEventName(): string;
+    function usePointerEvents(): boolean;
+}
+
 declare module jsCommon {
     module UrlUtils {
         function isValidUrl(value: string): boolean;
         function isValidImageUrl(url: string): boolean;
         function findAllValidUrls(text: string): TextMatch[];
+        function isDataUri(uri: string): boolean;
         function getBase64ContentFromDataUri(uri: string): string;
     }
 }

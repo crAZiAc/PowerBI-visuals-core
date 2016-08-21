@@ -385,7 +385,7 @@ module powerbi.visuals.samples {
                     description: "Series",
                     properties: {
                         fill: {
-                            displayName: data.createDisplayNameGetter('Visual_Fill'),
+                            displayName: "Fill",
                             type: {
                                 fill: {
                                     solid: {
@@ -407,7 +407,7 @@ module powerbi.visuals.samples {
                     description: "Gaps",
                     properties: {
                         show: {
-                            displayName: data.createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         transparency: {//visibleGapsPercentage
@@ -427,30 +427,30 @@ module powerbi.visuals.samples {
                     }
                 },
                 popup: {
-                    displayName: 'Popup',
+                    displayName: "Popup",
                     properties: {
                         show: {
-                            displayName: data.createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         alwaysOnTop: {
-                            displayName: 'Always on top',
+                            displayName: "Always on top",
                             type: { bool: true }
                         },
                         width: {
-                            displayName: 'Width',
+                            displayName: "Width",
                             type: {
                                 numeric: true
                             }
                         },
                         height: {
-                            displayName: 'Height',
+                            displayName: "Height",
                             type: {
                                 numeric: true
                             }
                         },
                         color: {
-                            displayName: data.createDisplayNameGetter('Visual_Fill'),
+                            displayName: "Fill",
                             type: { fill: { solid: { color: true } } }
                         },
                         fontSize: {
@@ -462,11 +462,11 @@ module powerbi.visuals.samples {
                             type: { fill: { solid: { color: true } } }
                         },
                         showTime: {
-                            displayName: 'Show time',
+                            displayName: "Show time",
                             type: { bool: true }
                         },
                         showTitle: {
-                            displayName: 'Show title',
+                            displayName: "Show title",
                             type: { bool: true }
                         },
                         timeColor: {
@@ -480,10 +480,10 @@ module powerbi.visuals.samples {
                     }
                 },
                 dots: {
-                    displayName: 'Dots',
+                    displayName: "Dots",
                     properties: {
                         color: {
-                            displayName: data.createDisplayNameGetter('Visual_Fill'),
+                            displayName: "Fill",
                             type: { fill: { solid: { color: true } } }
                         },
                         minSize: {
@@ -499,16 +499,16 @@ module powerbi.visuals.samples {
                             type: { numeric: true }
                         },
                         transparency: {
-                            displayName: 'Transparency',
+                            displayName: "Transparency",
                             type: { numeric: true }
                         },
                     }
                 },
                 xAxis: {
-                    displayName: data.createDisplayNameGetter('Visual_XAxis'),
+                    displayName: "X Axis",
                     properties: {
                         show: {
-                            displayName: data.createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         position: {
@@ -530,10 +530,10 @@ module powerbi.visuals.samples {
                     }
                 },
                 yAxis: {
-                    displayName: data.createDisplayNameGetter('Visual_YAxis'),
+                    displayName: "Y Axis",
                     properties: {
                         show: {
-                            displayName: data.createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         fontColor: {
@@ -579,7 +579,7 @@ module powerbi.visuals.samples {
                     displayName: 'Runner Counter',
                     properties: {
                         show: {
-                            displayName: data.createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         label: {
@@ -2728,7 +2728,7 @@ module powerbi.visuals.samples {
                 this.animationHandler.clear();
             }
 
-            if(hide) {
+            if (hide) {
                 this.svg.style('display', "none");
             }
 
@@ -2743,7 +2743,7 @@ module powerbi.visuals.samples {
         }
 
         public clearRedundant(position: PulseChartAnimationPosition): void {
-            if(!this.data) {
+            if (!this.data) {
                 return;
             }
 

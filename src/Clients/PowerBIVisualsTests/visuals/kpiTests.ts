@@ -92,7 +92,7 @@ module powerbitests {
                     let area = $element.find('path');
                     helpers.assertColorsMatch(area.css('fill'), "#3bb44a");
 
-                    let text = $element.find('#indicatorText');
+                    let text = $element.find('.indicatorText');
 
                     helpers.assertColorsMatch(text.css('color'), "#3bb44a");
                     expect(text.text()).toBe("25.00");
@@ -105,7 +105,7 @@ module powerbitests {
                     let area = $element.find('path');
                     helpers.assertColorsMatch(area.css('fill'), "#E81123");
 
-                    let text = $element.find('#indicatorText');
+                    let text = $element.find('.indicatorText');
 
                     helpers.assertColorsMatch(text.css('color'), "#E81123");
                 });
@@ -117,7 +117,7 @@ module powerbitests {
                     let area = $element.find('path');
                     helpers.assertColorsMatch(area.css('fill'), "#5F6B6D");
 
-                    let text = $element.find('#indicatorText');
+                    let text = $element.find('.indicatorText');
                     helpers.assertColorsMatch(text.css('color'), "#212121");
                 });
 
@@ -134,7 +134,7 @@ module powerbitests {
                     let area = $element.find('path');
                     helpers.assertColorsMatch(area.css('fill'), "#5F6B6D");
 
-                    let text = $element.find('#indicatorText');
+                    let text = $element.find('.indicatorText');
                     helpers.assertColorsMatch(text.css('color'), "#212121");
                     expect(text.text()).toBe("12.00");
                 });
@@ -152,7 +152,7 @@ module powerbitests {
                     let area = $element.find('path');
                     helpers.assertColorsMatch(area.css('fill'), "#3bb44a");
 
-                    let text = $element.find('#indicatorText');
+                    let text = $element.find('.indicatorText');
                     helpers.assertColorsMatch(text.css('color'), "#3bb44a");
                     expect(text.text()).toBe("25.00");
                 });
@@ -230,7 +230,7 @@ module powerbitests {
                     let area = $element.find('path');
                     helpers.assertColorsMatch(area.css('fill'), "#F2C811");
 
-                    let text = $element.find('#indicatorText');
+                    let text = $element.find('.indicatorText');
 
                     helpers.assertColorsMatch(text.css('color'), "#F2C811");
                     expect(text.text()).toBe("12.00");
@@ -240,7 +240,7 @@ module powerbitests {
                     let visualUpdateOptions = buildUpdateOptions(viewport, kpiHelper.buildDataViewForGreenTrendWithPercentages());
                     kpi.update(visualUpdateOptions);
 
-                    let indicatorText = $element.find('#indicatorText').text();
+                    let indicatorText = $element.find('.indicatorText').text();
                     expect(indicatorText).toBe("78.12346%");
                 });
 
@@ -257,7 +257,7 @@ module powerbitests {
                     let visualUpdateOptions = buildUpdateOptions(viewport, kpiHelper.buildDataViewForPercentagesIndicator());
                     kpi.update(visualUpdateOptions);
 
-                    let indicatorText = $element.find('#indicatorText').text();
+                    let indicatorText = $element.find('.indicatorText').text();
                     expect(indicatorText).toBe("78.12%");
 
                     let goalText = $element.find('.goalText').text();
@@ -269,7 +269,7 @@ module powerbitests {
                     let visualUpdateOptions = buildUpdateOptions(viewport, kpiHelper.buildDataViewForPercentagesGoal());
                     kpi.update(visualUpdateOptions);
 
-                    let indicatorText = $element.find('#indicatorText').text();
+                    let indicatorText = $element.find('.indicatorText').text();
                     expect(indicatorText).toBe("12.00");
 
                     let goalText = $element.find('.goalText').text();
@@ -281,11 +281,34 @@ module powerbitests {
                     let visualUpdateOptions = buildUpdateOptions(viewport, kpiHelper.buildDataViewForRedTrendWithSingleCategory());
                     kpi.update(visualUpdateOptions);
 
-                    let textContainer = $element.find('.textContainer');
-                    let trendLine = $element.find('.kpiVisual path');
+                    let textContainer = $element.find('.lastTrendAxisPointSummaryContainer');
                     expect(textContainer.css('display')).toBe('block');
+
+                    let trendLine = $element.find('.kpiVisual path');
                     expect(trendLine.css('visibility')).toBe('hidden');
                 });
+
+                it("show bad status color", () => {
+                    let visualUpdateOptions = buildUpdateOptions(viewport, kpiHelper.buildDataViewForAllColorStatus(kpiHelper.PositiveDirection));
+                    kpi.update(visualUpdateOptions);
+
+                    let area = $element.find('path');
+                    helpers.assertColorsMatch(area.css('fill'), kpiHelper.GreenColor);
+
+                    let text = $element.find('.indicatorText');
+                    helpers.assertColorsMatch(text.css('color'), kpiHelper.GreenColor);
+                });
+
+                it("show good status color", () => {
+                    let visualUpdateOptions = buildUpdateOptions(viewport, kpiHelper.buildDataViewForAllColorStatus(kpiHelper.NegativeDirection));
+                    kpi.update(visualUpdateOptions);
+
+                    let area = $element.find('path');
+                    helpers.assertColorsMatch(area.css('fill'), kpiHelper.RedColor);
+
+                    let text = $element.find('.indicatorText');
+                    helpers.assertColorsMatch(text.css('color'), kpiHelper.RedColor);
+                });                
             });
         });
     });

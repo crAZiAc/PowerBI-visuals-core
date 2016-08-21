@@ -75,7 +75,7 @@ module powerbitests {
         let measureColumnDynamic1RefExpr = powerbi.data.SQExprBuilder.fieldDef({ schema: 's', entity: 'e', column: 'sales' });
 
         it('ColumnChart registered capabilities', () => {
-            expect(JSON.stringify(powerbi.visuals.plugins.columnChart.capabilities)).toBe(JSON.stringify(powerbi.visuals.getColumnChartCapabilities()));
+            expect(JSON.stringify(powerbi.visuals.plugins.columnChart.capabilities)).toBe(JSON.stringify(powerbi.visuals.getColumnChartCapabilities(false, true /*isStacked*/)));
         });
 
         it('ColumnChart registered customizeQuery', () => {
@@ -92,6 +92,14 @@ module powerbitests {
 
         it('Capabilities should not suppressDefaultTitle', () => {
             expect(powerbi.visuals.getColumnChartCapabilities().suppressDefaultTitle).toBeUndefined();
+        });
+
+        it('Capabilities should support reference lines for not stacked charts', () => {
+            expect(powerbi.visuals.getColumnChartCapabilities(false, false /*isStacked*/).objects['referenceLine']).toBeDefined();
+        });
+
+        it('Capabilities should not support reference lines if stacked', () => {
+            expect(powerbi.visuals.getColumnChartCapabilities(false, true /*isStacked*/).objects['referenceLine']).toBeUndefined();
         });
 
         it('FormatString property should match calculated', () => {
@@ -1157,6 +1165,97 @@ module powerbitests {
             ]);
         });
 
+        it('static series with tooltips', () => {
+            let categoryValues = ['c1', 'c2'];
+            let categoryField = powerbi.data.SQExprBuilder.entity('schema', 'table', 'category_column');
+            let dataView = powerbi.data.createCategoricalDataViewBuilder()
+                .withCategories([
+                    {
+                        identityFields: [categoryField],
+                        identity: _.map(categoryValues, (v) => mocks.dataViewScopeIdentityWithEquality(categoryField, v)),
+                        source: {
+                            displayName: 'Category',
+                            queryName: 'category_column',
+                            roles: { ['Category']: true },
+                            index: 0,
+                        },
+                        values: categoryValues
+                    }
+                ])
+                .withValues({
+                    columns: [
+                        {
+                            values: [1, 2],
+                            source: {
+                                displayName: 'Series 1',
+                                queryName: 'series1_column',
+                                roles: { ['Y']: true },
+                                index: 1,
+                            },
+                        }, {
+                            values: [4, 5],
+                            source: {
+                                displayName: 'Tooltip values',
+                                queryName: 'tooltips_column',
+                                roles: { ['Tooltips']: true },
+                                index: 2,
+                            },
+                        }, {
+                            values: [7, 8],
+                            source: {
+                                displayName: 'Series 2',
+                                queryName: 'series2_column',
+                                roles: { ['Y']: true },
+                                index: 3,
+                            },
+                        }
+                    ]
+                })
+                .build();
+
+            let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
+            let data = ColumnChart.converter(dataView, colors);
+
+            expect(data.series.length).toBe(2);
+            let series1 = data.series[0]; 
+            expect(series1.data.length).toBe(2);
+            expect(series1.data[0].value).toBe(1);
+            expect(series1.data[0].tooltipInfo).toEqual([ { displayName: 'Category', value: 'c1' }, { displayName: 'Series 1', value: '1' }, { displayName: 'Tooltip values', value:  '4' }]);
+            expect(series1.data[0].identity).toEqual(
+                new powerbi.visuals.SelectionIdBuilder()
+                .withCategory(dataView.categorical.categories[0], 0)
+                .withMeasure('series1_column')
+                .createSelectionId()
+            );
+            expect(series1.data[1].value).toBe(2);
+            expect(series1.data[1].tooltipInfo).toEqual([ { displayName: 'Category', value: 'c2' }, { displayName: 'Series 1', value: '2' }, { displayName: 'Tooltip values', value:  '5' }]);
+            expect(series1.data[1].identity).toEqual(
+                new powerbi.visuals.SelectionIdBuilder()
+                .withCategory(dataView.categorical.categories[0], 1)
+                .withMeasure('series1_column')
+                .createSelectionId()
+            );
+
+            let series2 = data.series[1]; 
+            expect(series2.data.length).toBe(2);
+            expect(series2.data[0].value).toBe(7);
+            expect(series2.data[0].tooltipInfo).toEqual([ { displayName: 'Category', value: 'c1' }, { displayName: 'Series 2', value: '7' }, { displayName: 'Tooltip values', value:  '4' }]);
+            expect(series2.data[0].identity).toEqual(
+                new powerbi.visuals.SelectionIdBuilder()
+                .withCategory(dataView.categorical.categories[0], 0)
+                .withMeasure('series2_column')
+                .createSelectionId()
+            );
+            expect(series2.data[1].value).toBe(8);
+            expect(series2.data[1].tooltipInfo).toEqual([ { displayName: 'Category', value: 'c2' }, { displayName: 'Series 2', value: '8' }, { displayName: 'Tooltip values', value:  '5' }]);
+            expect(series2.data[1].identity).toEqual(
+                new powerbi.visuals.SelectionIdBuilder()
+                .withCategory(dataView.categorical.categories[0], 1)
+                .withMeasure('series2_column')
+                .createSelectionId()
+            );
+        });
+
         it('converter: dynamic series', () => {
             let categoryIdentities = [
                 mocks.dataViewScopeIdentity("2011"),
@@ -1307,6 +1406,114 @@ module powerbitests {
                 { icon: LegendIcon.Box, color: series1Color, label: measureColumnDynamic1.groupName, identity: SelectionId.createWithSelectorForColumnAndMeasure(buildSelectorForColumn(measureColumnDynamic1.queryName, seriesIdentities[0]), measureColumnDynamic1.queryName), selected: false },
                 { icon: LegendIcon.Box, color: series2Color, label: measureColumnDynamic2.groupName, identity: SelectionId.createWithSelectorForColumnAndMeasure(buildSelectorForColumn(measureColumnDynamic2.queryName, seriesIdentities[1]), measureColumnDynamic2.queryName), selected: false }
             ]);
+        });
+
+        it('dynamic series with tooltips', () => {
+            let categoryValues = ['c1', 'c2'];
+            let categoryField = powerbi.data.SQExprBuilder.entity('schema', 'table', 'category_column');
+            let seriesValues = ['s1', 's2'];
+            let seriesField = powerbi.data.SQExprBuilder.entity('schema', 'table', 'series_column');
+            let dataView = powerbi.data.createCategoricalDataViewBuilder()
+                .withCategories([
+                    {
+                        identityFields: [categoryField],
+                        identity: _.map(categoryValues, (v) => mocks.dataViewScopeIdentityWithEquality(categoryField, v)),
+                        source: {
+                            displayName: 'Category',
+                            queryName: 'category_column',
+                            roles: { ['Category']: true },
+                        },
+                        values: categoryValues
+                    }
+                ])
+                .withGroupedValues({
+                    groupColumn: {
+                        identityFrom: {
+                            fields: [seriesField],
+                            identities: _.map(seriesValues, (v) => mocks.dataViewScopeIdentityWithEquality(seriesField, v)),
+                        },
+                        source: {
+                            displayName: 'Series',
+                            roles: { ['Series']: true },
+                            queryName: 'series_column',
+                        },
+                        values: seriesValues,
+                    },
+                    valueColumns: [
+                        {
+                            source: {
+                                displayName: 'Y values',
+                                roles: { ['Y']: true },
+                                queryName: 'yvalues',
+                            }
+                        }, {
+                            source: {
+                                displayName: 'Tooltip values',
+                                roles: { ['Tooltips']: true },
+                                queryName: 'tooltipValues',
+                            }
+                        }
+                    ],
+                    data: [
+                        [{   // s1
+                            values: [1, 2],  // Y
+                        }, {
+                            values: [4, 5],  // Tooltips
+                        }], [{  // s2
+                            values: [7, 8],
+                        }, {
+                            values: [10, 11],
+                        }],
+                    ]
+                })
+                .build();
+
+            let valueGroups = dataView.categorical.values.grouped();
+            let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
+            let data = ColumnChart.converter(dataView, colors);
+
+            expect(data.series.length).toBe(2);
+            let series1 = data.series[0]; 
+            expect(series1.data.length).toBe(2);
+            expect(series1.data[0].value).toBe(1);
+            expect(series1.data[0].tooltipInfo).toEqual([ { displayName: 'Category', value: 'c1' }, { displayName: 'Series', value: 's1' }, { displayName: 'Y values', value: '1' }, { displayName: 'Tooltip values', value:  '4' }]);
+            expect(series1.data[0].identity).toEqual(
+                new powerbi.visuals.SelectionIdBuilder()
+                .withCategory(dataView.categorical.categories[0], 0)
+                .withSeries(dataView.categorical.values, valueGroups[0])
+                .withMeasure('yvalues')
+                .createSelectionId()
+            );
+            expect(series1.data[1].value).toBe(2);
+            expect(series1.data[1].tooltipInfo).toEqual([ { displayName: 'Category', value: 'c2' }, { displayName: 'Series', value: 's1' }, { displayName: 'Y values', value: '2' }, { displayName: 'Tooltip values', value:  '5' }]);
+            expect(series1.data[1].identity).toEqual(
+                new powerbi.visuals.SelectionIdBuilder()
+                .withCategory(dataView.categorical.categories[0], 1)
+                .withSeries(dataView.categorical.values, valueGroups[0])
+                .withMeasure('yvalues')
+                .createSelectionId()
+            );
+
+            let series2 = data.series[1]; 
+            expect(series2.data.length).toBe(2);
+            expect(series2.data[0].value).toBe(7);
+            expect(series2.data[0].tooltipInfo).toEqual([ { displayName: 'Category', value: 'c1' }, { displayName: 'Series', value: 's2' }, { displayName: 'Y values', value: '7' }, { displayName: 'Tooltip values', value:  '10' }]);
+            expect(series2.data[0].identity).toEqual(
+                new powerbi.visuals.SelectionIdBuilder()
+                .withCategory(dataView.categorical.categories[0], 0)
+                .withSeries(dataView.categorical.values, valueGroups[1])
+                .withMeasure('yvalues')
+                .createSelectionId()
+            );
+            expect(series2.data[1].value).toBe(8);
+            expect(series2.data[1].tooltipInfo).toEqual([ { displayName: 'Category', value: 'c2' }, { displayName: 'Series', value: 's2' }, { displayName: 'Y values', value: '8' }, { displayName: 'Tooltip values', value:  '11' }]);
+            expect(series2.data[1].identity).toEqual(
+                new powerbi.visuals.SelectionIdBuilder()
+                .withCategory(dataView.categorical.categories[0], 1)
+                .withSeries(dataView.categorical.values, valueGroups[1])
+                .withMeasure('yvalues')
+                .createSelectionId()
+            );
         });
 
         it('converter: dynamic series falsy group instances', () => {
@@ -1928,7 +2135,7 @@ module powerbitests {
 
             // We should not summarize the X-axis values with DisplayUnits per-PowerView behavior, so ensure that we are using the 'Verbose' mode for the formatter.
             spyOn(powerbi.visuals.valueFormatter, 'create').and.callThrough();
-            let data = ColumnChart.converter(dataView, colors, /*is100PercentStacked*/null, /*isScalar*/null, /*dataViewMetadata*/null, /*chartType*/null, /*interactivityService*/null, /*tooltipsEnabled*/false, /*tooltipBucketEnabled*/true);
+            let data = ColumnChart.converter(dataView, colors, /*is100PercentStacked*/null, /*isScalar*/null, /*dataViewMetadata*/null, /*chartType*/null, /*interactivityService*/null, /*tooltipsEnabled*/false);
             
             //first tooltip is regular because highlighted value is null
             expect(data.series[0].data[0].tooltipInfo).toBeUndefined();
@@ -2680,7 +2887,7 @@ module powerbitests {
             };
 
             let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
-            let data = ColumnChart.converter(dataView, colors, false, false, null, null, null, /* tooltipsEnabled */true, /* tooltipBucketEnabled */true);
+            let data = ColumnChart.converter(dataView, colors, false, false, null, null, null, /* tooltipsEnabled */true);
 
             expect(data.series[0].data[0].tooltipInfo).toEqual([{ displayName: 'year', value: '2011' }, { displayName: 'sales', value: '$100' }, { displayName: 'tax', value: '75' }, { displayName: 'tooltips', value: '$10' }]);
             expect(data.series[0].data[1].tooltipInfo).toEqual([{ displayName: 'year', value: '2012' }, { displayName: 'sales', value: '$200' }, { displayName: 'tax', value: '50' }, { displayName: 'tooltips', value: '-$20' }]);
@@ -2710,7 +2917,7 @@ module powerbitests {
             };
 
             let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
-            let data = ColumnChart.converter(dataView, colors, /*is100PercentStacked*/ false, /*isScalar*/ false, /*dataViewMetadata*/null, /*chartType*/null, /*interactivityService*/null, /* tooltipsEnabled */true, /* tooltipBucketEnabled */true);
+            let data = ColumnChart.converter(dataView, colors, /*is100PercentStacked*/ false, /*isScalar*/ false, /*dataViewMetadata*/null, /*chartType*/null, /*interactivityService*/null, /* tooltipsEnabled */true);
 
             expect(data.series[0].data[0].tooltipInfo).toEqual([{ displayName: 'year', value: '2011' }, { displayName: 'sales', value: '$100' }]);
             expect(data.series[0].data[1].tooltipInfo).toEqual([{ displayName: 'year', value: '2012' }, { displayName: 'sales', value: '$200' }, { displayName: 'tooltips', value: '+Infinity' }]);
@@ -2788,7 +2995,7 @@ module powerbitests {
                             originalValueAbsolute: Number.MAX_VALUE,
                             identity: selectionIds[1],
                             key: selectionIds[1].getKey(),
-                            tooltipInfo: [{ displayName: "year", value: "2012" }, { displayName: "sales", value: "$Infinity" }],
+                            tooltipInfo: [{ displayName: "year", value: "2012" }, { displayName: "sales", value: "Infinity" }],
                             lastSeries: undefined,
                             chartType: undefined,
                             labelSettings: defaultLabelSettings,
@@ -2876,7 +3083,7 @@ module powerbitests {
                             originalValueAbsolute: Number.MAX_VALUE,
                             identity: selectionIds[1],
                             key: selectionIds[1].getKey(),
-                            tooltipInfo: [{ displayName: "year", value: "2012" }, { displayName: "sales", value: "-$Infinity" }],
+                            tooltipInfo: [{ displayName: "year", value: "2012" }, { displayName: "sales", value: "-Infinity" }],
                             lastSeries: undefined,
                             chartType: undefined,
                             labelSettings: defaultLabelSettings,
@@ -4552,12 +4759,11 @@ module powerbitests {
             };
 
             dataView.metadata.objects = {
-                y1AxisReferenceLine: [
-                    {
-                        id: '0',
-                        object: yAxisReferenceLine,
+                y1AxisReferenceLine: {
+                    $instances: {
+                        '0': yAxisReferenceLine,
                     }
-                ]
+                }
             };
 
             v.onDataChanged({
@@ -4567,7 +4773,7 @@ module powerbitests {
             setTimeout(() => {
                 let graphicsContext = $('.columnChart .mainGraphicsContext');
 
-                let yLine = $('.y1-ref-line');
+                let yLine = $('[class^="reference-line"]');
                 let yLabel = $('.labelGraphicsContext .label').eq(0);
                 helpers.verifyReferenceLine(
                     yLine,
@@ -4600,7 +4806,7 @@ module powerbitests {
                 });
 
                 setTimeout(() => {
-                    yLine = $('.y1-ref-line');
+                    yLine = $('[class^="reference-line"]');
                     yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -4629,12 +4835,121 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        expect($('.y1-ref-line').length).toBe(0);
+                        expect($('[class^="reference-line"]').length).toBe(0);
                         expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                         done();
                     }, DefaultWaitForRender);
                 }, DefaultWaitForRender);
+            }, DefaultWaitForRender);
+        });
+
+        it('clustered column chart should support multiple reference lines', (done) => {
+            let categoryValues = ['a', 'b', 'c', 'd', 'e'];
+            let categoryIdentities = categoryValues.map(d => mocks.dataViewScopeIdentity(d));
+
+            let refLineColor1 = '#ff0000';
+
+            let dataView: powerbi.DataView = {
+                metadata: metadata(dataViewMetadataThreeColumn),
+                categorical: {
+                    categories: [{
+                        source: dataViewMetadataThreeColumn[0],
+                        values: categoryValues,
+                        identity: categoryIdentities,
+                    }],
+                    values: DataViewTransform.createValueColumns([
+                        {
+                            source: dataViewMetadataThreeColumn[1],
+                            values: [10, 0, -30, null, 0]
+                        }, {
+                            source: dataViewMetadataThreeColumn[2],
+                            values: [0, -20, null, 88, 10]
+                        }])
+                }
+            };
+
+            let yAxisReferenceLine: powerbi.DataViewObject = {
+                show: true,
+                value: 20,
+                lineColor: { solid: { color: refLineColor1 } },
+                transparency: 60,
+                style: powerbi.visuals.lineStyle.dashed,
+                position: powerbi.visuals.referenceLinePosition.back,
+                dataLabelShow: true,
+                dataLabelColor: { solid: { color: refLineColor1 } },
+                dataLabelDecimalPoints: 0,
+                dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                dataLabelDisplayUnits: 0,
+            };
+
+            let referenceLine: powerbi.DataViewObject = {
+                show: true,
+                value: 500,
+                lineColor: { solid: { color: refLineColor1 } },
+                transparency: 60,
+                style: lineStyle.dashed,
+                position: powerbi.visuals.referenceLinePosition.front,
+                dataLabelShow: false,
+                dataLabelColor: { solid: { color: refLineColor1 } },
+                dataLabelDecimalPoints: 0,
+                dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                dataLabelDisplayUnits: 0,
+            };
+
+            dataView.metadata.objects = {
+                y1AxisReferenceLine: {
+                    $instances: {
+                        '0': yAxisReferenceLine,
+                        '1': referenceLine,
+                    }
+                }
+            };
+
+            v.onDataChanged({
+                dataViews: [dataView]
+            });
+
+            setTimeout(() => {
+                let graphicsContext = $('.columnChart .mainGraphicsContext');
+
+                let yLine = $('.reference-line-back');
+                let yLabel = $('.labelGraphicsContext .label').eq(0);
+                helpers.verifyReferenceLine(
+                    yLine,
+                    yLabel,
+                    graphicsContext,
+                    {
+                        inFront: false,
+                        isHorizontal: true,
+                        color: refLineColor1,
+                        style: powerbi.visuals.lineStyle.dashed,
+                        opacity: 0.4,
+                        label: {
+                            color: refLineColor1,
+                            horizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                            text: '20',
+                            verticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                            displayUnits: 0,
+                        },
+                    });
+
+                let refLine = $('.reference-line-front');
+                helpers.verifyReferenceLine(
+                    refLine,
+                    null,
+                    graphicsContext,
+                    {
+                        inFront: true,
+                        isHorizontal: true,
+                        color: refLineColor1,
+                        style: lineStyle.dashed,
+                        opacity: 0.4,
+                        label: null,
+                    });
+                done();
             }, DefaultWaitForRender);
         });
 
@@ -4680,12 +4995,11 @@ module powerbitests {
             };
 
             dataView.metadata.objects = {
-                y1AxisReferenceLine: [
-                    {
-                        id: '0',
-                        object: yAxisReferenceLine,
+                y1AxisReferenceLine: {
+                    $instances: {
+                        '0': yAxisReferenceLine,
                     }
-                ]
+                }
             };
 
             v.onDataChanged({
@@ -4695,7 +5009,7 @@ module powerbitests {
             setTimeout(() => {
                 let graphicsContext = $('.columnChart .mainGraphicsContext');
 
-                let yLine = $('.y1-ref-line');
+                let yLine = $('[class^="reference-line"]');
                 let yLabel = $('.labelGraphicsContext .label').eq(0);
                 helpers.verifyReferenceLine(
                     yLine,
@@ -4728,7 +5042,7 @@ module powerbitests {
                 });
 
                 setTimeout(() => {
-                    yLine = $('.y1-ref-line');
+                    yLine = $('[class^="reference-line"]');
                     yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -4757,7 +5071,7 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        expect($('.y1-ref-line').length).toBe(0);
+                        expect($('[class^="reference-line"]').length).toBe(0);
                         expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                         done();
@@ -4808,12 +5122,11 @@ module powerbitests {
             };
 
             dataView.metadata.objects = {
-                y1AxisReferenceLine: [
-                    {
-                        id: '0',
-                        object: yAxisReferenceLine,
+                y1AxisReferenceLine: {
+                    $instances: {
+                        '0': yAxisReferenceLine,
                     }
-                ]
+                }
             };
 
             v.onDataChanged({
@@ -4823,7 +5136,7 @@ module powerbitests {
             setTimeout(() => {
                 let graphicsContext = $('.columnChart .mainGraphicsContext');
 
-                let yLine = $('.y1-ref-line');
+                let yLine = $('[class^="reference-line"]');
                 let yLabel = $('.labelGraphicsContext .label').eq(0);
                 helpers.verifyReferenceLine(
                     yLine,
@@ -4856,7 +5169,7 @@ module powerbitests {
                 });
 
                 setTimeout(() => {
-                    yLine = $('.y1-ref-line');
+                    yLine = $('[class^="reference-line"]');
                     yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -4885,7 +5198,7 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        expect($('.y1-ref-line').length).toBe(0);
+                        expect($('[class^="reference-line"]').length).toBe(0);
                         expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                         done();
@@ -4926,6 +5239,66 @@ module powerbitests {
 
                 helpers.assertColorsMatch(columns.eq(2).css('fill'), '#ff0000');
 
+                done();
+            }, DefaultWaitForRender);
+        });
+
+        it('clustered column chart onDataChanged called twice dom validation', (done) => {
+            let categoryIdentities = [
+                mocks.dataViewScopeIdentity("abc"),
+                mocks.dataViewScopeIdentity("def"),
+            ];
+            let dataView = {
+                dataViews: [{
+                    metadata: metadata(dataViewMetadataThreeColumn),
+                    categorical: {
+                        categories: [{
+                            source: dataViewMetadataThreeColumn[0],
+                            values: ['abc', 'def'],
+                            identity: categoryIdentities,
+                        }],
+                        values: DataViewTransform.createValueColumns([
+                            {
+                                source: dataViewMetadataThreeColumn[1],
+                                min: 123,
+                                max: 234,
+                                subtotal: 357,
+                                values: [0, 234]
+                            }, {
+                                source: dataViewMetadataThreeColumn[2],
+                                min: 12,
+                                max: 88,
+                                subtotal: 100,
+                                values: [12, null]
+                            }])
+                    }
+                }]
+            };
+            v.onDataChanged(dataView);
+            v.onDataChanged(dataView);
+
+            setTimeout(() => {
+                const precision = 0.001;
+                let columns: JQuery = $('.columnChart .mainGraphicsContext .series rect.column');
+                expect(columns.length).toBe(2, "no columns found");
+
+                let dimmedCols: JQuery[] = [];
+
+                columns.each((index: number, element: Element) => {
+                    let column = $(element);
+                    let opacity = parseFloat(column.css('fill-opacity'));
+
+                    if (Math.abs(ColumnUtil.DimmedOpacity - opacity) < precision) {
+                        dimmedCols.push(column);
+                    }
+                });
+                
+                if (interactiveChart) {
+                    expect(dimmedCols.length).toBe(1, "one dimmed column expected");
+                }
+                else {
+                    expect(dimmedCols.length).toBe(0, "no dimmed columns expected");
+                }
                 done();
             }, DefaultWaitForRender);
         });
@@ -8421,12 +8794,11 @@ module powerbitests {
             };
 
             dataView.metadata.objects = {
-                y1AxisReferenceLine: [
-                    {
-                        id: '0',
-                        object: yAxisReferenceLine,
+                y1AxisReferenceLine: {
+                    $instances: {
+                        '0': yAxisReferenceLine,
                     }
-                ]
+                }
             };
 
             v.onDataChanged({
@@ -8436,7 +8808,7 @@ module powerbitests {
             setTimeout(() => {
                 let graphicsContext = $('.columnChart .mainGraphicsContext');
 
-                let yLine = $('.y1-ref-line');
+                let yLine = $('[class^="reference-line"]');
                 let yLabel = $('.labelGraphicsContext .label').eq(0);
                 helpers.verifyReferenceLine(
                     yLine,
@@ -8469,7 +8841,7 @@ module powerbitests {
                 });
 
                 setTimeout(() => {
-                    yLine = $('.y1-ref-line');
+                    yLine = $('[class^="reference-line"]');
                     yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -8498,7 +8870,7 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        expect($('.y1-ref-line').length).toBe(0);
+                        expect($('[class^="reference-line"]').length).toBe(0);
                         expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                         done();
@@ -8549,12 +8921,11 @@ module powerbitests {
             };
 
             dataView.metadata.objects = {
-                y1AxisReferenceLine: [
-                    {
-                        id: '0',
-                        object: yAxisReferenceLine,
+                y1AxisReferenceLine: {
+                    $instances: {
+                        '0': yAxisReferenceLine,
                     }
-                ]
+                }
             };
 
             v.onDataChanged({
@@ -8564,7 +8935,7 @@ module powerbitests {
             setTimeout(() => {
                 let graphicsContext = $('.columnChart .mainGraphicsContext');
 
-                let yLine = $('.y1-ref-line');
+                let yLine = $('[class^="reference-line"]');
                 let yLabel = $('.labelGraphicsContext .label').eq(0);
                 helpers.verifyReferenceLine(
                     yLine,
@@ -8597,7 +8968,7 @@ module powerbitests {
                 });
 
                 setTimeout(() => {
-                    yLine = $('.y1-ref-line');
+                    yLine = $('[class^="reference-line"]');
                     yLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         yLine,
@@ -8626,7 +8997,7 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        expect($('.y1-ref-line').length).toBe(0);
+                        expect($('[class^="reference-line"]').length).toBe(0);
                         expect($('.columnChart .labelGraphicsContext .label').length).toBe(0);
 
                         done();
@@ -11020,7 +11391,7 @@ module powerbitests {
                 let width = parseInt($('.brush .extent')[0].attributes.getNamedItem('width').value, 10);
                 
                 // Windows and Mac OS differ
-                expect(powerbitests.helpers.isInRange(width, 23, 25)).toBe(true);
+                expect(powerbitests.helpers.isInRange(width, 29, 31)).toBe(true);
                 expect($('.brush .extent')[0].attributes.getNamedItem('x').value).toBe('0');
                 v.onResizing({ height: 500, width: 500 });
                 expect($('.brush')).not.toBeInDOM();

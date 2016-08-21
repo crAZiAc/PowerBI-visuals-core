@@ -603,6 +603,10 @@ module powerbi.visuals {
             return scale.range();
         }
 
+        /**
+         * Inverts the ordinal scale. If x < scale.range()[0], then scale.domain()[0] is returned.
+         * Otherwise, it returns the greatest item in scale.domain() that's <= x.
+         */
         export function invertOrdinalScale(scale: D3.Scale.OrdinalScale, x: number) {
             let leftEdges = scale.range();
             if (leftEdges.length < 2)
@@ -611,10 +615,19 @@ module powerbi.visuals {
             let width = scale.rangeBand();
             let halfInnerPadding = (leftEdges[1] - leftEdges[0] - width) / 2;
 
-            let j;
-            for (j = 0; x > (leftEdges[j] + width + halfInnerPadding) && j < (leftEdges.length - 1); j++)
-                ;
-            return scale.domain()[j];
+            let range = scale.range();
+            let domain = scale.domain();
+
+            // If x is less than the range, just return the 1st item in the domain
+            if (range[0] > x) {
+                return domain[0];
+            }
+
+            // d3.bisect returns the index at which we can insert something so that everything before it is lesser and everything after it is greater.
+            // The leftEdges don't include the inner padding, so we need to shift x over by halfInnerPadding to account it.
+            // We want index - 1 since that's the greatest value less than x, meaning that's the band we're in.
+            // Use that index to find the right value in the domain.
+            return domain[d3.bisect(range, x + halfInnerPadding) - 1];
         }
 
         export function findClosestXAxisIndex(categoryValue: number, categoryAxisValues: CartesianDataPoint[]): number {
@@ -740,7 +753,7 @@ module powerbi.visuals {
 
             // Prepare Tick Values for formatting
             let tickValues: any[];
-            if (isScalar && bestTickCount === 1) {
+            if (isScalar && !_.isEmpty(dataDomain) && bestTickCount === 1) {
                 tickValues = [dataDomain[0]];
             }
             else {
@@ -956,7 +969,7 @@ module powerbi.visuals {
                     if (axisPrecision)
                         options.precision = axisPrecision;
                     else
-                        options.detectAxisPrecision = true;
+                        options.precision = calculateAxisPrecision(tickValues[1] - tickValues[0], axisDisplayUnits, formatString);
 
                     formatter = valueFormatter.create(options);
                 }
@@ -968,6 +981,80 @@ module powerbi.visuals {
             }
 
             return formatter;
+        }
+
+        // returns # of decimal places necessary to distinguish between tick mark values
+        export function calculateAxisPrecision(tickInterval: number, axisDisplayUnits: number, formatString?: string): number {
+            if (!axisDisplayUnits) {
+                let displayUnitSystem = valueFormatter.createDisplayUnitSystem();
+                displayUnitSystem.update(tickInterval);
+                axisDisplayUnits = displayUnitSystem.displayUnit && displayUnitSystem.displayUnit.value || 1;
+            }
+
+            let value = tickInterval / axisDisplayUnits;
+
+            if (formatString) {
+                value *= powerbi.NumberFormat.getCustomFormatMetadata(formatString, false, false, true).partsPerScale;
+            }
+
+            // calculate place of of the most significant decimal digit.
+            // 1 means tens digit
+            // 0 means the ones digit
+            // -1 means tenths digit
+            let mostSignificantDigit = Math.floor(Double.log10(value));
+
+            // rounding in various calculations can introduce extraneous amounts of precision in the number
+            // no need in an axis label to allow more than this number of digits as the *difference* between
+            // ticks
+            let MaxDigits = 5;
+
+            if (mostSignificantDigit >= 0) {
+                // value has an integer part but may also have a fraction part. get the number of significant
+                // digits in the integer part then see how many that leaves us for the fractional part
+                let integerSignificantDigits = mostSignificantDigit + 1;
+                let maxFractionDigits = MaxDigits - integerSignificantDigits;
+                if (maxFractionDigits <= 0) {
+                    // the value's integer part has at least MaxDigits of precision
+                    // so there aren't any left for the fractional part
+                    return 0;
+                }
+
+                return numberOfDecimalPlaces(value, maxFractionDigits);
+            }
+            else {
+                // the interval has no integer part - it is a pure decimal fraction. we want the number
+                // of decimal places we have to allow so the precision doesn't exceed MaxDigits.
+
+                // knowing where there most significant digit is in the fraction, we can scale
+                // the number to the range [0.1, 1)
+                let rescaledValue = value / Double.pow10(mostSignificantDigit + 1);
+
+                // get the actual number of significant digits respecting the maximum
+                let fractionSignificantDigits = numberOfDecimalPlaces(rescaledValue, MaxDigits);
+
+                // this is the number of zeroes that are required due to the true scale of the decimal fraction
+                let fractionScaleDigits = -mostSignificantDigit - 1;
+
+                // number of decimal places is the number of zeros plus the limited number of significant digits
+                return fractionScaleDigits + fractionSignificantDigits;
+            }
+        }
+
+        // if we're limiting the decimal places to maxDecimalPlaces, how many decimal places do
+        // we actually need to avoid trailing zeroes? for example, if the value is 1.500001 and
+        // we want a maximum of three decimal places, the number rounded to three places is 1.500
+        // so only one decimal place is necessary.
+        function numberOfDecimalPlaces(value: number, maxDecimalPlaces: number): number {
+            let formattedValue = value.toFixed(maxDecimalPlaces);
+            let decimalPoint = formattedValue.indexOf('.');
+            if (decimalPoint !== -1) {
+                for (let i = formattedValue.length; i-- > decimalPoint;) {
+                    if (formattedValue[i] !== '0') {
+                        return i - decimalPoint;
+                    }
+                }
+            }
+            return 0;
         }
         
         /**

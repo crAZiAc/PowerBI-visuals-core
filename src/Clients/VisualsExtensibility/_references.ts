@@ -15,3 +15,4 @@
 /// <reference path="./versioning/versions/legacy.ts"/>
 /// <reference path="./versioning/versions/v1.0.0.ts"/>
 /// <reference path="./versioning/versions/v1.1.0.ts"/>
+/// <reference path="./versioning/versions/v1.2.0.ts"/>

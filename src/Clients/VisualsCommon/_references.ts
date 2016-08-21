@@ -29,6 +29,7 @@
 /// <reference path="./Utility/keyUtils.ts"/>
 /// <reference path="./Utility/ThrottleUtility.ts"/>
 /// <reference path="./Utility/TimerPromiseFactory.ts"/>
+/// <reference path="./Utility/touchUtils.ts"/>
 /// <reference path="./Utility/Utility.ts"/>
 /// <reference path="./tracing/traceItem.ts"/>
 /// <reference path="./Utility/urlUtils.ts"/>

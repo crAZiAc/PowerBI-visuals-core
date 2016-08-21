@@ -182,7 +182,7 @@ module powerbi.visuals {
 
             DonutChart.isSingleColor(options.viewModel.dataPoints.filter((value: DonutArcDescriptor) => value.data.highlightRatio != null));
 
-            highlightShapes
+            highlightShapes.exit()
                 .style('fill', (d: DonutArcDescriptor) => d.data.color ? d.data.color : options.colors.getNewColorScale().getColor(d.data.identity.getKey()).value)
                 .style('fill-opacity', (d: DonutArcDescriptor) => ColumnUtil.getFillOpacity(false, true, false, true))
                 .style("stroke-dasharray", (d: DonutArcDescriptor) => DonutChart.drawStrokeForDonutChart(options.radius, options.innerArcRadiusRatio, d, options.sliceWidthRatio, d.data.highlightRatio))
@@ -190,9 +190,6 @@ module powerbi.visuals {
                 .transition()
                 .duration(duration)
                 .attr(hasSelection ? options.layout.zeroShapeLayout : options.layout.shapeLayout)  // Transition to the non-highlight layout
-                .remove();
-
-            highlightShapes.exit()
                 .remove();
 
             NewDataLabelUtils.drawDefaultLabels(options.labelGraphicsContext, options.labels, false, true, true /*has tooltip */);

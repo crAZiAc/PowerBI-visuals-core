@@ -120,6 +120,7 @@ module powerbi.visuals.controls {
 
         private options: TablixOptions;
         private isTouchEnabled: boolean;
+        private isTouchEventsBound: boolean;
 
         private renderIterationCount: number;
 
@@ -143,9 +144,6 @@ module powerbi.visuals.controls {
             this.footerDiv = internal.TablixUtils.createDiv();
             this.footerDiv.classList.add(TablixControl.TablixFooterClassName);
 
-            if (this.isTouchEnabled)
-                this.InitializeTouchSupport();
-
             this.gridDimensions = {};
 
             this.containerElement = internal.TablixUtils.createDiv();
@@ -159,14 +157,13 @@ module powerbi.visuals.controls {
             parentDomElement.className = TablixControl.TablixContainerClassName;
             parentDomElement.appendChild(this.containerElement);
 
-            this.containerElement.addEventListener("mousewheel", (e) => { this.onMouseWheel(<MouseWheelEvent>e); });
-            this.containerElement.addEventListener("DOMMouseScroll", (e) => { this.onFireFoxMouseWheel(<MouseWheelEvent>e); });
+            this.containerElement.addEventListener("wheel", (e) => { this.onWheel(<WheelEvent>e); });
             this.containerElement.appendChild(this.mainDiv);
             this.containerElement.appendChild(this.footerDiv);
 
             if (this.isTouchEnabled) {
-                this.touchInterpreter.initTouch(this.mainDiv, null, false);
-                this.footerTouchInterpreter.initTouch(this.footerDiv, this.mainDiv, false);
+                this.InitializeTouchSupport();
+                this.bindTouchEvents();
             }
 
             this.controlLayoutManager = layoutManager;
@@ -194,6 +191,7 @@ module powerbi.visuals.controls {
         }
 
         private InitializeTouchSupport(): void {
+            this.isTouchEventsBound = false;
             this.touchManager = new TouchUtils.TouchManager();
             this.touchInterpreter = new TouchUtils.TouchEventInterpreter(this.touchManager);
             this.footerTouchInterpreter = new TouchUtils.TouchEventInterpreter(this.touchManager);
@@ -211,6 +209,22 @@ module powerbi.visuals.controls {
             this.touchManager.addTouchRegion(this.rowTouchDelegate.dimension, this.rowTouchDelegate, this.rowTouchDelegate);
             this.touchManager.addTouchRegion(this.bodyTouchDelegate.dimension, this.bodyTouchDelegate, this.bodyTouchDelegate);
             this.touchManager.addTouchRegion(this.footerTouchDelegate.dimension, this.footerTouchDelegate, this.footerTouchDelegate);
+        }
+
+        private unBindTouchEvents(): void {
+            if(!this.isTouchEventsBound) return;
+
+            this.touchInterpreter.clearAllTouchEvents();
+            this.footerTouchInterpreter.clearAllTouchEvents();
+            this.isTouchEventsBound = false;
+        }
+
+        private bindTouchEvents(): void {
+            if(this.isTouchEventsBound) return;
+
+            this.touchInterpreter.initTouch(this.mainDiv, null);
+            this.footerTouchInterpreter.initTouch(this.footerDiv, this.mainDiv);
+            this.isTouchEventsBound = true;
         }
 
         private InitializeScrollbars(): void {
@@ -237,6 +251,17 @@ module powerbi.visuals.controls {
             this.columnDim.scrollbar.height = this.scrollBarElementWidth + TablixControl.UnitOfMeasurement;
 
             this.columnDim.scrollbar.show(false);
+        }
+
+        public toggleTouchBindings(touchBindingEnabled: boolean): void {
+            if (!this.isTouchEnabled) return;
+
+            if (touchBindingEnabled) {
+                this.bindTouchEvents();
+            }
+            else {
+                this.unBindTouchEvents();
+            }
         }
 
         public get container(): HTMLElement {
@@ -369,6 +394,11 @@ module powerbi.visuals.controls {
             this.columnDim.scrollbar.height = this.scrollBarElementWidth + TablixControl.UnitOfMeasurement;
         }
 
+        // for testing purposes
+        public getIsTouchEventsBound(): boolean {
+            return !!this.isTouchEventsBound;
+        }
+
         public updateModels(resetScrollOffsets: boolean, rowModel: any, columnModel: any): void {
             this.rowDim.model = rowModel;
             this.rowDim.modelDepth = this.hierarchyNavigator.getRowHierarchyDepth();
@@ -419,56 +449,32 @@ module powerbi.visuals.controls {
             this.footerTouchDelegate.setScrollDensity(gridDimensions.columnCount / gridDimensions.columnHierarchyWidth);
         }
 
-        private onMouseWheel(e: MouseWheelEvent): void {
+        private onWheel(e: WheelEvent): void {
             this.determineDimensionToScroll(e,
-                (dimension, delta) => { dimension.scrollbar.onMouseWheel(delta); });
+                (dimension, delta) => { dimension.scrollbar.onMouseWheel(-1 * delta); });
 
             if (this.options.layoutKind === TablixLayoutKind.Canvas)
                 e.preventDefault();
         }
 
-        private onFireFoxMouseWheel(e: MouseWheelEvent): void {
-            this.determineDimensionToScrollFirefox(e,
-                (dimension, delta) => { dimension.scrollbar.onMouseWheel(delta); });
-
-            if (this.options.layoutKind === TablixLayoutKind.Canvas)
-                e.preventDefault();
-        }
-
-        private determineDimensionToScroll(e: MouseWheelEvent, scrollCallback: (dimension: TablixDimension, delta: number) => void): void {
+        private determineDimensionToScroll(e: WheelEvent, scrollCallback: (dimension: TablixDimension, delta: number) => void): void {
             // If vertical scrollbar is shown, apply normal scrolling in X, Y
             if (this.rowDim.scrollbar.visible) {
-                if (e.wheelDeltaY)
-                    scrollCallback(this.rowDim, e.wheelDeltaY);
+                if (e.deltaY) 
+                    scrollCallback(this.rowDim, e.deltaY);
 
-                if (e.wheelDeltaX && this.columnDim.scrollbar.visible)
-                    scrollCallback(this.columnDim, e.wheelDeltaX);
+                // dont use 'else if' here, as trackballs can give delta in both directions
+                if (e.deltaX && this.columnDim.scrollbar.visible)
+                    scrollCallback(this.columnDim, e.deltaX);
             }
 
             // If vertical scrollbar is hidden, and horizontal scrollbar is shown
             // Apply whatever X or Y to it
             else if (this.columnDim.scrollbar.visible) {
-                if (e.wheelDeltaX)
-                    scrollCallback(this.columnDim, e.wheelDeltaX);
-                else if (e.wheelDeltaY)
-                    scrollCallback(this.columnDim, e.wheelDeltaY);
-            }
-        }
-
-        private determineDimensionToScrollFirefox(e: MouseWheelEvent, scrollCallback: (dimension: TablixDimension, delta: number) => void): void {
-            // Firefox
-            if (e.detail) {
-                if (this.rowDim.scrollbar.visible) {
-                    scrollCallback(this.rowDim, -e.detail);
-                    return;
-                }
-
-                // In the absence of the vertical scrollbar, we scroll the
-                // horizontal scrollbar.
-                if (this.columnDim.scrollbar.visible) {
-                    scrollCallback(this.columnDim, -e.detail);
-                    return;
-                }
+                if (e.deltaX)
+                    scrollCallback(this.columnDim, e.deltaX);
+                else if (e.deltaY)
+                    scrollCallback(this.columnDim, e.deltaY);
             }
         }
 

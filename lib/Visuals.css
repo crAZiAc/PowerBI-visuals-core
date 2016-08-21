@@ -1309,7 +1309,6 @@ body {
  *  THE SOFTWARE.
  */
 /* KPI colors*/
-/* KPI Visual colors*/
 .kpi-green {
   color: #79c75b;
 }
@@ -1318,26 +1317,6 @@ body {
 }
 .kpi-red {
   color: #c0433a;
-}
-.kpi-visual-green {
-  color: #3bb44a;
-  fill: #3bb44a;
-}
-.kpi-visual-yellow {
-  color: #F2C811;
-  fill: #F2C811;
-}
-.kpi-visual-red {
-  color: #E81123;
-  fill: #E81123;
-}
-.kpi-visual-text-grey {
-  color: #212121;
-  fill: #212121;
-}
-.kpi-visual-graph-grey {
-  color: #5F6B6D;
-  fill: #5F6B6D;
 }
 @font-face {
   font-family: 'PowerVisuals';
@@ -1699,10 +1678,7 @@ body {
   width: 30px;
   height: 30px;
   cursor: pointer;
-  -webkit-transition: opacity 0.2s ease-in;
   transition: opacity 0.2s ease-in;
-  -webkit-transition-delay: 0s;
-  /* Safari */
   transition-delay: 0s;
 }
 .skittlesHovered {
@@ -1724,14 +1700,12 @@ body {
   visibility: visible;
   opacity: 1;
   transition: opacity 0.5s linear, left 0.5s linear, transform 0.5s;
-  -webkit-transition: opacity 0.5s linear, left 0.5s linear, transform 0.5s;
 }
 .hidden {
   visibility: hidden;
   /* Fully hide the element*/
   opacity: 0;
   transition: visibility 0s 0.5s, width 0s 0.5s, height 0s 0.5s, opacity 0.5s linear, left 0.5s linear, transform 0.5s;
-  -webkit-transition: visibility 0s 0.5s, width 0s 0.5s, height 0s 0.5s, opacity 0.5s linear, left 0.5s linear, transform 0.5s;
 }
 .hiddenNoTransition {
   visibility: hidden;
@@ -1782,6 +1756,18 @@ body {
   /* Animated Text (and card) Styles */
   /* Depricated. Done use it for new charts. */
 }
+.visual .flex-row {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: row;
+  -webkit-flex-direction: row;
+}
+.visual .flex-column {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+}
 .visual a:link {
   color: #0000EE;
   text-decoration: underline;
@@ -1801,57 +1787,59 @@ body {
 .visual.disable-events {
   pointer-events: none;
 }
-.visual .slicerHeader {
-  margin: 0 0 0 8px;
-  box-sizing: border-box;
+.visual .slicer-container {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
 }
-.visual .slicerHeader .titleHeader {
-  margin: 0 8px 0 0;
+.visual .slicer-container .slicer-header-wrapper {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+  flex: 0 0 auto;
+  -webkit-flex: 0 0 auto;
 }
-.visual .slicerHeader .titleHeader .headerText {
-  color: #333333;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  display: block;
+.visual .slicer-container .slicer-content-wrapper {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+  -webkit-flex: 1 0 0px;
+  flex: 1 0 0px;
+}
+.visual .slicer-container .slicer-content-wrapper .scroll-wrapper {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+  flex: 1 0 0px;
+  -webkit-flex: 1 0 0px;
+}
+.visual .slicer-container .slicer-content-wrapper .searchHeader {
   overflow: hidden;
-  white-space: nowrap;
-  width: auto;
-  margin: 2px 0;
 }
-.visual .slicerHeader .titleHeader .clear {
-  background-image: url(../images/visuals.sprites.png);
-  background-position: 0px -96px;
-  width: 13px;
-  height: 12px;
-  margin: 4px 8px 4px 2px;
-  float: right;
-  cursor: pointer;
-  display: block;
-  visibility: hidden;
-}
-.visual .slicerHeader .searchHeader {
-  overflow: hidden;
-}
-.visual .slicerHeader .searchHeader.collapsed {
+.visual .slicer-container .slicer-content-wrapper .searchHeader.collapsed {
   display: none;
 }
-.visual .slicerHeader .searchHeader.show {
+.visual .slicer-container .slicer-content-wrapper .searchHeader.show {
   display: -webkit-box;
   display: flex;
   justify-content: space-between;
-  -webkit-align-items: center;
-  width: calc(100% - 10px);
+  align-items: center;
   border: 1px solid #212121;
   height: 20px;
+  margin: 0px 8px 0 8px;
 }
-.visual .slicerHeader .searchHeader .search {
+.visual .slicer-container .slicer-content-wrapper .searchHeader .search {
   cursor: pointer;
   margin: 0 4px;
   flex: 0 0 auto;
   -webkit-flex: 0 0 auto;
   color: #212121;
 }
-.visual .slicerHeader .searchHeader input {
+.visual .slicer-container .slicer-content-wrapper .searchHeader input {
   color: #333333;
   cursor: auto;
   align-self: center;
@@ -1860,17 +1848,27 @@ body {
   border-style: none;
   padding: 0;
 }
-.visual .slicerContainer.hasSelection:hover .clear,
-.visual .horizontalSlicerContainer.hasSelection:hover .clear {
-  visibility: visible;
-}
 .visual .slicerContainer {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
   cursor: pointer;
   font-size: 14px;
+  flex: 1 0 0px;
+  -webkit-flex: 1 0 0px;
 }
 .visual .slicerContainer ul {
   padding: 0;
   margin: 0;
+}
+.visual .slicerContainer .slicerBody {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+  flex: 1 0 0px;
+  -webkit-flex: 1 0 0px;
 }
 .visual .slicerContainer .slicerItemContainer {
   margin: 0;
@@ -1973,15 +1971,27 @@ body {
   border-bottom: 2px solid #FFF;
   transform: rotate(45deg);
 }
+.visual .horizontalSlicerContainer {
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+  flex: 1 0 auto;
+  -webkit-flex: 1 0 auto;
+}
 .visual .horizontalSlicerContainer.canScrollRight .navigationArrow.right {
   visibility: visible;
+  flex-shrink: 0;
 }
 .visual .horizontalSlicerContainer.canScrollLeft .navigationArrow.left {
   visibility: visible;
+  flex-shrink: 0;
 }
 .visual .horizontalSlicerContainer .navigationArrow {
   visibility: hidden;
   background-color: white;
+  flex: 0 0 auto;
+  -webkit-flex: 0 0 auto;
 }
 .visual .horizontalSlicerContainer .navigationArrow.right {
   background-image: url(../images/visuals.sprites.png);
@@ -2002,29 +2012,33 @@ body {
   display: flex;
 }
 .visual .horizontalSlicerContainer .slicerBody {
-  align-items: center;
-  justify-content: space-between;
+  display: flex;
+  display: -webkit-flex;
   flex-direction: row;
+  -webkit-flex-direction: row;
+  align-items: center;
+  flex: 1 0 auto;
+  -webkit-flex: 1 0 auto;
+  justify-content: space-between;
 }
 .visual .horizontalSlicerContainer .slicerItemsContainer {
   vertical-align: top;
-  width: 100%;
-  height: 100%;
-  -webkit-flex: 1;
-  /* Chrome */
-  flex: 1;
+  flex-direction: row;
+  align-self: stretch;
+  flex: 1 0 0px;
+  -webkit-flex: 1 0 0px;
+  min-width: 0px;
 }
 .visual .horizontalSlicerContainer .slicerText {
-  -webkit-flex-direction: column;
   flex-direction: column;
-  -webkit-justify-content: center;
   justify-content: center;
-  -webkit-align-items: center;
   align-items: center;
-  width: 100%;
-  height: 100%;
+  align-self: stretch;
   box-sizing: border-box;
   padding: 4px 0;
+  flex: 1 1 0px;
+  -webkit-flex: 1 1 0px;
+  min-width: 0px;
 }
 .visual .horizontalSlicerContainer .slicerText.selected,
 .visual .horizontalSlicerContainer .slicerText.partiallySelected {
@@ -2047,11 +2061,8 @@ body {
   text-align: center;
 }
 .visual .horizontalSlicerContainer .slicerImage {
-  -webkit-flex-direction: column;
   flex-direction: column;
-  -webkit-justify-content: center;
   justify-content: center;
-  -webkit-align-items: center;
   align-items: center;
   width: 100%;
   height: 100%;
@@ -2059,9 +2070,9 @@ body {
   padding: 4px 0;
 }
 .visual .scroll-wrapper {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
 }
 .visual .scroll-wrapper .scroll-content {
   height: inherit;
@@ -2118,11 +2129,8 @@ body {
 .visual .cartesianChart .hideLinesOnAxis path.domain {
   display: none;
 }
-.visual .cartesianChart .x-ref-line {
-  stroke-width: 3px;
-  stroke-opacity: 0.5;
-}
-.visual .cartesianChart .y1-ref-line {
+.visual .cartesianChart .reference-line-front,
+.visual .cartesianChart .reference-line-back {
   stroke-width: 3px;
   stroke-opacity: 0.5;
 }
@@ -2190,35 +2198,43 @@ body {
   stroke-width: 1px;
   shape-rendering: crispEdges;
 }
-.visual .lineChart .mainGraphicsContext path {
+.visual .lineChart .mainGraphicsContext path,
+.visual .realTimeLineChart .mainGraphicsContext path {
   fill: none;
   stroke-width: 2px;
   stroke-linecap: round;
 }
-.visual .lineChart .mainGraphicsContext .catBackground path {
+.visual .lineChart .mainGraphicsContext .catBackground path,
+.visual .realTimeLineChart .mainGraphicsContext .catBackground path {
   stroke-width: 6px;
   stroke: white;
 }
-.visual .lineChart .mainGraphicsContext .interactivity-line {
+.visual .lineChart .mainGraphicsContext .interactivity-line,
+.visual .realTimeLineChart .mainGraphicsContext .interactivity-line {
   stroke: #FFF;
   stroke-opacity: 0;
 }
-.visual .lineChart .hover-line {
+.visual .lineChart .hover-line,
+.visual .realTimeLineChart .hover-line {
   stroke: #666666;
   pointer-events: none;
 }
-.visual .lineChart .hover-line .interactive {
+.visual .lineChart .hover-line .interactive,
+.visual .realTimeLineChart .hover-line .interactive {
   stroke-width: 3px;
   opacity: 1;
 }
-.visual .lineChart .hover-line .selection-circle {
+.visual .lineChart .hover-line .selection-circle,
+.visual .realTimeLineChart .hover-line .selection-circle {
   stroke: #e9e9e9;
 }
-.visual .lineChart .hover-line .circle-item {
+.visual .lineChart .hover-line .circle-item,
+.visual .realTimeLineChart .hover-line .circle-item {
   stroke: none;
   pointer-events: none;
 }
-.visual .lineChart .drag-handle {
+.visual .lineChart .drag-handle,
+.visual .realTimeLineChart .drag-handle {
   fill: #666666;
   opacity: 1;
 }
@@ -2801,19 +2817,13 @@ body {
 .visual .gauge .labelText {
   font-family: 'wf_standard-font', helvetica, arial, sans-serif;
 }
-.visual .kpiVisual .goalText {
-  margin-top: -6px;
-  color: #333333;
-  font-family: Segoe UI Semibold, wf_segoe-ui_semibold, helvetica, arial, sans-serif;
-  font-size: 11px;
-}
-.visual .kpiVisual .textContainer {
+.visual .kpiVisual .lastTrendAxisPointSummaryContainer {
   display: block;
   align-items: center;
   position: absolute;
   text-align: center;
 }
-.visual .kpiVisual .indicatorText {
+.visual .kpiVisual .lastTrendAxisPointSummaryContainer .indicatorContainer {
   font-family: wf_standard-font_light, helvetica, arial, sans-serif;
   font-size: 60px;
   display: flex;
@@ -2821,12 +2831,235 @@ body {
   flex-direction: row;
   justify-content: center;
 }
+.visual .kpiVisual .lastTrendAxisPointSummaryContainer .indicatorContainer .indicatorText {
+  text-anchor: middle;
+}
+.visual .kpiVisual .lastTrendAxisPointSummaryContainer .indicatorContainer .powervisuals-glyph {
+  font-size: 12px;
+}
+.visual .kpiVisual .lastTrendAxisPointSummaryContainer .goalText {
+  margin-top: -6px;
+  color: #333333;
+  font-family: Segoe UI Semibold, wf_segoe-ui_semibold, helvetica, arial, sans-serif;
+  font-size: 11px;
+  text-anchor: middle;
+}
+.visual .date-slicer {
+  width: 100%;
+  position: relative;
+  box-sizing: border-box;
+}
+.visual .date-slicer .date-slicer-head {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+.visual .date-slicer .date-slicer-head .date-slicer-select {
+  width: 100px;
+  margin-top: 5px;
+  margin-bottom: 10px;
+  outline: none;
+}
+.visual .date-slicer .date-slicer-head .date-slicer-range {
+  display: flex;
+  flex-grow: 0;
+  flex-direction: row;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.visual .date-slicer .date-slicer-head .date-slicer-range .date-slicer-control {
+  position: relative;
+  margin-right: 6px;
+  margin-bottom: 6px;
+}
+.visual .date-slicer .date-slicer-head .date-slicer-range .date-slicer-control .date-slicer-input {
+  box-sizing: border-box;
+  padding-left: 8px;
+  width: 130px;
+  height: 30px;
+  border: 1px solid #EAEAEA;
+}
+.visual .date-slicer .date-slicer-head .date-slicer-range .date-slicer-control .date-slicer-input[disabled] {
+  background-color: white;
+  color: #C8C8C8;
+}
+.visual .date-slicer .date-slicer-head .date-slicer-range .date-slicer-control .date-slicer-icon::after {
+  position: absolute;
+  font-family: PowrMDL2;
+  content: "\E787";
+  font-size: 12px;
+  height: 12px;
+  width: 12px;
+  right: 8px;
+  top: 9px;
+  cursor: pointer;
+}
+.visual .date-slicer .date-slicer-slider {
+  margin: 8px;
+}
+.visual .date-slicer .noUi-target {
+  box-shadow: none;
+  border: none;
+}
+.visual .date-slicer .noUi-connect {
+  background-color: #F2C80F;
+  box-shadow: none;
+  border: none;
+}
+.visual .date-slicer .noUi-background {
+  background-color: #EAEAEA;
+  box-shadow: none;
+  border-radius: 0px;
+  border: none;
+}
+.visual .date-slicer .noUi-horizontal {
+  height: 6px;
+}
+.visual .date-slicer .noUi-base {
+  left: 2px;
+}
+.visual .date-slicer .noUi-handle {
+  width: 4px;
+  height: 17px;
+  background-color: #333333;
+  z-index: 1;
+  border: none;
+  box-shadow: none;
+}
+.visual .date-slicer .noUi-handle::after {
+  height: 21px;
+  width: 16px;
+  background-color: transparent;
+  left: -6px;
+  top: -2px;
+  position: absolute;
+  content: "";
+}
+.visual .date-slicer .ui-selectmenu-button {
+  outline: none;
+}
+.visual .slicer-header {
+  margin: 0 0 0 8px;
+  box-sizing: border-box;
+  display: flex;
+  display: -webkit-flex;
+  flex-direction: column;
+  -webkit-flex-direction: column;
+  flex: 0 0 auto;
+}
+.visual .slicer-header .slicer-header-title {
+  margin: 0 8px 0 0;
+}
+.visual .slicer-header .slicer-header-title .slicer-header-text {
+  color: #333333;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  width: auto;
+  margin: 2px 0;
+}
+.visual .slicer-header .slicer-header-title .slicer-header-clear {
+  background-image: url(../images/visuals.sprites.png);
+  background-position: 0px -96px;
+  width: 13px;
+  height: 12px;
+  margin: 4px 8px 4px 2px;
+  float: right;
+  cursor: pointer;
+  display: block;
+}
+.visual .slicer-header .slicer-header-selectmenu .ui-selectmenu-button {
+  background: none;
+  border: none;
+  position: relative;
+  margin-bottom: 10px;
+  cursor: pointer;
+  outline: none;
+}
+.visual .slicer-header .slicer-header-selectmenu .ui-selectmenu-button .ui-icon::before {
+  content: "\E972";
+  font-family: PowrMDL2;
+  font-style: normal;
+  position: absolute;
+  font-size: 9px;
+}
+.visual .slicer-header .slicer-header-selectmenu .ui-selectmenu-button .ui-icon {
+  right: auto;
+  left: 50px;
+  position: absolute;
+  top: 50%;
+  margin-top: -4px;
+  text-indent: 0;
+  background: none;
+}
+.visual .slicer-header .slicer-header-selectmenu .ui-selectmenu-button .ui-widget {
+  font-size: inherit;
+  font-family: inherit;
+}
+.visual .slicer-header .slicer-header-selectmenu .ui-selectmenu-menu .ui-menu {
+  color: #333333;
+  width: auto !important;
+  border: none;
+  background: #FFF;
+  box-shadow: 0px 0px 3px 0px rgba(0, 0, 0, 0.28);
+  border-radius: 0px;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.visual .slicer-header .slicer-header-selectmenu .ui-selectmenu-menu .ui-menu .ui-state-default {
+  border: none;
+  background: none;
+}
+.visual .slicer-header .slicer-header-selectmenu .ui-selectmenu-menu .ui-menu .ui-menu-item.ui-state-focus {
+  border: none;
+  background: #EAEAEA;
+}
+.visual .slicer-header .slicer-header-selectmenu .ui-selectmenu-menu .ui-menu .ui-menu-item {
+  padding: 10px 28px 10px 12px;
+  cursor: pointer;
+}
+.visual .debugVisualContainer {
+  height: 100%;
+  overflow: hidden;
+  color: #212121;
+}
+.visual .debugVisualContainer > div {
+  overflow: hidden;
+}
+.visual .debugVisualContainer .errorContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: #212121;
+  font-family: 'Segoe UI', 'wf_segoe-ui_normal', helvetica, arial, sans-serif;
+  font-size: 14px;
+  display: table;
+  background-color: #F4F4F4;
+  width: 100%;
+  height: 100%;
+}
+.visual .debugVisualContainer .errorContainer .errorMessage {
+  display: table-cell;
+  line-height: normal;
+  vertical-align: middle;
+  padding: 0px 20px;
+  margin: 4px 4px;
+  text-align: center;
+}
+.visual .debugVisualContainer .errorContainer .errorMessage .errorSpan {
+  margin-right: 4px;
+}
 .visual-sandbox {
   border: none;
   overflow: hidden;
-}
-.visual-sandbox .tooltip-container .tooltip-row {
-  font-size: 9px;
 }
 div.debugVisual-controlsContainer {
   background: #444444;

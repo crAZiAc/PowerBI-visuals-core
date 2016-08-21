@@ -32,6 +32,8 @@ module powerbitests.customVisuals.sampleDataViews {
     import DataViewBuilderValuesColumnOptions = powerbi.data.DataViewBuilderValuesColumnOptions;
     import DataViewBuilderColumnIdentitySource = powerbi.data.DataViewBuilderColumnIdentitySource;
 
+    export type CustomizeColumnFn = (source: powerbi.DataViewMetadataColumn) => void;
+
     export interface DataViewBuilderColumnOptions extends powerbi.data.DataViewBuilderColumnOptions {
         values: any[];
     }
@@ -123,7 +125,8 @@ module powerbitests.customVisuals.sampleDataViews {
         static createDataViewBuilderColumnOptions(
             categoriesColumns: (DataViewBuilderCategoryColumnOptions | DataViewBuilderCategoryColumnOptions[])[],
             valuesColumns: (DataViewBuilderValuesColumnOptions | DataViewBuilderValuesColumnOptions[])[],
-            filter?: (options: DataViewBuilderColumnOptions) => boolean): DataViewBuilderAllColumnOptions {
+            filter?: (options: DataViewBuilderColumnOptions) => boolean,
+            customizeColumns?: CustomizeColumnFn): DataViewBuilderAllColumnOptions {
 
             let filterColumns = filter
                 ? (options) => _.isArray(options.values) && filter(options)
@@ -137,6 +140,18 @@ module powerbitests.customVisuals.sampleDataViews {
 
             let allColumns = (resultCategoriesColumns || []).concat(<powerbi.DataViewCategoricalColumn[]>resultValuesColumns || []);
             allColumns.forEach((x: powerbi.DataViewCategoricalColumn,i) => x.source.index = i);
+
+            if(customizeColumns) {
+                allColumns.forEach((column: DataViewBuilderColumnOptions) => customizeColumns(column.source));
+            }
+
+            allColumns.forEach((column: DataViewBuilderColumnOptions) => {
+                if(column.source.format){
+                    let objects = column.source.objects = (<any>column.source.objects || {});
+                    objects.general = objects.general || {};
+                    objects.general.formatString = objects.general.formatString || column.source.format;
+                }
+            });
 
             return { 
                     categories: resultCategoriesColumns.filter(x => !x.isGroup),
@@ -209,13 +224,16 @@ module powerbitests.customVisuals.sampleDataViews {
         protected createCategoricalDataViewBuilder(
             categoriesColumns: (DataViewBuilderCategoryColumnOptions | DataViewBuilderCategoryColumnOptions[])[],
             valuesColumns: (DataViewBuilderValuesColumnOptions | DataViewBuilderValuesColumnOptions[])[],
-            columnNames: string[]) {
+            columnNames: string[],
+            customizeColumns?: CustomizeColumnFn) {
             let builder = powerbi.data.createCategoricalDataViewBuilder();
 
             let originalOptions = DataViewBuilder.createDataViewBuilderColumnOptions(
                 categoriesColumns,
                 valuesColumns,
-                columnNames && (options => _.contains(columnNames, options.source.displayName)));
+                columnNames && (options => _.contains(columnNames, options.source.displayName)),
+                customizeColumns);
+
             let options = DataViewBuilder.setUpDataViewBuilderColumnOptions(originalOptions, this.aggregateFunction);
 
             if(!_.isEmpty(options.categories)) {

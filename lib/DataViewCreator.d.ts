@@ -185,6 +185,7 @@ declare module jsCommon {
         function findUniqueName(usedNames: {
             [name: string]: boolean;
         }, baseName: string): string;
+        function constructNameFromList(list: string[], separator: string, maxCharacter: number): string;
         function constructCommaSeparatedList(list: string[], resourceProvider: IStringResourceProvider, maxValue?: number): string;
         function escapeStringForRegex(s: string): string;
         /**
@@ -507,12 +508,6 @@ declare module jsCommon {
      */
     interface INumberDictionary<T> {
         [key: number]: T;
-    }
-    /**
-     * Interface to help define objects indexed by name to a particular type.
-     */
-    interface IStringDictionary<T> {
-        [key: string]: T;
     }
     /**
      * Extensions for Enumerations.
@@ -938,6 +933,20 @@ declare module powerbi.data {
         From: EntitySource[];
         Where: QueryFilter[];
     }
+    interface GroupingDefinition {
+        Version: number;
+        Sources: EntitySource[];
+        GroupedColumns: QueryExpressionContainer[];
+        GroupItems?: GroupItem[];
+        BinItem?: BinItem;
+    }
+    interface GroupItem {
+        DisplayName: string;
+        Expression?: QueryExpressionContainer;
+    }
+    interface BinItem {
+        Expression: QueryExpressionContainer;
+    }
     enum EntitySourceType {
         Table = 0,
         Pod = 1,
@@ -1233,6 +1242,7 @@ declare module powerbi.data {
         Expression: QueryExpressionContainer;
     }
 }
+
 declare module powerbi.data {
     import INumberDictionary = jsCommon.INumberDictionary;
     interface DataViewTransformApplyOptions {
@@ -1292,6 +1302,7 @@ declare module powerbi.data {
     module DataViewTransform {
         function apply(options: DataViewTransformApplyOptions): DataView[];
         function transformObjects(dataView: DataView, targetDataViewKinds: StandardDataViewKinds, objectDescriptors: DataViewObjectDescriptors, objectDefinitions: DataViewObjectDefinitions, selectTransforms: DataViewSelectTransform[], colorAllocatorFactory: IColorAllocatorFactory): void;
+        function mergeObjects(targetObjects: DataViewObjects, sourceObjects: _.Dictionary<DataViewObject>, selector: Selector): void;
         function createValueColumns(values?: DataViewValueColumn[], valueIdentityFields?: SQExpr[], source?: DataViewMetadataColumn): DataViewValueColumns;
         function setGrouped(values: DataViewValueColumns, groupedResult?: DataViewValueColumnGroup[]): void;
     }
@@ -1648,6 +1659,7 @@ declare module powerbi.data {
         transform: string;
         constructor(role: string, transform?: string);
         accept<T, TArg>(visitor: ISQExprVisitorWithArg<T, TArg>, arg?: TArg): T;
+        getMetadata(federatedSchema: FederatedConceptualSchema): SQExprMetadata;
     }
     /** Provides utilities for creating & manipulating expressions. */
     module SQExprBuilder {
@@ -1801,6 +1813,7 @@ declare module powerbitests.customVisuals.sampleDataViews {
     import SQExpr = powerbi.data.SQExpr;
     import DataViewBuilderValuesColumnOptions = powerbi.data.DataViewBuilderValuesColumnOptions;
     import DataViewBuilderColumnIdentitySource = powerbi.data.DataViewBuilderColumnIdentitySource;
+    type CustomizeColumnFn = (source: powerbi.DataViewMetadataColumn) => void;
     interface DataViewBuilderColumnOptions extends powerbi.data.DataViewBuilderColumnOptions {
         values: any[];
     }
@@ -1820,10 +1833,10 @@ declare module powerbitests.customVisuals.sampleDataViews {
         static constExpr(fakeValue: string | number | boolean | Date): SQExpr;
         static getDataViewBuilderColumnIdentitySources(options: DataViewBuilderColumnOptions[] | DataViewBuilderColumnOptions): DataViewBuilderColumnIdentitySource[];
         static getValuesTable(categories?: powerbi.DataViewCategoryColumn[], values?: powerbi.DataViewValueColumn[]): any[][];
-        static createDataViewBuilderColumnOptions(categoriesColumns: (DataViewBuilderCategoryColumnOptions | DataViewBuilderCategoryColumnOptions[])[], valuesColumns: (DataViewBuilderValuesColumnOptions | DataViewBuilderValuesColumnOptions[])[], filter?: (options: DataViewBuilderColumnOptions) => boolean): DataViewBuilderAllColumnOptions;
+        static createDataViewBuilderColumnOptions(categoriesColumns: (DataViewBuilderCategoryColumnOptions | DataViewBuilderCategoryColumnOptions[])[], valuesColumns: (DataViewBuilderValuesColumnOptions | DataViewBuilderValuesColumnOptions[])[], filter?: (options: DataViewBuilderColumnOptions) => boolean, customizeColumns?: CustomizeColumnFn): DataViewBuilderAllColumnOptions;
         static setUpDataViewBuilderColumnOptions(options: DataViewBuilderAllColumnOptions, aggregateFunction: (array: number[]) => number): DataViewBuilderAllColumnOptions;
         static setUpDataView(dataView: powerbi.DataView, options: DataViewBuilderAllColumnOptions): powerbi.DataView;
-        protected createCategoricalDataViewBuilder(categoriesColumns: (DataViewBuilderCategoryColumnOptions | DataViewBuilderCategoryColumnOptions[])[], valuesColumns: (DataViewBuilderValuesColumnOptions | DataViewBuilderValuesColumnOptions[])[], columnNames: string[]): powerbi.data.IDataViewBuilderCategorical;
+        protected createCategoricalDataViewBuilder(categoriesColumns: (DataViewBuilderCategoryColumnOptions | DataViewBuilderCategoryColumnOptions[])[], valuesColumns: (DataViewBuilderValuesColumnOptions | DataViewBuilderValuesColumnOptions[])[], columnNames: string[], customizeColumns?: CustomizeColumnFn): powerbi.data.IDataViewBuilderCategorical;
         abstract getDataView(columnNames?: string[]): powerbi.DataView;
     }
 }

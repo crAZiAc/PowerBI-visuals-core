@@ -60,6 +60,11 @@ module powerbi.visuals {
                 displayName: data.createDisplayNameGetter('Role_DisplayName_TargetValue'),
                 description: data.createDisplayNameGetter('Role_DisplayName_TargetValueDescription'),
                 requiredTypes: [{ numeric: true }, { integer: true }],
+            }, {
+                name: 'Tooltips',
+                kind: VisualDataRoleKind.Measure,
+                displayName: data.createDisplayNameGetter('Role_DisplayName_Tooltips'),
+                joinPredicate: JoinPredicateBehavior.None,
             }
         ],
         objects: {
@@ -127,6 +132,7 @@ module powerbi.visuals {
                         { bind: { to: 'MinValue' } },
                         { bind: { to: 'MaxValue' } },
                         { bind: { to: 'TargetValue' } },
+                        { for: { in: 'Tooltips' } }
                     ]
                 },
             },

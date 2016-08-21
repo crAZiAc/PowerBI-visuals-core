@@ -36,28 +36,17 @@ module powerbi.visuals {
         source: string;
     }
 
-    export interface ScriptVisualOptions {
-        canRefresh: boolean;
-    }
-
     export class ScriptVisual implements IVisual {
         private element: JQuery;
         private imageBackgroundElement: JQuery;
         private imageElement: JQuery;
-        private hostServices: IVisualHostServices;
-        private canRefresh: boolean;
-
-        public constructor(options: ScriptVisualOptions) {
-            this.canRefresh = options.canRefresh;
-        }
 
         public init(options: VisualInitOptions): void {
             this.element = options.element;
-            this.hostServices = options.host;
+        }
 
-            if (!this.canRefresh) {
-                this.hostServices.setWarnings([new ScriptVisualRefreshWarning()]);
-            }
+        public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstanceEnumeration {
+            return [];
         }
 
         public update(options: VisualUpdateOptions): void {
@@ -72,8 +61,8 @@ module powerbi.visuals {
                 return;
 
             let imageUrl: string = null;
-            if (dataView.scriptResult && dataView.scriptResult.imageBase64) {
-                imageUrl = "data:image/png;base64," + dataView.scriptResult.imageBase64;
+            if (dataView.scriptResult && dataView.scriptResult.payloadBase64) {
+                imageUrl = "data:image/png;base64," + dataView.scriptResult.payloadBase64;
             }
 
             this.ensureHtmlElement();

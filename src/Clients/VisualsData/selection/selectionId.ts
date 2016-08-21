@@ -57,7 +57,15 @@ module powerbi.visuals {
             }
             return this.highlight === other.highlight &&  Selector.equals(this.selector, other.selector);
         }
-        
+
+        public static isEqual(one: SelectionId, other: SelectionId): boolean {
+            if (one === other)
+                return true;
+            if (one == null || other == null)
+                return false;
+            return one.equals(other);
+        }
+
         /**
          * Checks equality against other for all identifiers existing in this.
          */

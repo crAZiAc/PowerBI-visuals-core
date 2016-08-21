@@ -209,11 +209,16 @@ module powerbi.visuals.controls.internal {
         export const PropTotalFontColor = new TablixProperty(ObjectTotal, 'fontColor', "#333", DataViewObjects.getFillColor);
         export const PropTotalBackColor = new TablixProperty(ObjectTotal, 'backColor', undefined, DataViewObjects.getFillColor);
         export const PropTotalOutline = new TablixProperty(ObjectTotal, 'outline', "TopOnly", DataViewObjects.getValue);
+        
 
         // SubTotals
         export const PropSubTotalsFontColor = new TablixProperty(ObjectSubTotals, 'fontColor', "#333", DataViewObjects.getFillColor);
         export const PropSubTotalsBackColor = new TablixProperty(ObjectSubTotals, 'backColor', undefined, DataViewObjects.getFillColor);
-        export const PropSubTotalsOutline = new TablixProperty(ObjectSubTotals, 'outline', "TopOnly", DataViewObjects.getValue);
+
+        // Grand Total
+        export const PropGrandTotalFontColor = new TablixProperty(ObjectTotal, 'fontColor', undefined, DataViewObjects.getFillColor);
+        export const PropGrandTotalBackColor = new TablixProperty(ObjectTotal, 'backColor', undefined, DataViewObjects.getFillColor);
+        export const PropGrandTotalApplyToHeaders = new TablixProperty(ObjectTotal, "applyToHeaders", false, DataViewObjects.getValue);
 
         /**
          * Get the DataViewObject from the DataView
@@ -287,7 +292,10 @@ module powerbi.visuals.controls.internal {
                     break;
                 case TablixObjects.ObjectTotal:
                     if (totalsShown)
-                        enumerateTotalOptions(enumeration, objects);
+                        if (tablixType === TablixType.Table)
+                            enumerateTotalOptions(enumeration, objects);
+                        else
+                            enumerateGrandTotalOptions(enumeration, objects);
                     break;
                 case TablixObjects.ObjectSubTotals:
                     if (totalsShown)
@@ -420,6 +428,18 @@ module powerbi.visuals.controls.internal {
             });
         }
 
+        export function enumerateGrandTotalOptions(enumeration: ObjectEnumerationBuilder, objects: DataViewObjects): void {
+            enumeration.pushInstance({
+                selector: null,
+                objectName: TablixObjects.ObjectTotal,
+                properties: {
+                    fontColor: TablixObjects.PropGrandTotalFontColor.getValue<string>(objects),
+                    backColor: TablixObjects.PropGrandTotalBackColor.getValue<string>(objects),
+                    applyToHeaders: TablixObjects.PropGrandTotalApplyToHeaders.getValue<boolean>(objects),
+                }
+            });
+        }
+
         export function enumerateSubTotalsOptions(enumeration: ObjectEnumerationBuilder, objects: DataViewObjects): void {
             enumeration.pushInstance({
                 selector: null,
@@ -525,10 +545,15 @@ module powerbi.visuals.controls.internal {
                 outline: TablixObjects.PropValuesOutline.getValue<string>(objects),
             };
 
+            formattingProperties.grandTotal = {
+                fontColor: TablixObjects.PropGrandTotalFontColor.getValue<string>(objects),
+                backColor: TablixObjects.PropGrandTotalBackColor.getValue<string>(objects),
+                applyToHeaders: TablixObjects.PropGrandTotalApplyToHeaders.getValue<boolean>(objects)
+            };
+
             formattingProperties.subtotals = {
                 fontColor: TablixObjects.PropSubTotalsFontColor.getValue<string>(objects),
                 backColor: TablixObjects.PropSubTotalsBackColor.getValue<string>(objects),
-                outline: TablixObjects.PropSubTotalsOutline.getValue<string>(objects),
             };
 
             return formattingProperties;
@@ -641,6 +666,10 @@ module powerbi.visuals.controls.internal {
         export const FontFamilyTotal: string = Font.Family.bold.css;
         export const FontColorCells: string = "#333";
         export const FontColorHeaders: string = "#666";
+
+        export interface TablixConstructorOptions {
+            isTouchDisabled?: boolean;
+        }
 
         export interface Surround<T> {
             top?: T;
@@ -890,22 +919,32 @@ module powerbi.visuals.controls.internal {
         }
 
         export class TablixVisualCell {
-            public dataPoint: any;
             public position: TablixUtils.CellPosition;
-            public columnMetadata: DataViewMetadataColumn;
-            public isTotal: boolean;
             public backColor: string;
-            private formatter: ICustomValueColumnFormatter;
-            private nullsAreBlank: boolean;
 
-            constructor(dataPoint: any, isTotal: boolean, columnMetadata: DataViewMetadataColumn, formatter: ICustomValueColumnFormatter, nullsAreBlank: boolean) {
-                this.dataPoint = dataPoint;
-                this.columnMetadata = columnMetadata;
-                this.formatter = formatter;
-                this.isTotal = isTotal;
-                this.nullsAreBlank = nullsAreBlank;
+            constructor(
+                public dataPoint: any,
+                public isRowSubTotal: boolean,
+                public isColumnSubTotal: boolean,
+                public isRowGrandTotal: boolean,
+                public isColumnGrandTotal: boolean,
+                public columnMetadata: DataViewMetadataColumn,
+                public formatter: ICustomValueColumnFormatter,
+                public nullsAreBlank: boolean) {
 
                 this.position = new TablixUtils.CellPosition();
+            }
+
+            public get isTotal(): boolean {
+                return this.isSubtotal || this.isGrandTotal;
+            }
+
+            public get isSubtotal(): boolean {
+                return this.isColumnSubTotal || this.isRowSubTotal;
+            }
+
+            public get isGrandTotal(): boolean {
+                return this.isColumnGrandTotal || this.isRowGrandTotal;
             }
 
             public get textContent(): string {
@@ -990,7 +1029,7 @@ module powerbi.visuals.controls.internal {
         export function setCellTextAndTooltip(text: string, elementText: HTMLElement, elementTooltip?: HTMLElement): void {
             let val = TextUtil.replaceSpaceWithNBSP(text);
             elementText.textContent = val;
-            (elementTooltip || elementText).title = val;
+            (elementTooltip || elementText).title = text;
         }
 
         export function isValidSortClick(e: MouseEvent) {

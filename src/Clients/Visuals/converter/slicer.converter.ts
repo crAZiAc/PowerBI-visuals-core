@@ -33,10 +33,69 @@ module powerbi.visuals {
     import SQConstantExpr = powerbi.data.SQConstantExpr;
     import SQContainsExpr = powerbi.data.SQContainsExpr;
     import SQExpr = powerbi.data.SQExpr;
-    import UrlUtils = jsCommon.UrlUtils;
+    import UrlUtils = jsCommon.UrlUtils;    
+
+    export interface SlicerSettings {
+        general: {
+            outlineWeight: number,
+            outlineColor: string
+        };
+        slicerText: {
+            color: string;
+            outline: string;
+            background?: string;
+            textSize: number;
+        };
+        selection: {
+            selectAllCheckboxEnabled: boolean;
+            singleSelect: boolean;
+        };
+        search: {
+            enabled: boolean;
+        };
+    }
+    
+    export interface SlicerData {
+        categorySourceName: string;
+        slicerDataPoints: SlicerDataPoint[];
+        slicerSettings: SlicerSettings;
+        hasSelectionOverride?: boolean;
+        defaultValue?: DefaultValueDefinition;
+        searchKey?: string;
+        mode?: string;
+    }
+
+    export interface SlicerDataPoint extends SelectableDataPoint {
+        value: string;
+        tooltip: string;
+        isSelectAllDataPoint?: boolean;
+        count: number;
+        isImage?: boolean;
+    }
 
     /** Helper module for converting a DataView into SlicerData. */
     export module DataConversion {
+        export function DefaultSlicerProperties(): SlicerSettings {
+            return {
+                general: {
+                    outlineWeight: 1,
+                    outlineColor: "#808080"
+                },
+                slicerText: {
+                    color: '#666666',
+                    outline: visuals.outline.none,
+                    textSize: 10,
+                },
+                selection: {
+                    selectAllCheckboxEnabled: false,
+                    singleSelect: true,
+                },
+                search: {
+                    enabled: false,
+                },
+            };
+        }
+
         export function convert(dataView: DataView, localizedSelectAllText: string, interactivityService: IInteractivityService | ISelectionHandler, hostServices: IVisualHostServices): SlicerData {
             debug.assertValue(hostServices, 'hostServices');
             if (!dataView || !dataView.categorical || _.isEmpty(dataView.categorical.categories))
@@ -214,24 +273,14 @@ module powerbi.visuals {
         }
 
         function createDefaultSettings(dataViewMetadata: DataViewMetadata): SlicerSettings {
-            let defaultSettings = Slicer.DefaultStyleProperties();
+            let defaultSettings = DataConversion.DefaultSlicerProperties();
             let objects = dataViewMetadata.objects;
             let forceSingleSelect = dataViewMetadata.columns && _.some(dataViewMetadata.columns, (column) => column.discourageAggregationAcrossGroups);
 
             if (objects) {
-                defaultSettings.general.outlineColor = DataViewObjects.getFillColor(objects, slicerProps.general.outlineColor, defaultSettings.general.outlineColor);
-                defaultSettings.general.outlineWeight = DataViewObjects.getValue<number>(objects, slicerProps.general.outlineWeight, defaultSettings.general.outlineWeight);
-                defaultSettings.general.orientation = DataViewObjects.getValue<slicerOrientation.Orientation>(objects, slicerProps.general.orientation, defaultSettings.general.orientation);
-
-                defaultSettings.header.show = DataViewObjects.getValue<boolean>(objects, slicerProps.header.show, defaultSettings.header.show);
-                defaultSettings.header.fontColor = DataViewObjects.getFillColor(objects, slicerProps.header.fontColor, defaultSettings.header.fontColor);
-                let headerBackground = DataViewObjects.getFillColor(objects, slicerProps.header.background);
-                if (headerBackground)
-                    defaultSettings.header.background = headerBackground;
-                defaultSettings.header.outline = DataViewObjects.getValue<string>(objects, slicerProps.header.outline, defaultSettings.header.outline);
-                defaultSettings.header.textSize = DataViewObjects.getValue<number>(objects, slicerProps.header.textSize, defaultSettings.header.textSize);
-
                 defaultSettings.slicerText.color = DataViewObjects.getFillColor(objects, slicerProps.items.fontColor, defaultSettings.slicerText.color);
+                defaultSettings.general.outlineWeight = DataViewObjects.getValue<number>(objects, slicerProps.general.outlineWeight, defaultSettings.general.outlineWeight);
+                defaultSettings.general.outlineColor = DataViewObjects.getFillColor(objects, slicerProps.general.outlineColor, defaultSettings.general.outlineColor);
                 let textBackground = DataViewObjects.getFillColor(objects, slicerProps.items.background);
                 if (textBackground)
                     defaultSettings.slicerText.background = textBackground;

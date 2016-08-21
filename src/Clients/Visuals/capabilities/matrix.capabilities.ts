@@ -183,6 +183,19 @@ module powerbi.visuals {
                     backColor: StandardObjectProperties.backColor,
                 }
             },
+            total:
+            {
+                displayName: data.createDisplayNameGetter('Visual_Tablix_Matrix_TotalGrand'),
+                properties: {
+                    outline: StandardObjectProperties.outline,
+                    fontColor: StandardObjectProperties.fontColor,
+                    backColor: StandardObjectProperties.backColor,
+                    applyToHeaders: {
+                        displayName: data.createDisplayNameGetter('Visual_Tablix_ApplyToHeaders'),
+                        type: { bool: true },
+                    }
+                }
+            },
         },
         dataViewMappings: [{
             conditions: [

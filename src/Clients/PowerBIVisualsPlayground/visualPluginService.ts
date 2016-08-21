@@ -64,8 +64,6 @@ module powerbi.visuals {
          * Enables button to center map to the current location
          */
         mapCurrentLocationEnabled?: boolean;
-        
-        tooltipBucketEnabled?: boolean;
 
         /**
          * Advanced logic for line chart labels
@@ -79,7 +77,7 @@ module powerbi.visuals {
     }
     
     function createPlugin(
-        visualPlugins: jsCommon.IStringDictionary<IVisualPlugin>,
+        visualPlugins: _.Dictionary<IVisualPlugin>,
         base: IVisualPlugin,
         create: IVisualFactoryMethod,
         modifyPluginFn?: (plugin: IVisualPlugin) => void): void {
@@ -92,7 +90,7 @@ module powerbi.visuals {
         visualPlugins[base.name] = visualPlugin;
     }
     
-    function createMinervaPlugins(plugins: jsCommon.IStringDictionary<IVisualPlugin>, featureSwitches?: MinervaVisualFeatureSwitches) {
+    function createMinervaPlugins(plugins: _.Dictionary<IVisualPlugin>, featureSwitches?: MinervaVisualFeatureSwitches) {
         let scriptVisualEnabled: boolean = featureSwitches ? featureSwitches.scriptVisualEnabled : false;
         let scriptVisualAuthoringEnabled: boolean = featureSwitches ? featureSwitches.scriptVisualAuthoringEnabled : false;
         let isLabelInteractivityEnabled: boolean = featureSwitches ? featureSwitches.isLabelInteractivityEnabled : false;
@@ -301,7 +299,7 @@ module powerbi.visuals {
             createPlugin(
                 plugins,
                 powerbi.visuals.plugins.scriptVisual,
-                () => new ScriptVisual({ canRefresh: true }));
+                () => new ScriptVisual());
         }
     }
 
@@ -314,7 +312,7 @@ module powerbi.visuals {
 
     export class MobileVisualPluginService {
         private featureSwitches: MinervaVisualFeatureSwitches;
-        private visualPlugins: jsCommon.IStringDictionary<IVisualPlugin>;
+        private visualPlugins: _.Dictionary<IVisualPlugin>;
         private smallViewPortProperties;
         public static MinHeightLegendVisible = 125;
         public static MinHeightAxesVisible = 125;
@@ -466,13 +464,9 @@ module powerbi.visuals {
                     smallViewPortProperties: this.smallViewPortProperties.DonutSmallViewPortProperties
                 }));
             createPlugin(this.visualPlugins, powerbi.visuals.plugins.matrix,
-                () => new Matrix({
-                    isTouchEnabled: true
-                }));
+                () => new Matrix());
             createPlugin(this.visualPlugins, powerbi.visuals.plugins.table,
-                () => new Table({
-                    isTouchEnabled: true
-                }));
+                () => new Table());
             createPlugin(this.visualPlugins, powerbi.visuals.plugins.map,
                 () => new Map({
                     viewChangeThrottleInterval: mapThrottleInterval,
@@ -549,7 +543,7 @@ module powerbi.visuals {
     }
 
     export class PlaygroundVisualPluginService {
-        private visualPlugins: jsCommon.IStringDictionary<IVisualPlugin>;
+        private visualPlugins: _.Dictionary<IVisualPlugin>;
 
         public constructor() {
             this.visualPlugins = <any>powerbi.visuals.plugins;

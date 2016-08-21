@@ -53,12 +53,16 @@ module powerbitests {
             var ordinalScale: D3.Scale.OrdinalScale = AxisHelper.createOrdinalScale(pixelSpan, domain, 0.4);
             var invertedValue = AxisHelper.invertOrdinalScale(ordinalScale, 49);
             expect(invertedValue).toBe(4);
+            var invertedValue = AxisHelper.invertOrdinalScale(ordinalScale, 50);
+            expect(invertedValue).toBe(5);
             var invertedValue = AxisHelper.invertOrdinalScale(ordinalScale, 51);
             expect(invertedValue).toBe(5);
             ////
             ordinalScale = AxisHelper.createOrdinalScale(pixelSpan, domain, 0); //zero
             var invertedValue = AxisHelper.invertOrdinalScale(ordinalScale, 49);
             expect(invertedValue).toBe(4);
+            var invertedValue = AxisHelper.invertOrdinalScale(ordinalScale, 50);
+            expect(invertedValue).toBe(5);
             var invertedValue = AxisHelper.invertOrdinalScale(ordinalScale, 51);
             expect(invertedValue).toBe(5);
         });
@@ -641,7 +645,7 @@ module powerbitests {
             });
             var scale = <any>os.scale;
             expect(scale).toBeDefined();
-            
+
             // Proves scale is log
             expect(scale.invert).toBeDefined();
 
@@ -649,6 +653,22 @@ module powerbitests {
             expect(values).toBeDefined();
             expect(values.length).toEqual(1);
             expect(values[0]).toEqual('10.00');
+        });
+
+        it('create scalar axis with linear scale and null domain', () => {
+            var os = AxisHelper.createAxis({
+                pixelSpan: 100,
+                dataDomain: undefined,
+                metaDataColumn: AxisPropertiesBuilder.metaDataColumnNumeric,
+                formatString: valueFormatter.getFormatString(AxisPropertiesBuilder.metaDataColumnNumeric, formatStringProp),
+                outerPadding: 0.5,
+                isScalar: true,
+                isVertical: false,
+                scaleType: axisScale.linear
+            });
+            var scale = <any>os.scale;
+            expect(scale).toBeDefined();
+            expect(os.dataDomain).toBeUndefined();
         });
     });
 
@@ -1006,6 +1026,97 @@ module powerbitests {
                 expect(AxisHelper.createFormatter([min, max], [min, max], measureColumn.type, true, measureColumn.format, 6, tickValues, 'getValueFn', true)
                     .format(value))
                     .toBe('$1');
+            });
+        });
+
+        describe('calculateAxisPrecision', () => {
+
+            it('auto display units', () => {
+                // display unit will be 1
+                expect(AxisHelper.calculateAxisPrecision(0.25, 0)).toBe(2);
+                expect(AxisHelper.calculateAxisPrecision(0.1, 0)).toBe(1);
+                expect(AxisHelper.calculateAxisPrecision(1, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(10, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(25, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(100, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(250, 0)).toBe(0);
+                // display unit will be K
+                expect(AxisHelper.calculateAxisPrecision(1000, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(2500, 0)).toBe(1);
+                expect(AxisHelper.calculateAxisPrecision(10000, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(25000, 0)).toBe(0);
+                // display unit will be M
+                expect(AxisHelper.calculateAxisPrecision(100000, 0)).toBe(1);
+                expect(AxisHelper.calculateAxisPrecision(250000, 0)).toBe(2);
+                expect(AxisHelper.calculateAxisPrecision(1000000, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(2500000, 0)).toBe(1);
+                expect(AxisHelper.calculateAxisPrecision(10000000, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(25000000, 0)).toBe(0);
+                // display unit will B
+                expect(AxisHelper.calculateAxisPrecision(100000000, 0)).toBe(1);
+            });
+
+            // expectation when display units are thousands
+            let expectedForThousands = [
+                [10000, 0],
+                [5000, 0],
+                [2500, 1],
+                [1000, 0],
+                [500, 1],
+                [250, 2],
+                [100, 1],
+                [50, 2],
+                [25, 3],
+                [10, 2],
+                [5, 3],
+                [2.5, 4],
+                [1, 3],
+            ];
+
+            it('explicit display units', () => {
+                // Defect 7801378:Frown: Line Chart doesn’t display Y-Axis values properly when configured for Display of Billions
+                expect(AxisHelper.calculateAxisPrecision(100000000, 1000000000, "0")).toBe(1);
+
+                for (let pair of expectedForThousands)
+                    expect(AxisHelper.calculateAxisPrecision(pair[0], 1000)).toBe(pair[1]);
+            });
+
+            it('percent', () => {
+                for (let pair of expectedForThousands)
+                    expect(AxisHelper.calculateAxisPrecision(pair[0] / 100, 1000, "0%")).toBe(pair[1]);
+            });
+
+            it('per mille', () => {
+                for (let pair of expectedForThousands)
+                    expect(AxisHelper.calculateAxisPrecision(pair[0] / 1000, 1000, "0\u2030")).toBe(pair[1]);
+            });
+
+            it('avoids extraneous precision', () => {
+                expect(AxisHelper.calculateAxisPrecision(0.05, 0)).toBe(2);
+                expect(AxisHelper.calculateAxisPrecision(0.05000000000000001, 0)).toBe(2);
+
+                expect(AxisHelper.calculateAxisPrecision(0.05, 1)).toBe(2);
+                expect(AxisHelper.calculateAxisPrecision(0.05000000000000001, 1)).toBe(2);
+
+                expect(AxisHelper.calculateAxisPrecision(0.05, 1, "0%")).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(0.05000000000000001, 1, "0%")).toBe(0);
+
+                // 0.05 / 1000 = 0.00005
+                expect(AxisHelper.calculateAxisPrecision(0.05, 1000)).toBe(5);
+                expect(AxisHelper.calculateAxisPrecision(0.05000000000000001, 1000)).toBe(5);
+
+                expect(AxisHelper.calculateAxisPrecision(500, 0)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(500.0000000000001, 0)).toBe(0);
+                
+                expect(AxisHelper.calculateAxisPrecision(500, 1)).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(500.0000000000001, 1)).toBe(0);
+
+                expect(AxisHelper.calculateAxisPrecision(500, 1, "0%")).toBe(0);
+                expect(AxisHelper.calculateAxisPrecision(500.0000000000001, 1, "0%")).toBe(0);
+
+                // 500 / 1000 = 0.5
+                expect(AxisHelper.calculateAxisPrecision(500, 1000)).toBe(1);
+                expect(AxisHelper.calculateAxisPrecision(500.0000000000001, 1000)).toBe(1);
             });
         });
 

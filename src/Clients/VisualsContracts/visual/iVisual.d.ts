@@ -415,6 +415,47 @@ declare module powerbi {
         /** The filter after analyzed. It will be the default filter if it has defaultValue and the pre-analyzed filter is undefined. */
         filter: ISemanticFilter;
     }
+    
+    export interface VisualTooltipShowEventArgs extends VisualTooltipMoveEventArgs {
+        dataItems: VisualTooltipDataItem[];
+    }
+    
+    export interface VisualTooltipMoveEventArgs {
+        coordinates: number[];
+        isTouchEvent: boolean;
+        dataItems?: VisualTooltipDataItem[];
+        identities: SelectorsByColumn[];
+    }
+    
+    export interface VisualTooltipHideEventArgs {
+        isTouchEvent: boolean;
+        immediately: boolean;
+    }
+    
+    export interface VisualTooltipDataItem {
+        displayName: string;
+        value: string;
+        color?: string;
+        header?: string;
+        opacity?: string;
+    }
+    
+    export interface IVisualHostTooltipService {
+        /** Show a tooltip. */
+        show(args: VisualTooltipShowEventArgs): void;
+
+        /** Move a visible tooltip. */
+        move(args: VisualTooltipMoveEventArgs): void;
+
+        /** Hide a tooltip. */
+        hide(args: VisualTooltipHideEventArgs): void;
+
+        /** Gets the container that tooltip elements will be appended to. */
+        container(): Element;
+
+        /** Indicates if tooltips are enabled or not. */
+        enabled(): boolean;
+    }
 
     /** Defines behavior for IVisual interaction with the host environment. */
     export interface IVisualHostServices {
@@ -501,6 +542,12 @@ declare module powerbi {
         setIdentityDisplayNames(displayNamesIdentityPairs: DisplayNameIdentityPair[]): void;
         
         visualCapabilitiesChanged?(): void;
+        
+        /** 
+         * Gets the tooltip service.
+         * NOTE: This is a preview API.
+         */
+        tooltips(): IVisualHostTooltipService; 
     }
 
     export interface DisplayNameIdentityPair {

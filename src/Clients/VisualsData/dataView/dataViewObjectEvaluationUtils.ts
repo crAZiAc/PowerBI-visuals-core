@@ -28,7 +28,7 @@
 
 module powerbi.data {
     export interface DataViewObjectDefinitionsByRepetition {
-        metadataOnce?: DataViewObjectDefinitionsForSelector;
+        metadataOnce?: DataViewObjectDefinitionsForSelector[];
         userDefined?: DataViewObjectDefinitionsForSelector[];
         metadata?: DataViewObjectDefinitionsForSelector[];
         data: DataViewObjectDefinitionsForSelectorWithRule[];
@@ -52,12 +52,12 @@ module powerbi.data {
         export function evaluateDataViewObjects(
             evalContext: IEvalContext,
             objectDescriptors: DataViewObjectDescriptors,
-            objectDefns: DataViewNamedObjectDefinition[]): DataViewObjects {
+            objectDefns: DataViewNamedObjectDefinition[]): _.Dictionary<DataViewObject> {
             debug.assertValue(evalContext, 'evalContext');
             debug.assertValue(objectDescriptors, 'objectDescriptors');
             debug.assertValue(objectDefns, 'objectDefns');
 
-            let objects: DataViewObjects;
+            let objects: _.Dictionary<DataViewObject>;
 
             for (let j = 0, jlen = objectDefns.length; j < jlen; j++) {
                 let objectDefinition = objectDefns[j],
@@ -110,25 +110,19 @@ module powerbi.data {
             debug.assertValue(grouped, 'grouped');
             debug.assertAnyValue(selector, 'selector');
 
-            if (!selector) {
-                if (!grouped.metadataOnce)
-                    grouped.metadataOnce = { objects: [] };
-                return grouped.metadataOnce;
-            }
-
             let groupedObjects: DataViewObjectDefinitionsForSelector[];
-            if (selector.data) {
+            if (selector && selector.data) {
                 groupedObjects = grouped.data;
             }
-            else if (selector.metadata) {
+            else if (selector && selector.metadata) {
                 if (!grouped.metadata)
                     grouped.metadata = [];
                 groupedObjects = grouped.metadata;
             }
-            else if (selector.id) {
-                if (!grouped.userDefined)
-                    grouped.userDefined = [];
-                groupedObjects = grouped.userDefined;
+            else {
+                if (!grouped.metadataOnce)
+                    grouped.metadataOnce = [];
+                groupedObjects = grouped.metadataOnce;
             }
 
             debug.assert(!!groupedObjects, 'GroupedObjects is not defined.  Indicates malformed selector.');
@@ -277,8 +271,8 @@ module powerbi.data {
             else {
                 let metadataOnce = objectsForAllSelectors.metadataOnce;
                 if (!metadataOnce)
-                    metadataOnce = objectsForAllSelectors.metadataOnce = { selector: selector, objects: [] };
-                objectDefns = [metadataOnce];
+                    metadataOnce = objectsForAllSelectors.metadataOnce = [{ selector: selector, objects: [] }];
+                objectDefns = metadataOnce;
             }
 
             let targetMetadataObject = findWithMatchingSelector(objectDefns, selector);

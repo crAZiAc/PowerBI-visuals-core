@@ -41,11 +41,11 @@ module powerbi.visuals.sampleDataViews {
         private sampleData: number[] = [5, 10, 15, 20, 25];
         private categoryValues: string[] = ["BMW", "Mercedes", "Honda", "Toyota", "Ferrari"];
         private carImages: string[] = [
-            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals/resources/images/chicletSlicer/bmw.png",
-            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals/resources/images/chicletSlicer/mercedes.png",
-            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals/resources/images/chicletSlicer/honda.png",
-            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals/resources/images/chicletSlicer/toyota.gif",
-            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals/resources/images/chicletSlicer/ferrari.png"
+            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals-core/resources/images/chicletSlicer/bmw.png",
+            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals-core/resources/images/chicletSlicer/mercedes.png",
+            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals-core/resources/images/chicletSlicer/honda.png",
+            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals-core/resources/images/chicletSlicer/toyota.gif",
+            "https://raw.githubusercontent.com/Microsoft/PowerBI-visuals-core/resources/images/chicletSlicer/ferrari.png"
         ];
 
         private getDataViewMetadataColumn(groupName: any): DataViewMetadataColumn {

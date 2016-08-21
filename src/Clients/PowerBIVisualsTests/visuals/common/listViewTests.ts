@@ -104,7 +104,6 @@ module powerbitests {
                 }, DefaultWaitForRender);
             }, DefaultWaitForRender);
         });
-        
 
         xit("Reset scrollbar position when ResetScrollbar flag is set", (done) => {
             listViewBuilder.buildHtmlListView();

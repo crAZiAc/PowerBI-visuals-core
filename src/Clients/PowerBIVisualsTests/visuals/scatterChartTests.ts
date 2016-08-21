@@ -1894,18 +1894,16 @@ module powerbitests {
                 };
 
                 dataView.metadata.objects = {
-                    y1AxisReferenceLine: [
-                        {
-                            id: '0',
-                            object: yAxisReferenceLine,
+                    y1AxisReferenceLine: {
+                        $instances: {
+                            '0': yAxisReferenceLine,
                         },
-                    ],
-                    xAxisReferenceLine: [
-                        {
-                            id: '0',
-                            object: xAxisReferenceLine,
+                    },
+                    xAxisReferenceLine: {
+                        $instances: {
+                            '0': xAxisReferenceLine,
                         }
-                    ],
+                    },
                 };
 
                 v.onDataChanged({
@@ -1914,9 +1912,9 @@ module powerbitests {
 
                 setTimeout(() => {
                     let graphicsContext = $('.scatterChart .mainGraphicsContext');
-
-                    let yLine = $('.y1-ref-line');
-                    let yLabel = $('.labelGraphicsContext .label').eq(0);
+                    let refLines = $('[class^="reference-line"]');
+                    let yLine = refLines.eq(0);
+                    let yLabel = $('.labelGraphicsContext .label').eq(1);
                     helpers.verifyReferenceLine(
                         yLine,
                         yLabel,
@@ -1936,8 +1934,8 @@ module powerbitests {
                             },
                         });
 
-                    let xLine = $('.x-ref-line');
-                    let xLabel = $('.labelGraphicsContext .label').eq(1);
+                    let xLine = refLines.eq(1);
+                    let xLabel = $('.labelGraphicsContext .label').eq(0);
                     helpers.verifyReferenceLine(
                         xLine,
                         xLabel,
@@ -1976,8 +1974,9 @@ module powerbitests {
                     });
 
                     setTimeout(() => {
-                        yLine = $('.y1-ref-line');
-                        yLabel = $('.labelGraphicsContext .label').eq(0);
+                        refLines = $('[class^="reference-line"]');
+                        yLine = refLines.eq(1);
+                        yLabel = $('.labelGraphicsContext .label').eq(1);
                         helpers.verifyReferenceLine(
                             yLine,
                             yLabel,
@@ -1997,8 +1996,8 @@ module powerbitests {
                                 },
                             });
 
-                        xLine = $('.x-ref-line');
-                        xLabel = $('.labelGraphicsContext .label').eq(1);
+                        xLine = refLines.eq(0);
+                        xLabel = $('.labelGraphicsContext .label').eq(0);
                         helpers.verifyReferenceLine(
                             xLine,
                             xLabel,
@@ -2029,13 +2028,128 @@ module powerbitests {
                         });
 
                         setTimeout(() => {
-                            expect($('.y1-ref-line').length).toBe(0);
-                            expect($('.x-ref-line').length).toBe(0);
+                            expect($('[class^="reference-line"]').length).toBe(0);
                             expect($('.scatterChart .labelGraphicsContext .label').length).toBe(0);
 
                             done();
                         }, DefaultWaitForRender);
                     }, DefaultWaitForRender);
+                }, DefaultWaitForRender);
+            });
+
+            it('scatter charts should support rendering multiple reference lines', (done) => {
+                let categoryIdentities: powerbi.DataViewScopeIdentity[] = [
+                    mocks.dataViewScopeIdentity('a'),
+                    mocks.dataViewScopeIdentity('b'),
+                    mocks.dataViewScopeIdentity('c'),
+                    mocks.dataViewScopeIdentity('d'),
+                    mocks.dataViewScopeIdentity('e'),
+                ];
+
+                let refLineColor1 = '#ff0000';
+
+                let dataView: powerbi.DataView = {
+                    metadata: dataViewMetadataFourColumn,
+                    categorical: {
+                        categories: [{
+                            source: dataViewMetadataFourColumn.columns[0],
+                            values: ['a', 'b', 'c', 'd', 'e'],
+                            identity: categoryIdentities,
+                        }],
+                        values: DataViewTransform.createValueColumns([
+                            {
+                                source: dataViewMetadataFourColumn.columns[1],
+                                values: [110, 120, 130, 140, 150]
+                            }, {
+                                source: dataViewMetadataFourColumn.columns[2],
+                                values: [310, 320, 330, 340, 350]
+                            }, {
+                                source: dataViewMetadataFourColumn.columns[3],
+                                values: [210, 220, 230, 240, 250]
+                            }])
+                    }
+                };
+
+                let yAxisReferenceLine: powerbi.DataViewObject = {
+                    show: true,
+                    value: 340,
+                    lineColor: { solid: { color: refLineColor1 } },
+                    transparency: 60,
+                    style: powerbi.visuals.lineStyle.dashed,
+                    position: powerbi.visuals.referenceLinePosition.back,
+                    dataLabelShow: true,
+                    dataLabelColor: { solid: { color: refLineColor1 } },
+                    dataLabelDecimalPoints: 0,
+                    dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                    dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                    dataLabelDisplayUnits: 0,
+                };
+
+                let referenceLine: powerbi.DataViewObject = {
+                    show: true,
+                    value: 500,
+                    lineColor: { solid: { color: refLineColor1 } },
+                    transparency: 60,
+                    style: lineStyle.dashed,
+                    position: powerbi.visuals.referenceLinePosition.front,
+                    dataLabelShow: false,
+                    dataLabelColor: { solid: { color: refLineColor1 } },
+                    dataLabelDecimalPoints: 0,
+                    dataLabelHorizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                    dataLabelVerticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                    dataLabelDisplayUnits: 0,
+                };
+
+                dataView.metadata.objects = {
+                    y1AxisReferenceLine: {
+                        $instances: {
+                            '0': yAxisReferenceLine,
+                            '1': referenceLine,
+                        }
+                    }
+                };
+
+                v.onDataChanged({
+                    dataViews: [dataView]
+                });
+
+                setTimeout(() => {
+                    let graphicsContext = $('.scatterChart .mainGraphicsContext');
+                    let yLine = $('.reference-line-back');
+                    let yLabel = $('.labelGraphicsContext .label').eq(0);
+                    helpers.verifyReferenceLine(
+                        yLine,
+                        yLabel,
+                        graphicsContext,
+                        {
+                            inFront: false,
+                            isHorizontal: true,
+                            color: refLineColor1,
+                            style: powerbi.visuals.lineStyle.dashed,
+                            opacity: 0.4,
+                            label: {
+                                color: refLineColor1,
+                                horizontalPosition: powerbi.visuals.referenceLineDataLabelHorizontalPosition.left,
+                                text: '340',
+                                verticalPosition: powerbi.visuals.referenceLineDataLabelVerticalPosition.above,
+                                displayUnits: 0,
+                            },
+                        });
+
+                    let refLine = $('.reference-line-front');
+                    helpers.verifyReferenceLine(
+                        refLine,
+                        null,
+                        graphicsContext,
+                        {
+                            inFront: true,
+                            isHorizontal: true,
+                            color: refLineColor1,
+                            style: lineStyle.dashed,
+                            opacity: 0.4,
+                            label: null,
+                        });
+                    done();
                 }, DefaultWaitForRender);
             });
 
@@ -5124,7 +5238,7 @@ module powerbitests {
             dataView.metadata.objects = { categoryLabels: { show: true } };
 
             let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors; 
-            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/false, /*tooltipBucketEnabled*/true);
+            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/false);
 
             let dataPoints = scatterChartData.dataPoints;
             expect(dataPoints[0].formattedCategory.getValue()).toBe("a");
@@ -5188,7 +5302,7 @@ module powerbitests {
             };
 
             let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
-            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/false, /*tooltipBucketEnabled*/true);
+            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/false);
 
             expect(scatterChartData.dataPoints[0].tooltipInfo).toBeUndefined();
         });
@@ -5222,12 +5336,12 @@ module powerbitests {
 
             let actualTooltips = _.map(dataPoints, d => JSON.stringify(d.tooltipInfo));
             let expectTooltips = _.map([
-                [{ displayName: 'category', value: '2012' }, { displayName: "series", value: "(Blank)" }, { displayName: 'x', value: '150.00' }, { displayName: 'y', value: '30' }, { displayName: 'size', value: '100' }],
-                [{ displayName: 'category', value: '2012' }, { displayName: 'series', value: 'Canada' }, { displayName: 'x', value: '100.00' }, { displayName: 'y', value: '300' }, { displayName: 'size', value: '150' }],
-                [{ displayName: 'category', value: '2011' }, { displayName: "series", value: "(Blank)" }, { displayName: 'x', value: '177.00' }, { displayName: 'y', value: '25' }, { displayName: 'size', value: '200' }],
-                [{ displayName: 'category', value: '2011' }, { displayName: 'series', value: 'Canada' }, { displayName: 'x', value: '149.00' }, { displayName: 'y', value: '250' }, { displayName: 'size', value: '250' }],
-                [{ displayName: 'category', value: '2010' }, { displayName: "series", value: "(Blank)" }, { displayName: 'x', value: '157.00' }, { displayName: 'y', value: '28' }, { displayName: 'size', value: '300' }],
-                [{ displayName: 'category', value: '2010' }, { displayName: 'series', value: 'Canada' }, { displayName: 'x', value: '144.00' }, { displayName: 'y', value: '280' }, { displayName: 'size', value: '350' }],
+                [{ displayName: 'category', value: '2012' }, { displayName: "series", value: "(Blank)" }, { displayName: 'x', value: '150.00' }, { displayName: 'y', value: '30' }, { displayName: 'size', value: '100' }, { "displayName": "tooltips", "value": "10" }],
+                [{ displayName: 'category', value: '2012' }, { displayName: 'series', value: 'Canada' }, { displayName: 'x', value: '100.00' }, { displayName: 'y', value: '300' }, { displayName: 'size', value: '150' }, { "displayName": "tooltips", "value": "10" }],
+                [{ displayName: 'category', value: '2011' }, { displayName: "series", value: "(Blank)" }, { displayName: 'x', value: '177.00' }, { displayName: 'y', value: '25' }, { displayName: 'size', value: '200' }, { "displayName": "tooltips", "value": "20" }],
+                [{ displayName: 'category', value: '2011' }, { displayName: 'series', value: 'Canada' }, { displayName: 'x', value: '149.00' }, { displayName: 'y', value: '250' }, { displayName: 'size', value: '250' }, { "displayName": "tooltips", "value": "20" }],
+                [{ displayName: 'category', value: '2010' }, { displayName: "series", value: "(Blank)" }, { displayName: 'x', value: '157.00' }, { displayName: 'y', value: '28' }, { displayName: 'size', value: '300' }, { "displayName": "tooltips", "value": "30" }],
+                [{ displayName: 'category', value: '2010' }, { displayName: 'series', value: 'Canada' }, { displayName: 'x', value: '144.00' }, { displayName: 'y', value: '280' }, { displayName: 'size', value: '350' }, { "displayName": "tooltips", "value": "30" }],
             ], d => JSON.stringify(d));
 
             actualTooltips.sort();
@@ -5275,7 +5389,7 @@ module powerbitests {
             };
 
             let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
-            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/true, /*tooltipBucketEnabled*/true);
+            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/true);
             expect(scatterChartData.dataPoints[0].formattedCategory.getValue()).toBe("(Blank)");
             expect(scatterChartData.dataPoints[0].tooltipInfo).toEqual([{ displayName: 'category', value: '(Blank)' }, { displayName: 'x', value: '110' }, { displayName: 'y', value: '210' }, { displayName: 'size', value: '310' }, { displayName: 'tooltips', value: '10' }]);
         });
@@ -5482,7 +5596,7 @@ module powerbitests {
             let dataView: powerbi.DataView = getDataViewMultiSeries();
 
             let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
-            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/true, /*tooltipBucketEnabled*/true).dataPoints;
+            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/true).dataPoints;
             expect(scatterChartData[0].formattedCategory.getValue()).toBe('1/1/2012');
             expect(scatterChartData[0].x).toBe(150);
             expect(scatterChartData[0].y).toBe(30);
@@ -6188,7 +6302,7 @@ module powerbitests {
             };
 
             let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
-            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/true, /*tooltipBucketEnabled*/true);
+            let scatterChartData = ScatterChart.converter(dataView, createConverterOptions(viewport, colors), /*playFrameInfo*/undefined, /*tooltipsEnabled*/true);
             let dataPoints = scatterChartData.dataPoints;
 
             // TODO: this should be showing gradient values as well.

@@ -27,8 +27,8 @@
 /// <reference path="../_references.ts"/>
 
 module powerbi.visuals {
-    export function getColumnChartCapabilities(transposeAxes: boolean = false): VisualCapabilities {
-        return {
+    export function getColumnChartCapabilities(transposeAxes: boolean = false, isStacked: boolean = false): VisualCapabilities {
+        let capabilities: VisualCapabilities = {
             dataRoles: [
                 {
                     name: 'Category',
@@ -53,6 +53,11 @@ module powerbi.visuals {
                     displayName: data.createDisplayNameGetter('Role_DisplayName_Gradient'),
                     description: data.createDisplayNameGetter('Role_DisplayName_GradientDescription'),
                     requiredTypes: [{ numeric: true }, { integer: true }],
+                    joinPredicate: JoinPredicateBehavior.None,
+                }, {
+                    name: 'Tooltips',
+                    kind: VisualDataRoleKind.Measure,
+                    displayName: data.createDisplayNameGetter('Role_DisplayName_Tooltips'),
                     joinPredicate: JoinPredicateBehavior.None,
                 }
             ],
@@ -145,37 +150,7 @@ module powerbi.visuals {
                         style: StandardObjectProperties.referenceLineStyle,
                         position: StandardObjectProperties.referenceLinePosition,
                         dataLabelShow: StandardObjectProperties.dataLabelShow,
-                        dataLabelColor: StandardObjectProperties.dataLabelColor,
-                        dataLabelDecimalPoints: StandardObjectProperties.dataLabelDecimalPoints,
-                        dataLabelHorizontalPosition: StandardObjectProperties.dataLabelHorizontalPosition,
-                        dataLabelVerticalPosition: StandardObjectProperties.dataLabelVerticalPosition,
-                        dataLabelDisplayUnits: StandardObjectProperties.dataLabelDisplayUnits,
-                    },
-                },
-                referenceLine: {
-                    displayName: data.createDisplayNameGetter('Visual_Reference_Line'),
-                    description: data.createDisplayNameGetter('Visual_Reference_Line_Description'),
-                    properties: {
-                        show: StandardObjectProperties.show,
-                        displayName: {
-                            displayName: data.createDisplayNameGetter('Visual_Reference_Line_DisplayName'),
-                            description: data.createDisplayNameGetter('Visual_Reference_Line_DisplayName_Description'),
-                            type: { text: true } 
-                        },
-                        value: {
-                            displayName: data.createDisplayNameGetter('Visual_Reference_Line_Value'),
-                            description: data.createDisplayNameGetter('Visual_Reference_Line_Value_Description'),
-                            type: { numeric: true }
-                        },
-                        lineColor: StandardObjectProperties.lineColor,
-                        transparency: {
-                            displayName: data.createDisplayNameGetter('Visual_Reference_Line_Transparency'),
-                            description: data.createDisplayNameGetter('Visual_Reference_Line_Transparency_Description'),
-                            type: { numeric: true }
-                        },
-                        style: StandardObjectProperties.referenceLineStyle,
-                        position: StandardObjectProperties.referenceLinePosition,
-                        dataLabelShow: StandardObjectProperties.dataLabelShow,
+                        dataLabelText: StandardObjectProperties.dataLabelText,
                         dataLabelColor: StandardObjectProperties.dataLabelColor,
                         dataLabelDecimalPoints: StandardObjectProperties.dataLabelDecimalPoints,
                         dataLabelHorizontalPosition: StandardObjectProperties.dataLabelHorizontalPosition,
@@ -285,7 +260,7 @@ module powerbi.visuals {
                     values: {
                         group: {
                             by: 'Series',
-                            select: [{ for: { in: 'Y' } }, { bind: { to: 'Gradient' } }],
+                            select: [{ for: { in: 'Y' } }, { bind: { to: 'Gradient' } }, { for: { in: 'Tooltips' } }],
                             dataReductionAlgorithm: { top: { count: 60 } }
                         }
                     },
@@ -323,6 +298,42 @@ module powerbi.visuals {
                 roles: ['Category']
             },
         };
+
+        if (!isStacked) {
+            capabilities.objects['referenceLine'] = {
+                displayName: data.createDisplayNameGetter('Visual_Reference_Line'),
+                description: data.createDisplayNameGetter('Visual_Reference_Line_Description'),
+                properties: {
+                    show: StandardObjectProperties.show,
+                    displayName: {
+                        displayName: data.createDisplayNameGetter('Visual_Reference_Line_DisplayName'),
+                        description: data.createDisplayNameGetter('Visual_Reference_Line_DisplayName_Description'),
+                        type: { text: true } 
+                    },
+                    value: {
+                        displayName: data.createDisplayNameGetter('Visual_Reference_Line_Value'),
+                        description: data.createDisplayNameGetter('Visual_Reference_Line_Value_Description'),
+                        type: { numeric: true }
+                    },
+                    lineColor: StandardObjectProperties.lineColor,
+                    transparency: {
+                        displayName: data.createDisplayNameGetter('Visual_Reference_Line_Transparency'),
+                        description: data.createDisplayNameGetter('Visual_Reference_Line_Transparency_Description'),
+                        type: { numeric: true }
+                    },
+                    style: StandardObjectProperties.referenceLineStyle,
+                    position: StandardObjectProperties.referenceLinePosition,
+                    dataLabelShow: StandardObjectProperties.dataLabelShow,
+                    dataLabelColor: StandardObjectProperties.dataLabelColor,
+                    dataLabelDecimalPoints: StandardObjectProperties.dataLabelDecimalPoints,
+                    dataLabelHorizontalPosition: StandardObjectProperties.dataLabelHorizontalPosition,
+                    dataLabelVerticalPosition: StandardObjectProperties.dataLabelVerticalPosition,
+                    dataLabelDisplayUnits: StandardObjectProperties.dataLabelDisplayUnits,
+                },
+            };
+        }
+
+        return capabilities;
     }
 
     export const columnChartProps = {

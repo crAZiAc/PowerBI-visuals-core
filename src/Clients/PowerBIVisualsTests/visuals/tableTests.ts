@@ -458,80 +458,83 @@ module powerbitests {
     //#endregion
     //#endregion
 
-    describe("Table", () => {
-        it("Table registered capabilities", () => {
-            expect(powerbi.visuals.plugins.table.capabilities).toEqual(tableCapabilities);
-        });
-
-        it("Capabilities should include dataViewMappings", () => {
-            expect(tableCapabilities.dataViewMappings).toBeDefined();
-        });
-
-        it("Capabilities should include dataRoles", () => {
-            expect(tableCapabilities.dataRoles).toBeDefined();
-        });
-
-        it("Capabilities should suppressDefaultTitle", () => {
-            expect(tableCapabilities.suppressDefaultTitle).toBe(true);
-        });
-
-        it("FormatString property should match calculated", () => {
-            expect(powerbi.data.DataViewObjectDescriptors.findFormatString(tableCapabilities.objects)).toEqual(TablixObjects.PropColumnFormatString.getPropertyID());
-        });
-
-        it("CustomizeQuery picks up enabled total", () => {
-            let dataViewMapping = createCompiledDataViewMapping(tableTotals);
-
-            Table.customizeQuery({
-                dataViewMappings: [dataViewMapping]
+    describe("Table Visual", () => {
+        describe("Capabilities", () => {
+            it(" is registered", () => {
+                expect(powerbi.visuals.plugins.table.capabilities).toEqual(tableCapabilities);
             });
 
-            let rows = <CompiledDataViewRoleForMapping>dataViewMapping.table.rows;
-            expect(rows.for.in.subtotalType).toEqual(CompiledSubtotalType.Before);
-        });
-
-        it("CustomizeQuery picks up disabled total", () => {
-            let dataViewMapping = createCompiledDataViewMapping(tableNoTotals);
-
-            powerbi.visuals.Table.customizeQuery({
-                dataViewMappings: [dataViewMapping]
+            it(" has dataViewMappings", () => {
+                expect(tableCapabilities.dataViewMappings).toBeDefined();
             });
 
-            let rows = <CompiledDataViewRoleForMapping>dataViewMapping.table.rows;
-            expect(rows.for.in.subtotalType).toEqual(CompiledSubtotalType.None);
-        });
-
-        it("CustomizeQuery handles missing settings", () => {
-            let dataViewMapping = createCompiledDataViewMapping();
-
-            Table.customizeQuery({
-                dataViewMappings: [dataViewMapping]
+            it(" has dataRoles", () => {
+                expect(tableCapabilities.dataRoles).toBeDefined();
             });
 
-            // Total should be enabled by default
-            let rows = <CompiledDataViewRoleForMapping>dataViewMapping.table.rows;
-            expect(rows.for.in.subtotalType).toEqual(CompiledSubtotalType.Before);
-        });
-
-        it("CustomizeQuery handles missing subtotal settings", () => {
-            let objects: DataViewObjects = {
-                general: {
-                    totals: undefined,
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                }
-            };
-            let dataViewMapping = createCompiledDataViewMapping(objects);
-
-            Table.customizeQuery({
-                dataViewMappings: [dataViewMapping]
+            it(" disables DefaultTitle", () => {
+                expect(tableCapabilities.suppressDefaultTitle).toBe(true);
             });
 
-            // Total should be enabled by default
-            let rows = <CompiledDataViewRoleForMapping>dataViewMapping.table.rows;
-            expect(rows.for.in.subtotalType).toEqual(CompiledSubtotalType.Before);
+            it(" uses correct property for FormatString", () => {
+                expect(powerbi.data.DataViewObjectDescriptors.findFormatString(tableCapabilities.objects)).toEqual(TablixObjects.PropColumnFormatString.getPropertyID());
+            });
         });
 
+        describe("Customize Query", () => {
+            it(" picks up enabled total", () => {
+                let dataViewMapping = createCompiledDataViewMapping(tableTotals);
+
+                Table.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
+
+                let rows = <CompiledDataViewRoleForMapping>dataViewMapping.table.rows;
+                expect(rows.for.in.subtotalType).toEqual(CompiledSubtotalType.Before);
+            });
+
+            it(" picks up disabled total", () => {
+                let dataViewMapping = createCompiledDataViewMapping(tableNoTotals);
+
+                powerbi.visuals.Table.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
+
+                let rows = <CompiledDataViewRoleForMapping>dataViewMapping.table.rows;
+                expect(rows.for.in.subtotalType).toEqual(CompiledSubtotalType.None);
+            });
+
+            it(" handles missing settings", () => {
+                let dataViewMapping = createCompiledDataViewMapping();
+
+                Table.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
+
+                // Total should be enabled by default
+                let rows = <CompiledDataViewRoleForMapping>dataViewMapping.table.rows;
+                expect(rows.for.in.subtotalType).toEqual(CompiledSubtotalType.Before);
+            });
+
+            it(" handles missing subtotal settings", () => {
+                let objects: DataViewObjects = {
+                    general: {
+                        totals: undefined,
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                    }
+                };
+                let dataViewMapping = createCompiledDataViewMapping(objects);
+
+                Table.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
+
+                // Total should be enabled by default
+                let rows = <CompiledDataViewRoleForMapping>dataViewMapping.table.rows;
+                expect(rows.for.in.subtotalType).toEqual(CompiledSubtotalType.Before);
+            });
+        });
         function createCompiledDataViewMapping(objects?: DataViewObjects): CompiledDataViewMapping {
             return {
                 metadata: {
@@ -549,7 +552,7 @@ module powerbitests {
         }
     });
 
-    describe("Table hierarchy navigator tests", () => {
+    describe("Table Hierarchy Navigator", () => {
         function createNavigator(dataViewTable: DataViewTable): TableHierarchyNavigator {
             return new TableHierarchyNavigator(dataViewTable, true, valueFormatter.formatVariantMeasureValue);
         }
@@ -581,7 +584,6 @@ module powerbitests {
         });
 
         describe("getLeafAt", () => {
-
             it("returns the correct leaf from the row dimension", () => {
                 let dataView = tableTwoGroupsThreeMeasures;
                 let navigator = createNavigator(dataView.table);
@@ -637,7 +639,6 @@ module powerbitests {
         });
 
         describe("getIndex", () => {
-
             it("returns the correct index for columns", () => {
                 let dataView = tableThreeGroupsThreeMeasuresInterleaved;
                 let navigator = createNavigator(dataView.table);
@@ -679,7 +680,6 @@ module powerbitests {
         });
 
         describe("isLeaf", () => {
-
             it("returns true for columns", () => {
                 let dataView = tableThreeGroupsThreeMeasuresInterleaved;
                 let navigator = createNavigator(dataView.table);
@@ -709,7 +709,6 @@ module powerbitests {
         });
 
         describe("getChildren", () => {
-
             it("returns null for column", () => {
                 let dataView = tableTwoGroupsThreeMeasures;
                 let navigator = createNavigator(dataView.table);
@@ -741,7 +740,6 @@ module powerbitests {
         });
 
         describe("getAt", () => {
-
             it("returns the correct item from the row dimension", () => {
                 let dataView = tableTwoGroupsThreeMeasures;
                 let navigator = createNavigator(dataView.table);
@@ -826,6 +824,7 @@ module powerbitests {
                 expect(navigator.isLastItem(columns[0], columns)).toBe(true);
             });
         });
+
         describe("getIntersection", () => {
             it("returns values in the intersection", () => {
                 let dataView = tableThreeGroupsThreeMeasuresInterleaved;
@@ -879,7 +878,7 @@ module powerbitests {
                 expect(fillResult<string>(navigator, rows, columns, "kpiContent")).toEqual(expectedValues);
             });
 
-            it("sets proper position for complete data", () => {
+            it(" sets proper position for complete data", () => {
                 let dataView = tableOneMeasure;
                 let visualTable = powerbi.visuals.Table.converter(dataView);
                 let rows = visualTable.visualRows;
@@ -897,7 +896,7 @@ module powerbitests {
                 expect(dataPoint.position.row.isLast).toBe(true);
             });
 
-            it("sets proper position for incomplete data", () => {
+            it(" sets proper position for incomplete data", () => {
                 let dataView = tableOneMeasure;
                 let visualTable = powerbi.visuals.Table.converter(dataView);
                 let rows = visualTable.visualRows;
@@ -913,6 +912,42 @@ module powerbitests {
                 expect(dataPoint.position.row.index).toBe(0);
                 expect(dataPoint.position.row.isFirst).toBe(true);
                 expect(dataPoint.position.row.isLast).toBe(false);
+            });
+
+            it(" sets total as FALSE for values and TRUE for totals", () => {
+                let dataView = tableTwoGroupsThreeMeasures;
+                let visualTable = powerbi.visuals.Table.converter(dataView);
+                let rows = visualTable.visualRows;
+                let columns = dataView.table.columns;
+                let navigator = new TableHierarchyNavigator(visualTable, false, valueFormatter.formatVariantMeasureValue);
+
+                let cell: TablixUtils.TablixVisualCell;
+
+                let totalRow: powerbi.visuals.TableTotal = {
+                    totalCells: ["Total", null, 763, 770, 777],
+                };
+
+                for (let column of columns) {
+                    for (let row of rows) {
+                        cell = navigator.getIntersection(row, column);
+                        expect(cell.isColumnGrandTotal).toBe(false);
+                        expect(cell.isColumnSubTotal).toBe(false);
+                        expect(cell.isRowGrandTotal).toBe(false);
+                        expect(cell.isRowSubTotal).toBe(false);
+                    }
+
+                    cell = navigator.getIntersection(totalRow, column);
+                    if (_.indexOf(columns, column) < 0) {
+                        expect(cell).toBeUndefined();
+                    }
+                    else {
+                        expect(cell).toBeDefined();
+                        expect(cell.isColumnGrandTotal).toBe(false);
+                        expect(cell.isColumnSubTotal).toBe(false);
+                        expect(cell.isRowGrandTotal).toBe(true);
+                        expect(cell.isRowSubTotal).toBe(false);
+                    }
+                }
             });
 
             function fillResult<T>(
@@ -937,7 +972,6 @@ module powerbitests {
         });
 
         describe("getCorner", () => {
-
             it("always returns null", () => {
                 let dataView = tableThreeGroupsThreeMeasuresInterleaved;
                 let navigator = createNavigator(dataView.table);
@@ -1754,7 +1788,7 @@ module powerbitests {
 
                 expect(layoutManager["_allowHeaderResize"]).toBe(false);
                 let viewMode = powerbi.ViewMode.Edit;
-                tableVisual["hostServices"] = <any> {
+                tableVisual["hostServices"] = <any>{
                     getViewMode: () => { return viewMode; }
                 };
                 tableVisual.onViewModeChanged(viewMode);
@@ -1805,7 +1839,7 @@ module powerbitests {
         }
 
         function validateTable(expectedValues: PrimitiveValue[][]): void {
-            tablixHelper.validateTable(<string[][]>expectedValues, ".tablixCanvas tr");
+            tablixHelper.validateTablixTextAndTooltip(<string[][]>expectedValues, ".tablixCanvas tr");
         }
 
         function validateClassNames(expectedValues: string[][]): void {
@@ -2784,7 +2818,7 @@ module powerbitests {
         });
 
         function validateTable(expectedValues: PrimitiveValue[][]): void {
-            tablixHelper.validateTable(<string[][]>expectedValues, ".tablixDashboard tr");
+            tablixHelper.validateTablixTextAndTooltip(<string[][]>expectedValues, ".tablixDashboard tr");
         }
 
         function validateClassNames(expectedValues: string[][]): void {
@@ -3353,6 +3387,357 @@ module powerbitests {
         });
     });
 
+    describe("Table Style Presets", () => {
+        let theme: powerbi.IVisualStyle = {
+            colorPalette: {
+                background: { value: "#FFF" },
+                foreground: { value: "#333" },
+                tableAccent: { value: "#00B8AA" },
+                dataColors: undefined,
+                negative: undefined,
+                neutral: undefined,
+                positive: undefined,
+                selection: undefined,
+                separator: undefined,
+            },
+            isHighContrast: false,
+            labelText: undefined,
+            maxMarginFactor: 0,
+            subTitleText: undefined,
+            titleText: undefined,
+        };
+
+        let tableStylePresets = powerbi.visuals.stylePresets.tableStylePresets();
+
+        let expectedDefinitions: _.Dictionary<TableStylePresetElements> = {
+            None: {
+                grid: {
+                    outlineColor: "#CCC",
+                    outlineWeight: 1,
+                    gridVertical: false,
+                    gridVerticalColor: "#E8E8E8",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: true,
+                    gridHorizontalColor: "#E8E8E8",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 0,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#666",
+                    backColor: undefined,
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#333",
+                    backColorPrimary: undefined,
+                    fontColorSecondary: "#333",
+                    backColorSecondary: undefined,
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#333",
+                    backColor: undefined,
+                },
+            },
+            Minimal: {
+                grid: {
+                    outlineColor: "#00B8AA",
+                    outlineWeight: 1,
+                    gridVertical: false,
+                    gridVerticalColor: "#E7E7E7",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: true,
+                    gridHorizontalColor: "#E7E7E7",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 3,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#333",
+                    backColor: "#FFF",
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#333",
+                    backColorPrimary: "#FFF",
+                    fontColorSecondary: "#333",
+                    backColorSecondary: "#FFF",
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#333",
+                    backColor: "#FFF",
+                },
+            },
+            BoldHeader: {
+                grid: {
+                    outlineColor: "#00B8AA",
+                    outlineWeight: 1,
+                    gridVertical: false,
+                    gridVerticalColor: "#E7E7E7",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: true,
+                    gridHorizontalColor: "#E7E7E7",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 3,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#333",
+                    backColorPrimary: "#FFF",
+                    fontColorSecondary: "#333",
+                    backColorSecondary: "#FFF",
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#333",
+                    backColor: "#FFF",
+                },
+            },
+            AlternatingRows: {
+                grid: {
+                    outlineColor: "#00B8AA",
+                    outlineWeight: 1,
+                    gridVertical: false,
+                    gridVerticalColor: "#E7E7E7",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: true,
+                    gridHorizontalColor: "#E7E7E7",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 3,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#333",
+                    backColorPrimary: "#FFF",
+                    fontColorSecondary: "#333",
+                    backColorSecondary: "#EFEFEF",
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+            },
+            ContrastAlternatingRows: {
+                grid: {
+                    outlineColor: "#00B8AA",
+                    outlineWeight: 1,
+                    gridVertical: false,
+                    gridVerticalColor: "#E7E7E7",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: true,
+                    gridHorizontalColor: "#E7E7E7",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 3,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#FFF",
+                    backColorPrimary: "#666666",
+                    fontColorSecondary: "#333",
+                    backColorSecondary: "#CCCCCC",
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+            },
+            FlashyRows: {
+                grid: {
+                    outlineColor: "#333",
+                    outlineWeight: 1,
+                    gridVertical: false,
+                    gridVerticalColor: "#FFF",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: false,
+                    gridHorizontalColor: "#FFF",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 3,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#333",
+                    backColor: "#FFF",
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#333",
+                    backColorPrimary: "#99E3DD",
+                    fontColorSecondary: "#333",
+                    backColorSecondary: "#33C6BB",
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#333",
+                    backColor: "#FFF",
+                },
+            },
+            BoldHeaderFlashyRows: {
+                grid: {
+                    outlineColor: "#FFF",
+                    outlineWeight: 1,
+                    gridVertical: false,
+                    gridVerticalColor: "#FFF",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: false,
+                    gridHorizontalColor: "#FFF",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 3,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#333",
+                    backColorPrimary: "#99E3DD",
+                    fontColorSecondary: "#333",
+                    backColorSecondary: "#33C6BB",
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+            },
+            Sparse: {
+                grid: {
+                    outlineColor: "#00B8AA",
+                    outlineWeight: 1,
+                    gridVertical: false,
+                    gridVerticalColor: "#D6D6D6",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: false,
+                    gridHorizontalColor: "#D6D6D6",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 6,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#333",
+                    backColorPrimary: "#FFF",
+                    fontColorSecondary: "#333",
+                    backColorSecondary: "#FFF",
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+            },
+            Condensed: {
+                grid: {
+                    outlineColor: "#00B8AA",
+                    outlineWeight: 1,
+                    gridVertical: true,
+                    gridVerticalColor: "#D6D6D6",
+                    gridVerticalWeight: 1,
+                    gridHorizontal: true,
+                    gridHorizontalColor: "#D6D6D6",
+                    gridHorizontalWeight: 1,
+                    rowPadding: 0,
+                },
+
+                columnHeaders: {
+                    outline: "BottomOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+
+                values: {
+                    outline: "None",
+                    fontColorPrimary: "#333",
+                    backColorPrimary: "#FFF",
+                    fontColorSecondary: "#333",
+                    backColorSecondary: "#FFF",
+                },
+
+                total: {
+                    outline: "TopOnly",
+                    fontColor: "#FFF",
+                    backColor: "#333",
+                },
+            },
+        };
+
+        it("has default 'None'", () => {
+            expect(tableStylePresets.defaultPresetName).toBe("None");
+        });
+
+        it("contains 9 items", () => {
+            expect(tableStylePresets.presets).toBeDefined();
+            expect(Object.getOwnPropertyNames(tableStylePresets.presets)).toHaveLength(9);
+        });
+
+        for (let stylePresetName in expectedDefinitions) {
+
+            describe(stylePresetName, () => {
+                let stylePreset: powerbi.VisualStylePreset = tableStylePresets.presets[stylePresetName];
+
+                it ("exists", () => {
+                    expect(stylePreset).toBeDefined();
+                });
+
+                it("has proper name", () => {
+                    expect(stylePreset.name).toBe(stylePresetName);
+                });
+
+                it("matches design", () => {
+                    assertStylePresetObjects(stylePreset.evaluate(theme), expectedDefinitions[stylePresetName]);
+                });
+            });
+        }
+    });
+
     function formatter(value: any, source: DataViewMetadataColumn): string {
         return valueFormatter.formatVariantMeasureValue(value, source, TablixObjects.PropColumnFormatString);
     }
@@ -3391,4 +3776,64 @@ module powerbitests {
         title: string;
         width: number;
     }
+
+    interface TableStylePresetElements {
+        grid: {
+            outlineColor: string;
+            outlineWeight: number;
+            gridVertical: boolean;
+            gridVerticalColor: string;
+            gridVerticalWeight: number;
+            gridHorizontal: boolean;
+            gridHorizontalColor: string;
+            gridHorizontalWeight: number;
+            rowPadding: number;
+        };
+
+        columnHeaders: {
+            outline: string;
+            fontColor: string;
+            backColor: string;
+        };
+
+        values: {
+            outline: string;
+            fontColorPrimary: string;
+            backColorPrimary: string;
+            fontColorSecondary: string;
+            backColorSecondary: string;
+        };
+
+        total: {
+            outline: string;
+            fontColor: string;
+            backColor: string;
+        };
+    };
+
+    function assertStylePresetObjects(actual: powerbi.data.DataViewObjectDefinitions, expected: TableStylePresetElements): void {
+        helpers.assertSolidFillDefinition(actual, "grid", "outlineColor", expected.grid.outlineColor);
+        helpers.assertSQConstantExpr(actual, "grid", "outlineWeight", expected.grid.outlineWeight);
+        helpers.assertSQConstantExpr(actual, "grid", "gridVertical", expected.grid.gridVertical);
+        helpers.assertSolidFillDefinition(actual, "grid", "gridVerticalColor", expected.grid.gridVerticalColor);
+        helpers.assertSQConstantExpr(actual, "grid", "gridVerticalWeight", expected.grid.gridVerticalWeight);
+        helpers.assertSQConstantExpr(actual, "grid", "gridHorizontal", expected.grid.gridHorizontal);
+        helpers.assertSolidFillDefinition(actual, "grid", "gridHorizontalColor", expected.grid.gridHorizontalColor);
+        helpers.assertSQConstantExpr(actual, "grid", "gridHorizontalWeight", expected.grid.gridHorizontalWeight);
+        helpers.assertSQConstantExpr(actual, "grid", "rowPadding", expected.grid.rowPadding);
+
+        helpers.assertSQConstantExpr(actual, "columnHeaders", "outline", expected.columnHeaders.outline);
+        helpers.assertSolidFillDefinition(actual, "columnHeaders", "fontColor", expected.columnHeaders.fontColor);
+        helpers.assertSolidFillDefinition(actual, "columnHeaders", "backColor", expected.columnHeaders.backColor);
+
+        helpers.assertSQConstantExpr(actual, "values", "outline", expected.values.outline);
+        helpers.assertSolidFillDefinition(actual, "values", "fontColorPrimary", expected.values.fontColorPrimary);
+        helpers.assertSolidFillDefinition(actual, "values", "backColorPrimary", expected.values.backColorPrimary);
+        helpers.assertSolidFillDefinition(actual, "values", "fontColorSecondary", expected.values.fontColorSecondary);
+        helpers.assertSolidFillDefinition(actual, "values", "backColorSecondary", expected.values.backColorSecondary);
+
+        helpers.assertSQConstantExpr(actual, "total", "outline", expected.total.outline);
+        helpers.assertSolidFillDefinition(actual, "total", "fontColor", expected.total.fontColor);
+        helpers.assertSolidFillDefinition(actual, "total", "backColor", expected.total.backColor);
+    };
 }

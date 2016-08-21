@@ -28,12 +28,16 @@
 
 module powerbitests {
     import ILegend = powerbi.visuals.ILegend;
+    import Legend = powerbi.visuals.Legend;
     import LegendIcon = powerbi.visuals.LegendIcon;
     import LegendPosition = powerbi.visuals.LegendPosition;
+    import LegendData = powerbi.visuals.LegendData;
     import IInteractivityService = powerbi.visuals.IInteractivityService;
     import IVisualHostServices = powerbi.IVisualHostServices;
     import Helpers = powerbitests.helpers;
     import MockBehavior = powerbitests.mocks.MockBehavior;
+    import ValueType = powerbi.ValueType;
+    import DataViewTransform = powerbi.data.DataViewTransform;
 
     describe("DOM validation", () => {
         let element: JQuery;
@@ -813,6 +817,307 @@ module powerbitests {
                 expect(color).toBe(jsCommon.StringExtensions.format(colorStyle, expectedDatum.color));
             }
         }
+    });
+
+    describe("buildSeriesLegendData", () => {
+        describe("Category, dynamic series, and value", () => {
+            let dataView: powerbi.DataView;
+            let metadata: powerbi.DataViewMetadata;
+            let seriesValues = ['A', 'B'];
+            let categoryValues = ['c', 'd', 'e'];
+            let seriesIdentities = [
+                mocks.dataViewScopeIdentity(seriesValues[0]),
+                mocks.dataViewScopeIdentity(seriesValues[1]),
+            ];
+            let categoryIdentities = [
+                mocks.dataViewScopeIdentity(categoryValues[0]),
+                mocks.dataViewScopeIdentity(categoryValues[1]),
+                mocks.dataViewScopeIdentity(categoryValues[2]),
+            ];
+            let legendData: LegendData;
+            let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
+            let fillProp = powerbi.visuals.lineChartProps.dataPoint.fill; // Using line because legend doesn't have its own fill prop
+
+            beforeEach(() => {
+                let valueIdentifier = powerbi.data.SQExprBuilder.fieldDef({ schema: 's', entity: 'e', column: 'value' });
+                let tooltipIdentifier = powerbi.data.SQExprBuilder.fieldDef({ schema: 's', entity: 'e', column: 'tooltip' });
+                let colorHelper = new powerbi.visuals.ColorHelper(colors, fillProp);
+                metadata = {
+                    columns: [
+                        {
+                            displayName: 'category',
+                            queryName: 'category',
+                            type: ValueType.fromDescriptor({ text: true }),
+                            roles: { Category: true }
+                        },
+                        {
+                            displayName: 'series',
+                            queryName: 'series',
+                            type: ValueType.fromDescriptor({ text: true }),
+                            roles: { Series: true }
+                        }, {
+                            displayName: 'value',
+                            queryName: 'value',
+                            isMeasure: true,
+                            type: ValueType.fromDescriptor({ numeric: true }),
+                            roles: { Y: true },
+                            groupName: seriesValues[0],
+                        }, {
+                            displayName: 'value',
+                            queryName: 'value',
+                            isMeasure: true,
+                            type: ValueType.fromDescriptor({ numeric: true }),
+                            roles: { Y: true },
+                            groupName: seriesValues[1],
+                        }]
+                };
+                dataView = {
+                    metadata: metadata,
+                    categorical: {
+                        categories: [{
+                            source: metadata.columns[0],
+                            values: categoryValues,
+                            identity: categoryIdentities,
+                        }],
+                        values: DataViewTransform.createValueColumns([
+                            {
+                                source: metadata.columns[2],
+                                values: [100, 200, 300],
+                                identity: seriesIdentities[0],
+                            }, {
+                                source: metadata.columns[3],
+                                values: [400, 500, 600],
+                                identity: seriesIdentities[1],
+                            }],
+                            [valueIdentifier, tooltipIdentifier],
+                            metadata.columns[1])
+                    }
+                };
+                legendData = Legend.buildSeriesLegendData(dataView, colorHelper, fillProp);
+            });
+            
+            it("Data point count", () => {
+                expect(legendData.dataPoints.length).toBe(2);
+            });
+
+            it("Data point color", () => {
+                let finalColors = colors.getAllColors();
+                expect(legendData.dataPoints[0].color).toBe(finalColors[0].value);
+                expect(legendData.dataPoints[1].color).toBe(finalColors[1].value);
+            });
+
+            it("Data point label", () => {
+                expect(legendData.dataPoints[0].label).toBe(seriesValues[0]);
+                expect(legendData.dataPoints[1].label).toBe(seriesValues[1]);
+            });
+
+            it("Data point count", () => {
+                expect(legendData.title).toBe('series');
+            });
+        });
+
+        describe("Category, date dynamic series, and value", () => {
+            let dataView: powerbi.DataView;
+            let metadata: powerbi.DataViewMetadata;
+            let seriesValues = [new Date('7/24/2015'), new Date('7/24/2016')];
+            let categoryValues = ['c', 'd', 'e'];
+            let seriesIdentities = [
+                mocks.dataViewScopeIdentity(seriesValues[0]),
+                mocks.dataViewScopeIdentity(seriesValues[1]),
+            ];
+            let categoryIdentities = [
+                mocks.dataViewScopeIdentity(categoryValues[0]),
+                mocks.dataViewScopeIdentity(categoryValues[1]),
+                mocks.dataViewScopeIdentity(categoryValues[2]),
+            ];
+            let legendData: LegendData;
+            let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
+            let fillProp = powerbi.visuals.lineChartProps.dataPoint.fill; // Using line because legend doesn't have its own fill prop
+            let formatStringProp = powerbi.visuals.lineChartProps.general.formatString;
+
+            beforeEach(() => {
+                let valueIdentifier = powerbi.data.SQExprBuilder.fieldDef({ schema: 's', entity: 'e', column: 'value' });
+                let tooltipIdentifier = powerbi.data.SQExprBuilder.fieldDef({ schema: 's', entity: 'e', column: 'tooltip' });
+                let colorHelper = new powerbi.visuals.ColorHelper(colors, fillProp);
+                metadata = {
+                    columns: [
+                        {
+                            displayName: 'category',
+                            queryName: 'category',
+                            type: ValueType.fromDescriptor({ text: true }),
+                            roles: { Category: true }
+                        },
+                        {
+                            displayName: 'series',
+                            queryName: 'series',
+                            type: ValueType.fromDescriptor({ dateTime: true }),
+                            roles: { Series: true },
+                            //format: '%M/%d/yyyy',
+                            objects: {
+                                general: {
+                                    formatString: '%M/%d/yyyy',
+                                }
+                            },
+                        }, {
+                            displayName: 'value',
+                            queryName: 'value',
+                            isMeasure: true,
+                            type: ValueType.fromDescriptor({ numeric: true }),
+                            roles: { Y: true },
+                            groupName: seriesValues[0],
+                        }, {
+                            displayName: 'value',
+                            queryName: 'value',
+                            isMeasure: true,
+                            type: ValueType.fromDescriptor({ numeric: true }),
+                            roles: { Y: true },
+                            groupName: seriesValues[1],
+                        }]
+                };
+                dataView = {
+                    metadata: metadata,
+                    categorical: {
+                        categories: [{
+                            source: metadata.columns[0],
+                            values: categoryValues,
+                            identity: categoryIdentities,
+                        }],
+                        values: DataViewTransform.createValueColumns([
+                            {
+                                source: metadata.columns[2],
+                                values: [100, 200, 300],
+                                identity: seriesIdentities[0],
+                            }, {
+                                source: metadata.columns[3],
+                                values: [400, 500, 600],
+                                identity: seriesIdentities[1],
+                            }],
+                            [valueIdentifier, tooltipIdentifier],
+                            metadata.columns[1])
+                    }
+                };
+                legendData = Legend.buildSeriesLegendData(dataView, colorHelper, formatStringProp);
+            });
+
+            it("Data point count", () => {
+                expect(legendData.dataPoints.length).toBe(2);
+            });
+
+            it("Data point color", () => {
+                let finalColors = colors.getAllColors();
+                expect(legendData.dataPoints[0].color).toBe(finalColors[0].value);
+                expect(legendData.dataPoints[1].color).toBe(finalColors[1].value);
+            });
+
+            it("Data point label", () => {
+                expect(legendData.dataPoints[0].label).toBe('7/24/2015');
+                expect(legendData.dataPoints[1].label).toBe('7/24/2016');
+            });
+
+            it("Data point count", () => {
+                expect(legendData.title).toBe('series');
+            });
+        });
+    });
+
+    describe("buildCategoryLegendData", () => {
+        describe("Category, dynamic series, and value", () => {
+            let dataView: powerbi.DataView;
+            let metadata: powerbi.DataViewMetadata;
+            let seriesValues = ['A', 'B'];
+            let categoryValues = ['c', 'd', 'e'];
+            let seriesIdentities = [
+                mocks.dataViewScopeIdentity(seriesValues[0]),
+                mocks.dataViewScopeIdentity(seriesValues[1]),
+            ];
+            let categoryIdentities = [
+                mocks.dataViewScopeIdentity(categoryValues[0]),
+                mocks.dataViewScopeIdentity(categoryValues[1]),
+                mocks.dataViewScopeIdentity(categoryValues[2]),
+            ];
+            let legendData: LegendData;
+            let colors = powerbi.visuals.visualStyles.create().colorPalette.dataColors;
+            let fillProp = powerbi.visuals.lineChartProps.dataPoint.fill; // Using line because legend doesn't have its own fill prop
+
+            beforeEach(() => {
+                let valueIdentifier = powerbi.data.SQExprBuilder.fieldDef({ schema: 's', entity: 'e', column: 'value' });
+                let tooltipIdentifier = powerbi.data.SQExprBuilder.fieldDef({ schema: 's', entity: 'e', column: 'tooltip' });
+                let colorHelper = new powerbi.visuals.ColorHelper(colors, fillProp);
+                metadata = {
+                    columns: [
+                        {
+                            displayName: 'category',
+                            queryName: 'category',
+                            type: ValueType.fromDescriptor({ text: true }),
+                            roles: { Category: true }
+                        },
+                        {
+                            displayName: 'series',
+                            queryName: 'series',
+                            type: ValueType.fromDescriptor({ text: true }),
+                            roles: { Series: true }
+                        }, {
+                            displayName: 'value',
+                            queryName: 'value',
+                            isMeasure: true,
+                            type: ValueType.fromDescriptor({ numeric: true }),
+                            roles: { Y: true },
+                            groupName: seriesValues[0],
+                        }, {
+                            displayName: 'value',
+                            queryName: 'value',
+                            isMeasure: true,
+                            type: ValueType.fromDescriptor({ numeric: true }),
+                            roles: { Y: true },
+                            groupName: seriesValues[1],
+                        }]
+                };
+                dataView = {
+                    metadata: metadata,
+                    categorical: {
+                        categories: [{
+                            source: metadata.columns[0],
+                            values: categoryValues,
+                            identity: categoryIdentities,
+                        }],
+                        values: DataViewTransform.createValueColumns([
+                            {
+                                source: metadata.columns[2],
+                                values: [100, 200, 300],
+                                identity: seriesIdentities[0],
+                            }, {
+                                source: metadata.columns[3],
+                                values: [400, 500, 600],
+                                identity: seriesIdentities[1],
+                            }],
+                            [valueIdentifier, tooltipIdentifier],
+                            metadata.columns[1])
+                    }
+                };
+                legendData = Legend.buildCategoryLegendData(dataView, colorHelper, fillProp, 'Category');
+            });
+
+            it("Data point count", () => {
+                expect(legendData.dataPoints.length).toBe(3);
+            });
+
+            it("Data point color", () => {
+                let finalColors = colors.getAllColors();
+                expect(legendData.dataPoints[0].color).toBe(finalColors[0].value);
+                expect(legendData.dataPoints[1].color).toBe(finalColors[1].value);
+                expect(legendData.dataPoints[2].color).toBe(finalColors[2].value);
+            });
+
+            it("Data point label", () => {
+                expect(legendData.dataPoints[0].label).toBe(categoryValues[0]);
+                expect(legendData.dataPoints[1].label).toBe(categoryValues[1]);
+                expect(legendData.dataPoints[2].label).toBe(categoryValues[2]);
+            });
+
+            it("Data point count", () => {
+                expect(legendData.title).toBe('category');
+            });
+        });
     });
 
     function createSelectionIdentity(key: number | string): powerbi.visuals.SelectionId {

@@ -42,7 +42,7 @@ module powerbi.extensibility.legacy {
     }
 
     export function getSelectors(args: DeprecatedSelectEventArgs): data.Selector[] {
-        if (!_.isEmpty(args.selectors)) {
+        if (args.selectors != null) {
             return args.selectors;
         }
         return args.data;

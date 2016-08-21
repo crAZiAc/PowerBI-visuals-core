@@ -132,6 +132,30 @@ module powerbitests {
             });
         });
 
+		it("multi select - select one, then another and deselect the first one", (done) => {
+            let sm = new SelectionManager({ hostServices: powerbitests.mocks.createVisualHostServices() });
+            let selectionId1 = SelectionIdBuilder.builder()
+                .withCategory(categoryColumn, 0)
+                .createSelectionId();
+
+            let selectionId2 = SelectionIdBuilder.builder()
+                .withCategory(categoryColumn, 1)
+                .createSelectionId();
+
+            expect(sm.getSelectionIds().length).toBe(0);
+
+            sm.select(selectionId1, true).then((ids) => {
+                expect(ids.length).toBe(1);
+                sm.select(selectionId2, true).then((ids) => {
+                    expect(ids.length).toBe(2);
+                    sm.select(selectionId1, true).then((ids) => {
+                        expect(ids.length).toBe(1);
+                        done();
+                    });
+                });
+            });
+        });
+
         it("multi select - select one, then another & clear", (done) => {
             let sm = new SelectionManager({ hostServices: powerbitests.mocks.createVisualHostServices() });
             let selectionId1 = SelectionIdBuilder.builder()

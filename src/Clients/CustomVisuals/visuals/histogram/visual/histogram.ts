@@ -27,27 +27,18 @@
 /// <reference path="../../../_references.ts"/>
 
 module powerbi.visuals.samples {
+    // jsCommon
     import PixelConverter = jsCommon.PixelConverter;
     import IStringResourceProvider = jsCommon.IStringResourceProvider;
     import createClassAndSelector = jsCommon.CssConstants.createClassAndSelector;
     import ClassAndSelector = jsCommon.CssConstants.ClassAndSelector;
-    import SelectionManager = powerbi.visuals.utility.SelectionManager;
-    import ValueFormatter = powerbi.visuals.valueFormatter;
-    import getAnimationDuration = powerbi.visuals.AnimatorCommon.GetAnimationDuration;
-    import IGenericAnimator = powerbi.visuals.IGenericAnimator;
-    import IMargin = powerbi.visuals.IMargin;
-    import TooltipEnabledDataPoint = powerbi.visuals.TooltipEnabledDataPoint;
-    import SelectionId = powerbi.visuals.SelectionId;
-    import IValueFormatter = powerbi.visuals.IValueFormatter;
-    import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
+
+    // powerbi
+    import VisualCapabilities = powerbi.VisualCapabilities;
+    import VisualDataRoleKind = powerbi.VisualDataRoleKind;
     import IVisualWarning = powerbi.IVisualWarning;
     import IVisualErrorMessage = powerbi.IVisualErrorMessage;
     import IVisual = powerbi.IVisual;
-    import axisStyle = powerbi.visuals.axisStyle;
-    import yAxisPosition = powerbi.visuals.yAxisPosition;
-    import VisualCapabilities = powerbi.VisualCapabilities;
-    import VisualDataRoleKind = powerbi.VisualDataRoleKind;
-    import createDisplayNameGetter = powerbi.data.createDisplayNameGetter;
     import ValueTypeDescriptor = powerbi.ValueTypeDescriptor;
     import ValueType = powerbi.ValueType;
     import IViewport = powerbi.IViewport;
@@ -56,33 +47,52 @@ module powerbi.visuals.samples {
     import TextProperties = powerbi.TextProperties;
     import VisualInitOptions = powerbi.VisualInitOptions;
     import IVisualStyle = powerbi.IVisualStyle;
-    import DataColorPalette = powerbi.visuals.DataColorPalette;
     import DataView = powerbi.DataView;
-    import DataViewScopeIdentity = powerbi.DataViewScopeIdentity;
-    import TooltipDataItem = powerbi.visuals.TooltipDataItem;
-    import DataViewObjects = powerbi.DataViewObjects;
-    import ColorHelper = powerbi.visuals.ColorHelper;
     import Fill = powerbi.Fill;
+    import VisualObjectInstance = powerbi.VisualObjectInstance;
+    import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
+    import DateTimeSequence = powerbi.DateTimeSequence;
+    import DataViewScopeIdentity = powerbi.DataViewScopeIdentity;
+    import DataViewObjects = powerbi.DataViewObjects;
+    import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
+    import NumberRange = powerbi.NumberRange;
+    import TextMeasurementService = powerbi.TextMeasurementService;
     import VisualUpdateOptions = powerbi.VisualUpdateOptions;
+    import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
+    import VisualObjectInstanceEnumeration = powerbi.VisualObjectInstanceEnumeration;
+    import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
+
+    // powerbi.visuals
+    import ValueFormatter = powerbi.visuals.valueFormatter;
+    import IGenericAnimator = powerbi.visuals.IGenericAnimator;
+    import IMargin = powerbi.visuals.IMargin;
+    import TooltipEnabledDataPoint = powerbi.visuals.TooltipEnabledDataPoint;
+    import SelectionId = powerbi.visuals.SelectionId;
+    import IValueFormatter = powerbi.visuals.IValueFormatter;
+    import axisStyle = powerbi.visuals.axisStyle;
+    import yAxisPosition = powerbi.visuals.yAxisPosition;
+    import DataColorPalette = powerbi.visuals.DataColorPalette;
+    import TooltipDataItem = powerbi.visuals.TooltipDataItem;
+    import ColorHelper = powerbi.visuals.ColorHelper;
     import SVGUtil = powerbi.visuals.SVGUtil;
     import TooltipManager = powerbi.visuals.TooltipManager;
     import TooltipEvent = powerbi.visuals.TooltipEvent;
     import ILabelLayout = powerbi.visuals.ILabelLayout;
     import dataLabelUtils = powerbi.visuals.dataLabelUtils;
-    import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
-    import VisualObjectInstance = powerbi.VisualObjectInstance;
-    import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
-    import DateTimeSequence = powerbi.DateTimeSequence;
-    import applyCustomizedDomain = powerbi.visuals.AxisHelper.applyCustomizedDomain;
-    import combineDomain = powerbi.visuals.AxisHelper.combineDomain;
     import willLabelsFit = powerbi.visuals.AxisHelper.LabelLayoutStrategy.willLabelsFit;
     import willLabelsWordBreak = powerbi.visuals.AxisHelper.LabelLayoutStrategy.willLabelsWordBreak;
     import axisScale = powerbi.visuals.axisScale;
-    import TextMeasurementService = powerbi.TextMeasurementService;
     import valueFormatter = powerbi.visuals.valueFormatter;
     import ValueFormatterOptions = powerbi.visuals.ValueFormatterOptions;
-    import NumberRange = powerbi.NumberRange;
     import IAxisProperties = powerbi.visuals.IAxisProperties;
+    import IInteractiveBehavior = powerbi.visuals.IInteractiveBehavior;
+    import ObjectEnumerationBuilder = powerbi.visuals.ObjectEnumerationBuilder;
+    import ISelectionHandler = powerbi.visuals.ISelectionHandler;
+    import IInteractivityService = powerbi.visuals.IInteractivityService;
+    import appendClearCatcher = powerbi.visuals.appendClearCatcher;
+    import createInteractivityService = powerbi.visuals.createInteractivityService;
+    import SelectableDataPoint = powerbi.visuals.SelectableDataPoint;
+    import ISize = powerbi.visuals.shapes.ISize;
 
     type D3Element =
         D3.UpdateSelection |
@@ -94,6 +104,7 @@ module powerbi.visuals.samples {
         svg?: D3.Selection;
         animator?: IGenericAnimator;
         margin?: IMargin;
+        behavior?: IInteractiveBehavior;
     }
 
     export interface HistogramAxisSettings {
@@ -105,8 +116,7 @@ module powerbi.visuals.samples {
         style?: string;
     }
 
-    export interface HistogramXAxisSettings extends HistogramAxisSettings {
-    }
+    export interface HistogramXAxisSettings extends HistogramAxisSettings { }
 
     export interface HistogramYAxisSettings extends HistogramAxisSettings {
         start?: number;
@@ -128,24 +138,46 @@ module powerbi.visuals.samples {
         frequency: boolean;
         bins?: number;
         precision: number;
-        maxX?: number;
 
         xAxisSettings: HistogramXAxisSettings;
         yAxisSettings: HistogramYAxisSettings;
         labelSettings: HistogramLabelSettings;
     }
 
-    export interface HistogramData extends D3.Layout.Bin, TooltipEnabledDataPoint {
+    export interface HistogramSubDataPoint extends SelectableDataPoint {
+        highlight?: boolean;
+    }
+
+    export interface HistogramDataPoint extends
+        D3.Layout.Bin,
+        TooltipEnabledDataPoint {
+
         range: number[];
-        selectionIds: SelectionId[];
+        subDataPoints: HistogramSubDataPoint[];
+        size?: ISize;
+    }
+
+    export interface HistogramBorderValues {
+        minX: number;
+        maxX: number;
+        minY: number;
+        maxY: number;
     }
 
     export interface HistogramDataView {
-        data: HistogramData[];
-        xScale?: D3.Scale.LinearScale;
-        yScale?: D3.Scale.LinearScale;
+        dataPoints: HistogramDataPoint[];
+
+        borderValues: HistogramBorderValues;
+
         settings: HistogramSettings;
         formatter: IValueFormatter;
+
+        xLegendSize: number;
+        yLegendSize: number;
+
+        xScale?: D3.Scale.LinearScale;
+        yScale?: D3.Scale.LinearScale;
+
         xLabelFormatter?: IValueFormatter;
         yLabelFormatter?: IValueFormatter;
     }
@@ -200,12 +232,13 @@ module powerbi.visuals.samples {
         public static ErrorInvalidDataValues: string = "Some data values are invalid or too big";
 
         private message: string;
+
         constructor(message: string) {
             this.message = message;
         }
 
         public get code(): string {
-            return "BulletChartWarning";
+            return "HistogramChartWarning";
         }
 
         public getMessages(resourceProvider: IStringResourceProvider): IVisualErrorMessage {
@@ -335,11 +368,11 @@ module powerbi.visuals.samples {
             frequency: true,
             displayName: "Histogram",
             bins: null,
-            fillColor: "#5f9ea0",
+            fillColor: "#01b8aa",
             precision: 2,
             xAxisSettings: {
                 show: true,
-                axisColor: "#5f9ea0",
+                axisColor: "#777",
                 title: true,
                 displayUnits: 0,
                 precision: 2,
@@ -347,7 +380,7 @@ module powerbi.visuals.samples {
             },
             yAxisSettings: {
                 show: true,
-                axisColor: "#5f9ea0",
+                axisColor: "#777",
                 title: true,
                 displayUnits: 0,
                 precision: 2,
@@ -357,39 +390,92 @@ module powerbi.visuals.samples {
             },
             labelSettings: {
                 show: false,
-                color: "#5f9ea0",
+                color: "#777",
                 displayUnits: 0,
                 precision: 2,
                 fontSize: 9
             },
         };
 
-        private static Axes: ClassAndSelector = createClassAndSelector('axes');
-        private static Axis: ClassAndSelector = createClassAndSelector('axis');
-        private static Labels: ClassAndSelector = createClassAndSelector('labels');
-        private static Columns: ClassAndSelector = createClassAndSelector('columns');
-        private static Column: ClassAndSelector = createClassAndSelector('column');
-        private static Legends: ClassAndSelector = createClassAndSelector('legends');
-        private static Legend: ClassAndSelector = createClassAndSelector('legend');
+        private static Axes: ClassAndSelector = createClassAndSelector("axes");
+        private static Axis: ClassAndSelector = createClassAndSelector("axis");
+        private static XAxis: ClassAndSelector = createClassAndSelector("xAxis");
+        private static YAxis: ClassAndSelector = createClassAndSelector("yAxis");
+
+        private static Columns: ClassAndSelector = createClassAndSelector("columns");
+        private static Column: ClassAndSelector = createClassAndSelector("column");
+
+        private static Legends: ClassAndSelector = createClassAndSelector("legends");
+        private static Legend: ClassAndSelector = createClassAndSelector("legend");
+
+        private static LabelGraphicsContext: ClassAndSelector = createClassAndSelector("labelGraphicsContext");
 
         private static MinNumberOfBins: number = 0;
         private static MaxNumberOfBins: number = 100;
+
         private static MinPrecision: number = 0;
         private static MaxPrecision: number = 17; // max number of decimals in float
 
+        public static MinXAxisStartValue: number = 0;
+        public static MaxXAxisEndValue: number = 1e+25;
+
+        private static YTitleMargin: number = 70;
+        private static YAxisMargin: number = 20;
+
+        private static MinViewportSize: number = 100;
+        private static MinViewportInSize: number = 0;
+
+        private static MinAmountOfValues: number = 2;
+
         private static AdditionalWidthOfLabel: number = 3;
+        private static AdditionalHeightOfLabel: number = 3;
 
         private static LegendSizeWhenTitleIsActive: number = 50;
         private static LegendSizeWhenTitleIsNotActive: number = 25;
 
         private static InnerPaddingRatio: number = 1;
 
+        private static DataLabelXOffset: number = 2;
+        private static DataLabelYOffset: number = 1.8;
+
+        private static ColumnPadding: number = 2.5;
+        private static ColumnAndLabelOffset: number = 1.5;
+
+        private static MinColumnHeight: number = 1;
+
+        private static TooltipDisplayName: string = "Range";
+        private static SeparatorNumbers: string = ", ";
+
+        private static MaxWidthOfTheLatestLabel: number = 40;
+
+        private static ExcludeBrackets: Brackets = {
+            left: "(",
+            right: ")"
+        };
+
+        private static IncludeBrackets: Brackets = {
+            left: "[",
+            right: "]"
+        };
+
+        private static DefaultMargin: IMargin = {
+            top: 10,
+            right: 10,
+            bottom: 10,
+            left: 10
+        };
+
+        private static DefaultTextProperties: TextProperties = {
+            fontFamily: "'Segoe UI', 'wf_segoe-ui_normal', helvetica, arial, sans-serif",
+            fontSize: PixelConverter.toString(11) // Note: This value and font-size in histogram.less should be the same.
+        };
+
         public static capabilities: VisualCapabilities = {
             dataRoles: [
                 {
                     name: "Values",
                     kind: VisualDataRoleKind.Grouping,
-                    displayName: createDisplayNameGetter("Role_DisplayName_Values")
+                    displayName: "Values"
                 }, {
                     name: "Frequency",
                     kind: VisualDataRoleKind.Measure,
@@ -413,7 +499,7 @@ module powerbi.visuals.samples {
             },
             objects: {
                 general: {
-                    displayName: createDisplayNameGetter("Visual_General"),
+                    displayName: "General",
                     properties: {
                         formatString: { type: { formatting: { formatString: true } } },
                         bins: {
@@ -427,23 +513,23 @@ module powerbi.visuals.samples {
                     },
                 },
                 dataPoint: {
-                    displayName: createDisplayNameGetter("Visual_DataPoint"),
+                    displayName: "Data colors",
                     properties: {
                         fill: {
-                            displayName: createDisplayNameGetter('Visual_Fill'),
+                            displayName: "Fill",
                             type: { fill: { solid: { color: true } } }
                         }
                     }
                 },
                 xAxis: {
-                    displayName: 'X-Axis',
+                    displayName: "X-Axis",
                     properties: {
                         show: {
                             displayName: "Show",
                             type: { bool: true },
                         },
                         axis: {
-                            displayName: 'Axis',
+                            displayName: "Axis",
                             type: { bool: true }
                         },
                         axisColor: {
@@ -469,14 +555,14 @@ module powerbi.visuals.samples {
                     }
                 },
                 yAxis: {
-                    displayName: 'Y-Axis',
+                    displayName: "Y-Axis",
                     properties: {
                         show: {
                             displayName: "Show",
                             type: { bool: true },
                         },
                         axis: {
-                            displayName: 'yAxis',
+                            displayName: "yAxis",
                             type: { bool: true }
                         },
                         axisColor: {
@@ -547,59 +633,35 @@ module powerbi.visuals.samples {
             }
         };
 
-        private ColumnPadding: number = 1;
-        private MinColumnHeight: number = 1;
-        private MinOpacity: number = 0.3;
-        private MaxOpacity: number = 1;
-
-        private TooltipDisplayName: string = "Range";
-        private SeparatorNumbers: string = ", ";
-        private LegendSize: number = 50;
-        private YLegendSize: number = 50;
-        private XLegendSize: number = 50;
-        private AxisSize: number = 30;
-        private DataLabelMargin: number = 0;
         private widthOfColumn: number = 0;
         private yTitleMargin: number = 0;
-        private outerPadding: number = 5;
+        private outerPadding: number = 0;
         private xAxisProperties: IAxisProperties;
         private yAxisProperties: IAxisProperties;
 
-        private ExcludeBrackets: Brackets = {
-            left: "(",
-            right: ")"
-        };
-
-        private IncludeBrackets: Brackets = {
-            left: "[",
-            right: "]"
-        };
-
-        private margin: IMargin = {
-            top: 10,
-            right: 10,
-            bottom: 10,
-            left: 10
-        };
-
-        private durationAnimations: number = 200;
+        private margin: IMargin;
 
         private viewport: IViewport;
+        private viewportIn: IViewport;
+
         private hostService: IVisualHostServices;
-        private selectionManager: SelectionManager;
+        private interactivityService: IInteractivityService;
+        private behavior: IInteractiveBehavior;
+
         private colors: IDataColorPalette;
 
         private root: D3.Selection;
         private svg: D3.Selection;
+        private clearCatcher: D3.Selection;
         private main: D3.Selection;
         private axes: D3.Selection;
         private axisX: D3.Selection;
         private axisY: D3.Selection;
         private legend: D3.Selection;
         private columns: D3.Selection;
-        private labels: D3.Selection;
+        private labelGraphicsContext: D3.Selection;
 
-        private histogramDataView: HistogramDataView;
+        private dataView: HistogramDataView;
 
         private animator: IGenericAnimator;
 
@@ -608,27 +670,24 @@ module powerbi.visuals.samples {
                 .selectAll(Histogram.Column.selector);
         }
 
-        private textProperties: TextProperties = {
-            fontFamily: 'wf_segoe-ui_normal',
-            fontSize: PixelConverter.toString(9),
-        };
-
-        constructor(histogramConstructorOptions?: HistogramConstructorOptions) {
-            if (histogramConstructorOptions) {
-                if (histogramConstructorOptions.svg) {
-                    this.svg = histogramConstructorOptions.svg;
-                }
-
-                if (histogramConstructorOptions.animator) {
-                    this.animator = histogramConstructorOptions.animator;
-                }
-
-                this.margin = histogramConstructorOptions.margin || this.margin;
+        constructor(constructorOptions?: HistogramConstructorOptions) {
+            if (constructorOptions) {
+                this.svg = constructorOptions.svg;
+                this.animator = constructorOptions.animator;
+                this.margin = constructorOptions.margin;
+                this.behavior = constructorOptions.behavior;
             }
+
+            this.svg = this.svg || undefined;
+            this.animator = this.animator || undefined;
+            this.margin = this.margin || Histogram.DefaultMargin;
+            this.behavior = this.behavior || HistogramBehavior.create();
         }
 
         public init(visualsOptions: VisualInitOptions): void {
             this.hostService = visualsOptions.host;
+
+            this.interactivityService = createInteractivityService(this.hostService);
 
             if (this.svg) {
                 this.root = this.svg;
@@ -643,9 +702,15 @@ module powerbi.visuals.samples {
                 ? style.colorPalette.dataColors
                 : new DataColorPalette();
 
+            this.clearCatcher = appendClearCatcher(this.root);
+
             this.root.classed(Histogram.ClassName, true);
 
             this.main = this.root.append("g");
+
+            this.columns = this.main
+                .append("g")
+                .classed(Histogram.Columns.class, true);
 
             this.axes = this.main
                 .append("g")
@@ -653,34 +718,31 @@ module powerbi.visuals.samples {
 
             this.axisX = this.axes
                 .append("g")
-                .classed(Histogram.Axis.class, true);
+                .classed(Histogram.Axis.class, true)
+                .classed(Histogram.XAxis.class, true);
 
             this.axisY = this.axes
                 .append("g")
-                .classed(Histogram.Axis.class, true);
+                .classed(Histogram.Axis.class, true)
+                .classed(Histogram.YAxis.class, true);
 
             this.legend = this.main
                 .append("g")
                 .classed(Histogram.Legends.class, true);
 
-            this.columns = this.main
+            this.labelGraphicsContext = this.main
                 .append("g")
-                .classed(Histogram.Columns.class, true);
-
-            this.labels = this.main
-                .append("g")
-                .classed(Histogram.Labels.class, true);
-
-            this.selectionManager = new SelectionManager({ hostServices: visualsOptions.host });
+                .classed(Histogram.LabelGraphicsContext.class, true);
         }
 
-        public converter(dataView: DataView): HistogramDataView {
+        public static converter(dataView: DataView, colors: IDataColorPalette): HistogramDataView {
             if (!dataView ||
                 !dataView.categorical ||
                 !dataView.categorical.categories ||
                 !dataView.categorical.categories[0] ||
                 !dataView.categorical.categories[0].values ||
-                !(dataView.categorical.categories[0].values.length > 0)) {
+                !(dataView.categorical.categories[0].values.length > 0) ||
+                !colors) {
                 return null;
             }
 
@@ -688,16 +750,32 @@ module powerbi.visuals.samples {
                 histogramLayout: D3.Layout.HistogramLayout,
                 values: HistogramValue[],
                 numericalValues: number[] = [],
-                data: D3.Layout.Bin[],
-                xScale: D3.Scale.LinearScale,
-                yScale: D3.Scale.LinearScale,
+                bins: D3.Layout.Bin[],
+                dataPoints: HistogramDataPoint[],
                 valueFormatter: IValueFormatter,
                 frequencies: number[] = [],
                 identities: DataViewScopeIdentity[] = [],
                 shiftByValues: number = 0,
                 sumFrequency: number = 0,
                 xLabelFormatter: IValueFormatter,
-                yLabelFormatter: IValueFormatter;
+                yLabelFormatter: IValueFormatter,
+                xLegendSize: number,
+                yLegendSize: number,
+                borderValues: HistogramBorderValues,
+                yAxisSettings: HistogramYAxisSettings,
+                sourceValues: number[] = <number[]>dataView.categorical.categories[0].values;
+
+            settings = Histogram.parseSettings(dataView, colors);
+
+            if (!settings
+                || !Histogram.areValuesNumbers(dataView.categorical.categories[0])
+                || sourceValues.length < Histogram.MinAmountOfValues) {
+
+                return null;
+            }
+
+            xLegendSize = Histogram.getLegendSize(settings.xAxisSettings);
+            yLegendSize = Histogram.getLegendSize(settings.yAxisSettings);
 
             if (dataView.categorical.values &&
                 dataView.categorical.values[0] &&
@@ -710,14 +788,8 @@ module powerbi.visuals.samples {
                 identities = dataView.categorical.categories[0].identity;
             }
 
-            settings = this.parseSettings(dataView);
-
-            if (!settings) {
-                return null;
-            }
-
             values = Histogram.getValuesByFrequencies(
-                <number[]>dataView.categorical.categories[0].values,
+                sourceValues,
                 frequencies,
                 identities);
 
@@ -732,9 +804,9 @@ module powerbi.visuals.samples {
                 histogramLayout = histogramLayout.bins(settings.bins);
             }
 
-            data = histogramLayout.frequency(settings.frequency)(numericalValues);
+            bins = histogramLayout.frequency(settings.frequency)(numericalValues);
 
-            data.forEach((bin: D3.Layout.Bin, index: number) => {
+            bins.forEach((bin: D3.Layout.Bin, index: number) => {
                 var filteredValues: HistogramValue[],
                     frequency: number;
 
@@ -753,60 +825,121 @@ module powerbi.visuals.samples {
                 shiftByValues += bin.length;
             });
 
-            var yAxisSettings: HistogramYAxisSettings = settings.yAxisSettings;
+            borderValues = Histogram.getBorderValues(bins);
 
-            var maxYvalue = (yAxisSettings.end !== null) && (yAxisSettings.end > yAxisSettings.start) ?
-                yAxisSettings.end : d3.max(data, (item: D3.Layout.Bin) => item.y);
+            yAxisSettings = settings.yAxisSettings;
 
-            var minYValue = (yAxisSettings.start < maxYvalue) ? yAxisSettings.start : 0;
-            settings.yAxisSettings.end = maxYvalue;
-            settings.yAxisSettings.start = minYValue;
-            settings.maxX = d3.max(data, (item: D3.Layout.Bin) => d3.max(item));
+            var maxYvalue: number = (yAxisSettings.end !== null) && (yAxisSettings.end > yAxisSettings.start)
+                ? yAxisSettings.end
+                : borderValues.maxY;
 
-            xScale = d3.scale.linear()
-                .domain([
-                    d3.min(data, (item: D3.Layout.Bin) => d3.min(item)),
-                    d3.max(data, (item: D3.Layout.Bin) => d3.max(item))
-                ])
-                .range([0, this.viewport.width - this.YLegendSize - this.AxisSize]);
+            var minYValue: number = yAxisSettings.start < maxYvalue
+                ? yAxisSettings.start
+                : 0;
 
-            yScale = d3.scale.linear()
-                .domain([
-                    minYValue,
-                    maxYvalue
-                ])
-                .range([this.viewport.height - this.LegendSize, this.outerPadding]);
+            settings.yAxisSettings.start = Histogram.getCorrectXAxisValue(minYValue);
+            settings.yAxisSettings.end = Histogram.getCorrectXAxisValue(maxYvalue);
 
-            valueFormatter = ValueFormatter.create({
-                format: ValueFormatter.getFormatString(
-                    dataView.categorical.categories[0].source, Histogram.Properties["general"]["formatString"]),
-                value: values[0].value,
-                value2: values[values.length - 1].value,
-                precision: settings.precision
-            });
+            if (values.length >= Histogram.MinAmountOfValues) {
+                valueFormatter = ValueFormatter.create({
+                    format: ValueFormatter.getFormatString(
+                        dataView.categorical.categories[0].source,
+                        Histogram.Properties["general"]["formatString"]),
+                    value: values[0].value,
+                    value2: values[values.length - 1].value,
+                    precision: settings.precision
+                });
 
-            xLabelFormatter = ValueFormatter.create({
-                value: settings.xAxisSettings.displayUnits === 0 ? values[values.length - 1].value : settings.xAxisSettings.displayUnits,
-                precision: settings.xAxisSettings.precision
-            });
+                xLabelFormatter = ValueFormatter.create({
+                    value: settings.xAxisSettings.displayUnits === 0
+                        ? values[values.length - 1].value
+                        : settings.xAxisSettings.displayUnits,
+                    precision: settings.xAxisSettings.precision
+                });
 
-            yLabelFormatter = ValueFormatter.create({
-                value: settings.yAxisSettings.displayUnits,
-                precision: settings.yAxisSettings.precision
-            });
+                yLabelFormatter = ValueFormatter.create({
+                    value: settings.yAxisSettings.displayUnits,
+                    precision: settings.yAxisSettings.precision
+                });
+            }
+
+            dataPoints = Histogram.getDataPoints(
+                values,
+                numericalValues,
+                bins,
+                settings,
+                yLabelFormatter,
+                xLabelFormatter);
 
             return {
-                xScale: xScale,
-                yScale: yScale,
+                dataPoints: dataPoints,
+                borderValues: borderValues,
                 settings: settings,
-                data: this.getData(values, numericalValues, data, settings, yLabelFormatter, xLabelFormatter),
                 formatter: valueFormatter,
                 xLabelFormatter: xLabelFormatter,
-                yLabelFormatter: yLabelFormatter
+                yLabelFormatter: yLabelFormatter,
+                xLegendSize: xLegendSize,
+                yLegendSize: yLegendSize
             };
         }
 
-        private static getValuesByFrequencies(sourceValues: number[], frequencies: number[], identities: DataViewScopeIdentity[]): HistogramValue[] {
+        public static getBorderValues(bins: D3.Layout.Bin[]): HistogramBorderValues {
+            var borderValues: HistogramBorderValues = {
+                minX: Number.MAX_VALUE,
+                maxX: -Number.MAX_VALUE,
+                minY: Number.MAX_VALUE,
+                maxY: -Number.MAX_VALUE
+            };
+
+            bins.forEach((dataPoint: D3.Layout.Bin) => {
+                var minX: number = Number.MAX_VALUE,
+                    maxX: number = -Number.MAX_VALUE;
+
+                dataPoint.forEach((x: number) => {
+                    if (x > maxX) {
+                        maxX = x;
+                    }
+
+                    if (x < minX) {
+                        minX = x;
+                    }
+                });
+
+                if (minX < borderValues.minX) {
+                    borderValues.minX = minX;
+                }
+
+                if (maxX > borderValues.maxX) {
+                    borderValues.maxX = maxX;
+                }
+
+                if (dataPoint.y < borderValues.minY) {
+                    borderValues.minY = dataPoint.y;
+                }
+
+                if (dataPoint.y > borderValues.maxY) {
+                    borderValues.maxY = dataPoint.y;
+                }
+            });
+
+            return borderValues;
+        }
+
+        public static getCorrectXAxisValue(value: number): number {
+            return Math.max(Math.min(value, Histogram.MaxXAxisEndValue), Histogram.MinXAxisStartValue);
+        }
+
+        public static areValuesNumbers(categoryColumn: DataViewCategoryColumn): boolean {
+            return categoryColumn
+                && categoryColumn.source
+                && (categoryColumn.source.type.numeric || categoryColumn.source.type.integer);
+        }
+
+        private static getValuesByFrequencies(
+            sourceValues: number[],
+            frequencies: number[],
+            identities: DataViewScopeIdentity[]): HistogramValue[] {
+
             var values: HistogramValue[] = [];
 
             sourceValues.forEach((item: number, index: number) => {
@@ -832,34 +965,40 @@ module powerbi.visuals.samples {
             return values;
         }
 
-        private getData(
+        private static getDataPoints(
             values: HistogramValue[],
             numericalValues: number[],
-            data: D3.Layout.Bin[],
+            bins: D3.Layout.Bin[],
             settings: HistogramSettings,
             yValueFormatter: IValueFormatter,
-            xValueFormatter: IValueFormatter): HistogramData[] {
-            var minValue: number = d3.min(numericalValues),
-                maxValue: number = d3.max(numericalValues);
-            var fontSizeInPx = PixelConverter.fromPoint(settings.labelSettings.fontSize);
+            xValueFormatter: IValueFormatter): HistogramDataPoint[] {
 
-            return data.map((bin: any, index: number): HistogramData => {
-                bin.range = Histogram.getRange(minValue, maxValue, bin.dx, index);
-                bin.tooltipInfo = this.getTooltipData(bin.y, bin.range, settings, index === 0, yValueFormatter, xValueFormatter);
-                bin.selectionIds = Histogram.getSelectionIds(values, bin, index);
+            var fontSizeInPx: string = PixelConverter.fromPoint(settings.labelSettings.fontSize);
+
+            return bins.map((bin: any, index: number): HistogramDataPoint => {
+                bin.range = Histogram.getRange(bin.x, bin.dx);
+
+                bin.tooltipInfo = Histogram.getTooltipData(
+                    bin.y,
+                    bin.range,
+                    settings,
+                    index === 0,
+                    yValueFormatter,
+                    xValueFormatter);
+
+                bin.subDataPoints = Histogram.getSubDataPoints(values, bin, index);
+
                 bin.labelFontSize = fontSizeInPx;
+
                 return bin;
             });
         }
 
-        private static getRange(minValue: number, maxValue: number, step: number, index: number): number[] {
-            var leftBorder: number = minValue + index * step,
-                rightBorder: number = leftBorder + step;
-
-            return [leftBorder, rightBorder];
+        private static getRange(x: number, dx: number): number[] {
+            return [x, x + dx];
         }
 
-        private getTooltipData(
+        private static getTooltipData(
             value: number,
             range: number[],
             settings: HistogramSettings,
@@ -867,32 +1006,41 @@ module powerbi.visuals.samples {
             yValueFormatter: IValueFormatter,
             xValueFormatter: IValueFormatter): TooltipDataItem[] {
 
-            return [{
-                displayName: Histogram.getLegendText(settings),
-                value: yValueFormatter.format(value)
-            }, {
-                    displayName: this.TooltipDisplayName,
-                    value: this.rangeToString(range, includeLeftBorder, xValueFormatter)
-                }];
+            return [
+                {
+                    displayName: Histogram.getLegendText(settings),
+                    value: yValueFormatter.format(value)
+                }, {
+                    displayName: Histogram.TooltipDisplayName,
+                    value: Histogram.rangeToString(range, includeLeftBorder, xValueFormatter)
+                }
+            ];
         }
 
-        private static getSelectionIds(values: HistogramValue[], bin: HistogramData, index: number): SelectionId[] {
-            var selectionIds: SelectionId[] = [];
+        private static getSubDataPoints(
+            values: HistogramValue[],
+            bin: HistogramDataPoint,
+            index: number): HistogramSubDataPoint[] {
+
+            var dataPoints: SelectableDataPoint[] = [];
 
             values.forEach((value: HistogramValue) => {
                 if (Histogram.isValueContainedInRange(value, bin, index)) {
-                    selectionIds.push(value.selectionId);
+                    dataPoints.push({
+                        identity: value.selectionId,
+                        selected: false
+                    });
                 }
             });
 
-            return selectionIds;
+            return dataPoints;
         }
 
         private static isValueContainedInRange(value: HistogramValue, bin: D3.Layout.Bin, index: number): boolean {
             return ((index === 0 && value.value >= bin.x) || (value.value > bin.x)) && value.value <= bin.x + bin.dx;
         }
 
-        private parseSettings(dataView: DataView): HistogramSettings {
+        private static parseSettings(dataView: DataView, colors: IDataColorPalette): HistogramSettings {
             if (!dataView ||
                 !dataView.metadata ||
                 !dataView.metadata.columns ||
@@ -905,7 +1053,7 @@ module powerbi.visuals.samples {
                 colorHelper: ColorHelper;
 
             colorHelper = new ColorHelper(
-                this.colors,
+                colors,
                 Histogram.Properties["dataPoint"]["fill"],
                 Histogram.DefaultHistogramSettings.fillColor);
 
@@ -948,7 +1096,11 @@ module powerbi.visuals.samples {
             histogramSettings.bins = Histogram.getBins(objects);
             histogramSettings.frequency = Histogram.getFrequency(objects);
             histogramSettings.precision = Histogram.getPrecision(objects);
-            histogramSettings.displayName = Histogram.getLegend(histogramSettings.displayName, xAxisSettings.style, xAxisSettings.displayUnits);
+
+            histogramSettings.displayName = Histogram.getLegend(
+                histogramSettings.displayName,
+                xAxisSettings.style,
+                xAxisSettings.displayUnits);
 
             histogramSettings.xAxisSettings = xAxisSettings;
             histogramSettings.yAxisSettings = yAxisSettings;
@@ -957,23 +1109,36 @@ module powerbi.visuals.samples {
             return histogramSettings;
         }
 
-        private static getLegend(title: string, style: string, displayUnit: number): string {
-            var retValue: string;
-            var formatter: IValueFormatter = ValueFormatter.create({
+        public static getLegend(title: string, style: string, displayUnit: number): string {
+            var retValue: string,
+                formatter: IValueFormatter;
+
+            formatter = ValueFormatter.create({
                 value: displayUnit
             });
 
             switch (style) {
-                case axisStyle.showTitleOnly:
+                case axisStyle.showTitleOnly: {
                     retValue = title;
+
                     break;
-                case axisStyle.showUnitOnly:
-                    retValue = displayUnit === 0 || displayUnit === 1 ? title : formatter.displayUnit.title;
+                }
+                case axisStyle.showUnitOnly: {
+                    retValue = !(displayUnit === 0 || displayUnit === 1) && formatter.displayUnit
+                        ? formatter.displayUnit.title
+                        : title;
+
                     break;
-                case axisStyle.showBoth:
-                    retValue = displayUnit === 0 || displayUnit === 1 ? title : title + " (" + formatter.displayUnit.title + ")";
+                }
+                case axisStyle.showBoth: {
+                    retValue = !(displayUnit === 0 || displayUnit === 1) && formatter.displayUnit
+                        ? title + " (" + formatter.displayUnit.title + ")"
+                        : title;
+
                     break;
+                }
             }
+
             return retValue;
         }
 
@@ -1213,11 +1378,19 @@ module powerbi.visuals.samples {
             return precision;
         }
 
-        public validateData(data: HistogramDataView): boolean {
-            if (data && data.data.some(x => x.range.some(x => isNaN(x) || x === Infinity || x === -Infinity))) {
-                this.hostService.setWarnings([new HistogramChartWarning(HistogramChartWarning.ErrorInvalidDataValues)]);
+        public isDataValid(data: HistogramDataView): boolean {
+            if (!data || !data.dataPoints || data.dataPoints.length === 0) {
                 return false;
             }
+
+            if (data.dataPoints.some(x => x.range.some(x => isNaN(x) || x === Infinity || x === -Infinity))) {
+                this.hostService.setWarnings([
+                    new HistogramChartWarning(HistogramChartWarning.ErrorInvalidDataValues)
+                ]);
+
+                return false;
+            }
+
             return true;
         }
 
@@ -1229,34 +1402,49 @@ module powerbi.visuals.samples {
             }
 
             var dataView: DataView = visualUpdateOptions.dataViews[0],
-                widthOfLabel: number;
-
-            this.durationAnimations = getAnimationDuration(
-                this.animator,
-                visualUpdateOptions.suppressAnimations);
+                maxWidthOfVerticalAxisLabel: number;
 
             this.setSize(visualUpdateOptions.viewport);
 
-            this.histogramDataView = this.converter(dataView);
+            this.dataView = Histogram.converter(dataView, this.colors);
 
-            if (!this.validateData(this.histogramDataView)) {
-                this.histogramDataView.data = [];
-            }
+            if (!this.isDataValid(this.dataView)) {
+                this.clear();
 
-            if (!this.histogramDataView) {
                 return;
             }
 
-            this.YLegendSize = this.getLegendSize(this.histogramDataView.settings.yAxisSettings);
-            this.XLegendSize = this.getLegendSize(this.histogramDataView.settings.xAxisSettings);
+            this.updateViewportIn();
 
-            widthOfLabel = this.getWidthOfLabel();
+            maxWidthOfVerticalAxisLabel = this.updateAxes(dataView);
 
-            this.xAxisProperties = this.calculateXAxes(
-                dataView.categorical.categories[0].source,
-                this.textProperties,
-                widthOfLabel,
-                false);
+            this.columsAndAxesTransform(maxWidthOfVerticalAxisLabel);
+
+            this.updateWidthOfColumn();
+
+            this.createScales();
+
+            this.applySelectionStateToData();
+
+            this.render();
+        }
+
+        private updateAxes(dataView: DataView): number {
+            var maxWidthOfVerticalAxisLabel: number,
+                maxWidthOfHorizontalAxisLabel: number,
+                maxHeightOfVerticalAxisLabel: number;
+
+            maxWidthOfVerticalAxisLabel = Histogram.getWidthOfLabel(
+                this.dataView.borderValues.maxY,
+                this.dataView.yLabelFormatter);
+
+            maxWidthOfHorizontalAxisLabel = Histogram.getWidthOfLabel(
+                this.dataView.borderValues.maxX,
+                this.dataView.xLabelFormatter);
+
+            maxHeightOfVerticalAxisLabel = Histogram.getHeightOfLabel(
+                this.dataView.borderValues.maxX,
+                this.dataView.xLabelFormatter);
 
             var ySource = dataView.categorical.values &&
                 dataView.categorical.values[0] &&
@@ -1264,35 +1452,146 @@ module powerbi.visuals.samples {
                     ? dataView.categorical.values[0].source
                     : dataView.categorical.categories[0].source;
 
-            this.yAxisProperties = this.calculateYAxes(
-                ySource,
-                this.textProperties,
-                widthOfLabel,
+            this.yAxisProperties = this.calculateYAxes(ySource, maxHeightOfVerticalAxisLabel);
+
+            this.renderYAxis();
+
+            this.yTitleMargin = this.shouldShowYOnRight()
+                ? this.viewport.width
+                    - Histogram.YTitleMargin
+                    + this.dataView.yLegendSize
+                : 0;
+
+            this.updateViewportIn(maxWidthOfVerticalAxisLabel);
+
+            this.xAxisProperties = this.calculateXAxes(
+                dataView.categorical.categories[0].source,
+                Histogram.DefaultTextProperties,
+                maxWidthOfHorizontalAxisLabel,
                 false);
 
-            this.render();
+            this.renderXAxis();
+
+            return maxWidthOfVerticalAxisLabel;
         }
 
-        private getLegendSize(axisSettings: HistogramAxisSettings): number {
+        private applySelectionStateToData(): void {
+            if (this.interactivityService) {
+                this.dataView.dataPoints.forEach((dataPoint: HistogramDataPoint) => {
+                    this.interactivityService.applySelectionStateToData(dataPoint.subDataPoints);
+                });
+            }
+        }
+
+        private createScales(): void {
+            var yAxisSettings: HistogramYAxisSettings = this.dataView.settings.yAxisSettings,
+                borderValues: HistogramBorderValues = this.dataView.borderValues;
+
+            this.dataView.xScale = d3.scale.linear()
+                .domain([
+                    borderValues.minX,
+                    borderValues.maxX
+                ])
+                .range([
+                    0,
+                    this.viewportIn.width
+                ]);
+
+            this.dataView.yScale = d3.scale.linear()
+                .domain([
+                    yAxisSettings.start,
+                    yAxisSettings.end
+                ])
+                .range([
+                    this.viewportIn.height,
+                    this.outerPadding
+                ]);
+        }
+
+        private updateViewportIn(maxWidthOfVerticalAxisLabel: number = 0): void {
+            var width: number,
+                height: number;
+
+            width = this.viewport.width
+                - this.dataView.yLegendSize
+                - maxWidthOfVerticalAxisLabel;
+
+            height = this.viewport.height - this.dataView.xLegendSize;
+
+            this.viewportIn = {
+                height: Math.max(height, Histogram.MinViewportInSize),
+                width: Math.max(width, Histogram.MinViewportInSize)
+            };
+        }
+
+        private updateWidthOfColumn(): void {
+            var countOfValues: number = this.dataView.dataPoints.length,
+                widthOfColumn: number;
+
+            widthOfColumn = countOfValues
+                ? this.viewportIn.width / countOfValues - Histogram.ColumnPadding
+                : Histogram.MinViewportInSize;
+
+            this.widthOfColumn = Math.max(widthOfColumn, Histogram.MinViewportInSize);
+        }
+
+        private clear(): void {
+            [
+                this.axisX,
+                this.axisY,
+                this.legend,
+                this.columns,
+                this.labelGraphicsContext
+            ].forEach((selection: D3.Selection) => {
+                this.clearElement(selection);
+            });
+        }
+
+        private clearElement(selection: D3.Selection): void {
+            selection
+                .selectAll("*")
+                .remove();
+        }
+
+        private static getLegendSize(axisSettings: HistogramAxisSettings): number {
             return axisSettings.title
                 ? Histogram.LegendSizeWhenTitleIsActive
                 : Histogram.LegendSizeWhenTitleIsNotActive;
         }
 
-        private getWidthOfLabel(): number {
-            if (!this.histogramDataView || !this.histogramDataView.settings) {
-                return;
-            }
+        private static getWidthOfLabel(
+            labelValue: number | string,
+            valueFormatter: IValueFormatter): number {
 
-            var ticLabel = this.histogramDataView.xLabelFormatter.format(this.histogramDataView.settings.maxX);
-
-            var textProperties: TextProperties = {
-                text: ticLabel,
-                fontFamily: this.textProperties.fontFamily,
-                fontSize: this.textProperties.fontSize
-            };
+            var textProperties: TextProperties =
+                Histogram.getTextPropertiesForMeasurement(labelValue, valueFormatter);
 
             return TextMeasurementService.measureSvgTextWidth(textProperties) + Histogram.AdditionalWidthOfLabel;
+        }
+
+        private static getHeightOfLabel(
+            labelValue: number | string,
+            valueFormatter: IValueFormatter): number {
+
+            var textProperties: TextProperties =
+                Histogram.getTextPropertiesForMeasurement(labelValue, valueFormatter);
+
+            return TextMeasurementService.measureSvgTextHeight(textProperties) + Histogram.AdditionalHeightOfLabel;
+        }
+
+        private static getTextPropertiesForMeasurement(
+            labelValue: string | number,
+            valueFormatter?: IValueFormatter): TextProperties {
+
+            var labelText: string;
+
+            if (valueFormatter) {
+                labelText = valueFormatter.format(labelValue);
+            } else {
+                labelText = <string>labelValue;
+            }
+
+            return Histogram.getTextProperties(labelText);
         }
 
         private setSize(viewport: IViewport): void {
@@ -1308,220 +1607,284 @@ module powerbi.visuals.samples {
                 this.margin.right;
 
             this.viewport = {
-                height: height,
-                width: width
+                height: Math.max(height, Histogram.MinViewportSize),
+                width: Math.max(width, Histogram.MinViewportSize)
             };
 
-            this.updateElements(viewport.height, viewport.width);
+            this.updateElements(
+                Math.max(viewport.height, Histogram.MinViewportSize),
+                Math.max(viewport.width, Histogram.MinViewportSize));
         }
 
         private updateElements(height: number, width: number): void {
+            var transform: string = SVGUtil.translate(this.margin.left, this.margin.top);
+
             this.root.attr({
-                "height": height,
-                "width": width
+                height: height,
+                width: width
             });
 
-            this.main.attr("transform", SVGUtil.translate(this.margin.left, this.margin.top));
-            this.legend.attr("transform", SVGUtil.translate(this.margin.left, this.margin.top));
-
-            this.axisX.attr(
-                "transform",
-                SVGUtil.translate(0, this.viewport.height - this.XLegendSize)
-            );
+            this.main.attr("transform", transform);
+            this.legend.attr("transform", transform);
         }
 
         public shouldShowYOnRight(): boolean {
-            return this.histogramDataView.settings.yAxisSettings.position === yAxisPosition.right;
+            return this.dataView.settings.yAxisSettings.position === yAxisPosition.right;
         }
 
         private columsAndAxesTransform(labelWidth: number): void {
-            var constMargin = 20;
-            var shiftToRight: number = this.shouldShowYOnRight() ? 10 :
-                this.histogramDataView.settings.yAxisSettings.title ? this.margin.left + labelWidth + constMargin : this.margin.left + labelWidth;
+            var offsetToRightStr: string,
+                offsetToRight: number = this.shouldShowYOnRight()
+                    ? this.margin.left
+                    : this.dataView.settings.yAxisSettings.title
+                        ? this.margin.left + labelWidth + Histogram.YAxisMargin
+                        : this.margin.left + labelWidth;
 
-            this.DataLabelMargin = shiftToRight;
+            offsetToRightStr = SVGUtil.translate(offsetToRight + Histogram.ColumnAndLabelOffset, 0);
 
-            this.columns.attr("transform", SVGUtil.translate(shiftToRight, 0));
-            this.axes.attr("transform", SVGUtil.translate(shiftToRight, 0));
+            this.columns.attr("transform", offsetToRightStr);
+            this.labelGraphicsContext.attr("transform", offsetToRightStr);
 
-            this.axisY.attr('transform', SVGUtil.translate(
-                this.shouldShowYOnRight() ? this.viewport.width - this.AxisSize - this.YLegendSize + 0.01 : 0, 0));
+            this.axes.attr("transform", SVGUtil.translate(offsetToRight, 0));
+
+            this.axisY.attr("transform", SVGUtil.translate(
+                this.shouldShowYOnRight()
+                    ? this.viewportIn.width : 0, 0));
 
             this.axisX.attr(
                 "transform",
-                SVGUtil.translate(0, this.viewport.height - this.XLegendSize));
-
+                SVGUtil.translate(0, this.viewportIn.height));
         }
 
         private render(): void {
-            if (!this.histogramDataView || !this.histogramDataView.settings) {
-                return;
-            }
-
-            this.renderAxes();
             var columnsSelection: D3.UpdateSelection = this.renderColumns();
 
-            this.adjustTransformToAxisLabels();
+            Histogram.bindTooltipsToSelection(columnsSelection);
+
+            this.bindSelectionHandler(columnsSelection);
 
             this.renderLegend();
 
-            if (this.histogramDataView.settings.labelSettings.show) {
-                this.renderLabels();
-            } else {
-                this.main.selectAll('.labels').selectAll('*').remove();
-            }
-
-            this.bindSelectionHandler(columnsSelection);
-        }
-
-        private adjustTransformToAxisLabels(): void {
-            var maxWidthOfLabael = 0;
-            this.main.selectAll('g.axis').filter((d, index) => index === 1).selectAll('g.tick text')
-                .each(function (d, i) {
-                    var p = TextMeasurementService.getSvgMeasurementProperties(this);
-                    var textProperties: TextProperties = {
-                        text: p.text,
-                        fontFamily: p.fontFamily,
-                        fontSize: p.fontSize
-                    };
-                    var widthOfLabel = TextMeasurementService.measureSvgTextWidth(textProperties);
-                    if (widthOfLabel > maxWidthOfLabael)
-                        maxWidthOfLabael = widthOfLabel;
-                });
-            var constMargin = 70;
-            this.yTitleMargin = this.shouldShowYOnRight() ? this.viewport.width - this.AxisSize - constMargin + this.YLegendSize + maxWidthOfLabael : 0;
-            this.columsAndAxesTransform(maxWidthOfLabael);
+            this.renderLabels();
         }
 
         private renderColumns(): D3.UpdateSelection {
-            var data: HistogramData[] = this.histogramDataView.data,
-                yScale: D3.Scale.LinearScale = this.histogramDataView.yScale,
-                countOfValues: number = data.length,
-                widthOfColumn: number,
+            var data: HistogramDataPoint[] = this.dataView.dataPoints,
+                xScale: D3.Scale.LinearScale = this.dataView.xScale,
+                yScale: D3.Scale.LinearScale = this.dataView.yScale,
                 updateColumnsSelection: D3.UpdateSelection;
 
-            widthOfColumn = countOfValues && ((this.viewport.width - this.AxisSize - this.YLegendSize) / countOfValues - this.ColumnPadding);
-
-            if (widthOfColumn < 0) {
-                widthOfColumn = 0;
-            }
-
-            this.widthOfColumn = widthOfColumn;
             updateColumnsSelection = this.columnsSelection.data(data);
 
             updateColumnsSelection
                 .enter()
-                .append("svg:rect");
+                .append("svg:rect")
+                .classed(Histogram.Column.class, true);
 
             updateColumnsSelection
-                .attr("x", this.ColumnPadding / 2)
-                .attr("width", widthOfColumn)
-                .attr("height", (item: HistogramData) => this.getColumnHeight(item, yScale))
-                .style("fill", this.histogramDataView.settings.fillColor)
-                .attr("class", Histogram.Column.class)
-                .attr("transform", (item: HistogramData, index: number) => SVGUtil.translate(
-                    widthOfColumn * index + this.ColumnPadding * index,
-                    yScale(item.y) - this.ColumnPadding / 2.5));
+                .attr({
+                    "x": (dataPoint: HistogramDataPoint) => {
+                        return xScale(dataPoint.x);
+                    },
+                    "y": (dataPoint: HistogramDataPoint) => {
+                        return yScale(dataPoint.y);
+                    },
+                    "width": this.widthOfColumn,
+                    "height": (item: HistogramDataPoint) => {
+                        return this.getColumnHeight(item, yScale);
+                    }
+                })
+                .style("fill", this.dataView.settings.fillColor);
 
-            if (countOfValues) {
-                //if data is empty, it throws for some reason
-                updateColumnsSelection.classed(Histogram.Column.class);
-            }
+            histogramUtils.updateFillOpacity(
+                updateColumnsSelection,
+                this.interactivityService,
+                false);
 
-            updateColumnsSelection.exit().remove();
-
-            Histogram.renderTooltip(updateColumnsSelection);
+            updateColumnsSelection
+                .exit()
+                .remove();
 
             return updateColumnsSelection;
         }
 
-        private static renderTooltip(selection: D3.UpdateSelection): void {
+        private static bindTooltipsToSelection(selection: D3.UpdateSelection): void {
             TooltipManager.addTooltip(selection, (tooltipEvent: TooltipEvent) => {
-                return (<HistogramData>tooltipEvent.data).tooltipInfo;
+                return (<HistogramDataPoint>tooltipEvent.data).tooltipInfo;
             });
         }
 
         private getColumnHeight(column: D3.Layout.Bin, y: D3.Scale.LinearScale): number {
-            var height: number = this.viewport.height - this.XLegendSize - y(column.y);
+            var height: number = this.viewportIn.height - y(column.y);
 
-            return height > 0 ? height : this.MinColumnHeight;
+            return Math.max(height, Histogram.MinColumnHeight);
         }
 
-        private renderAxes(): void {
+        private renderXAxis(): void {
             var xAxis: D3.Svg.Axis,
-                yAxis: D3.Svg.Axis;
+                xShow: boolean = this.dataView.settings.xAxisSettings.show,
+                axisColor: string = this.dataView.settings.xAxisSettings.axisColor;
 
             xAxis = this.xAxisProperties.axis
-                .tickFormat((item: number) => this.histogramDataView.xLabelFormatter.format(item))
-                .orient('bottom');
+                .tickFormat((value: number, index: number) => {
+                    var tickValues: any[] = this.xAxisProperties.axis.tickValues(),
+                        amountOfLabels: number = (tickValues && tickValues.length) || 0;
 
-            yAxis = this.yAxisProperties.axis
-                .orient(this.histogramDataView.settings.yAxisSettings.position.toLowerCase())
-                .tickFormat((item: number) => this.histogramDataView.yLabelFormatter.format(item));
-
-            var xShow: boolean = this.histogramDataView.settings.xAxisSettings.show;
-            var yShow: boolean = this.histogramDataView.settings.yAxisSettings.show;
+                    return this.formatLabelOfXAxis(value, index, amountOfLabels);
+                })
+                .orient("bottom");
 
             if (xShow) {
+                this.axisX.call(xAxis);
+            } else {
                 this.axisX
-                    .transition()
-                    .duration(1)
-                    .call(xAxis);
-            } else {
-                this.axisX.selectAll('*').remove();
+                    .selectAll("*")
+                    .remove();
             }
 
-            if (yShow) {
-                this.axisY
-                    .call(yAxis);
-            } else {
-                this.axisY.selectAll('*').remove();
-            }
-
-            this.main.selectAll('g.axis').filter((d, index) => index === 0).selectAll('g.tick text').style({
-                'fill': this.histogramDataView.settings.xAxisSettings.axisColor,
-            });
-
-            this.main.selectAll('g.axis').filter((d, index) => index === 1).selectAll('g.tick text').style({
-                'fill': this.histogramDataView.settings.yAxisSettings.axisColor,
-            });
+            this.updateFillColorOfAxis(this.axisX, axisColor);
         }
 
-        private getLabaelLayout(): ILabelLayout {
-            var labelSettings: HistogramLabelSettings = this.histogramDataView.settings.labelSettings;
+        private formatLabelOfXAxis(labelValue: number | string, index: number, amountOfLabels: number): string {
+            var maxWidthOfTheLatestLabel: number,
+                formattedLabel: string = this.dataView.xLabelFormatter.format(labelValue);
 
-            var fontSizeInPx: string = PixelConverter.fromPoint(labelSettings.fontSize);
-            var dataLabelFormatter = ValueFormatter.create({
-                value: labelSettings.displayUnits,
-                precision: labelSettings.precision
-            });
+            if (index === 0 || index === amountOfLabels - 1) {
+                maxWidthOfTheLatestLabel = Math.min(
+                    this.viewportIn.width,
+                    Histogram.MaxWidthOfTheLatestLabel);
+
+                formattedLabel = Histogram.getTailoredTextOrDefault(
+                    formattedLabel,
+                    maxWidthOfTheLatestLabel);
+            }
+
+            return formattedLabel;
+        }
+
+        private static getTailoredTextOrDefault(text: string, maxWidth: number): string {
+            var textProperties = Histogram.getTextProperties(text);
+
+            return TextMeasurementService.getTailoredTextOrDefault(textProperties, maxWidth);
+        }
+
+        private static getTextProperties(text: string): TextProperties {
+            return {
+                text: text,
+                fontFamily: Histogram.DefaultTextProperties.fontFamily,
+                fontSize: Histogram.DefaultTextProperties.fontSize
+            };
+        }
+
+        private renderYAxis(): void {
+            var yAxis: D3.Svg.Axis,
+                yShow: boolean = this.dataView.settings.yAxisSettings.show,
+                axisColor: string = this.dataView.settings.yAxisSettings.axisColor;
+
+            yAxis = this.yAxisProperties.axis
+                .orient(this.dataView.settings.yAxisSettings.position.toLowerCase())
+                .tickFormat((item: number) => {
+                    return this.dataView.yLabelFormatter.format(item);
+                });
+
+            if (yShow) {
+                this.axisY.call(yAxis);
+            } else {
+                this.axisY
+                    .selectAll("*")
+                    .remove();
+            }
+
+            this.updateFillColorOfAxis(this.axisY, axisColor);
+        }
+
+         private updateFillColorOfAxis(axisSelection: D3.Selection, fillColor: string): void {
+            axisSelection
+                .selectAll("g.tick text")
+                .style({
+                    "fill": fillColor
+                });
+        }
+
+        private getLabelLayout(): ILabelLayout {
+            var labelSettings: HistogramLabelSettings = this.dataView.settings.labelSettings,
+                fontSizeInPx: string = PixelConverter.fromPoint(labelSettings.fontSize),
+                fontFamily: string = dataLabelUtils.LabelTextProperties.fontFamily,
+                xScale: D3.Scale.LinearScale = this.dataView.xScale,
+                yScale: D3.Scale.LinearScale = this.dataView.yScale,
+                dataLabelFormatter: IValueFormatter = ValueFormatter.create({
+                    value: labelSettings.displayUnits,
+                    precision: labelSettings.precision
+                });
 
             return {
-                labelText: (b: D3.Layout.Bin) => {
-                    return dataLabelFormatter.format(b.y).toString();
+                labelText: (dataPoint: HistogramDataPoint) => {
+                    return dataLabelFormatter.format(dataPoint.y).toString();
                 },
                 labelLayout: {
-                    x: (b: D3.Layout.Bin) => this.DataLabelMargin + this.histogramDataView.xScale(b.x) + this.widthOfColumn / 2,
-                    y: (b: D3.Layout.Bin) => this.histogramDataView.yScale(b.y) - 5
+                    x: (dataPoint: HistogramDataPoint) => {
+                        var x: number,
+                            dx: number;
+
+                        x = xScale(dataPoint.x);
+                        dx = dataPoint.size.width / Histogram.DataLabelXOffset - this.widthOfColumn / 2;
+
+                        return x - dx;
+                    },
+                    y: (dataPoint: HistogramDataPoint) => {
+                        var y: number,
+                            dy: number;
+
+                        y = yScale(dataPoint.y);
+                        dy = dataPoint.size.height;
+
+                        return y - dy;
+                    }
                 },
-                filter: (b: D3.Layout.Bin) => {
-                    return (b != null);
+                filter: (dataPoint: HistogramDataPoint) => {
+                    return (dataPoint != null);
                 },
                 style: {
-                    'fill': labelSettings.color,
-                    'font-size': fontSizeInPx,
-                },
+                    "fill": labelSettings.color,
+                    "font-size": fontSizeInPx,
+                    "font-family": fontFamily
+                }
             };
         }
 
         private renderLabels(): void {
-            var layout = this.getLabaelLayout();
-            var dataPointsArray = this.histogramDataView.data;
-            dataLabelUtils.drawDefaultLabelsForDataPointChart(dataPointsArray, this.main, layout, this.viewport);
+            var labelSettings: HistogramLabelSettings = this.dataView.settings.labelSettings,
+                dataPointsArray: HistogramDataPoint[] = this.dataView.dataPoints,
+                labels: D3.UpdateSelection;
+
+            if (!labelSettings.show) {
+                dataLabelUtils.cleanDataLabels(this.labelGraphicsContext);
+
+                return;
+            }
+
+            labels = dataLabelUtils.drawDefaultLabelsForDataPointChart(
+                dataPointsArray,
+                this.labelGraphicsContext,
+                this.getLabelLayout(),
+                this.viewportIn);
+
+            if (labels) {
+                labels.attr("transform", (dataPoint: HistogramDataPoint) => {
+                    var size: ISize = dataPoint.size,
+                        dx: number,
+                        dy: number;
+
+                    dx = size.width / Histogram.DataLabelXOffset;
+                    dy = size.height / Histogram.DataLabelYOffset;
+
+                    return SVGUtil.translate(dx, dy);
+                });
+            }
         }
 
-        private static rangesToArray(data: HistogramData[]): number[] {
-            return data.reduce((previousValue: number[], currentValue: HistogramData, index: number) => {
+        private static rangesToArray(data: HistogramDataPoint[]): number[] {
+            return data.reduce((previousValue: number[], currentValue: HistogramDataPoint, index: number) => {
                 var range: number[];
 
                 range = (index === 0)
@@ -1532,23 +1895,27 @@ module powerbi.visuals.samples {
             }, []);
         }
 
-        private rangeToString(range: number[], includeLeftBorder: boolean, valueFormatter: IValueFormatter): string {
+        private static rangeToString(
+            range: number[],
+            includeLeftBorder: boolean,
+            valueFormatter: IValueFormatter): string {
+
             var leftBracket: string,
-                rightBracket: string = this.IncludeBrackets.right,
+                rightBracket: string = Histogram.IncludeBrackets.right,
                 leftBorder: string = valueFormatter.format(range[0]),
                 rightBorder: string = valueFormatter.format(range[1]);
 
             leftBracket = includeLeftBorder
-                ? this.IncludeBrackets.left
-                : this.ExcludeBrackets.left;
+                ? Histogram.IncludeBrackets.left
+                : Histogram.ExcludeBrackets.left;
 
-            return `${leftBracket}${leftBorder}${this.SeparatorNumbers}${rightBorder}${rightBracket}`;
+            return `${leftBracket}${leftBorder}${Histogram.SeparatorNumbers}${rightBorder}${rightBracket}`;
         }
 
         private renderLegend(): void {
             var legendElements: D3.Selection,
                 legendSelection: D3.UpdateSelection,
-                datalegends: Legend[] = this.getDataLegends(this.histogramDataView.settings);
+                datalegends: Legend[] = this.getDataLegends(this.dataView.settings);
 
             legendElements = this.main
                 .select(Histogram.Legends.selector)
@@ -1561,12 +1928,13 @@ module powerbi.visuals.samples {
                 .append("svg:text");
 
             legendSelection
-                .attr("x", 0)
-                .attr("y", 0)
-                .attr("dx", (item: Legend) => item.dx)
-                .attr("dy", (item: Legend) => item.dy)
-                .attr("transform", (item: Legend) => item.transform)
-                .attr("class", Histogram.Legend.class)
+                .attr({
+                    "x": 0,
+                    "y": 0,
+                    "dx": (item: Legend) => item.dx,
+                    "dy": (item: Legend) => item.dy,
+                    "transform": (item: Legend) => item.transform
+                })
                 .text((item: Legend) => item.text)
                 .classed(Histogram.Legend.class, true);
 
@@ -1574,36 +1942,57 @@ module powerbi.visuals.samples {
                 .exit()
                 .remove();
 
-            this.legend.select('text').style({
-                'display': this.histogramDataView.settings.xAxisSettings.title === true ? 'block' : 'none',
-            });
+            this.legend
+                .select("text")
+                .style({
+                    "display": Histogram.getDispayForAxisTitle(this.dataView.settings.xAxisSettings)
+                });
 
-            this.legend.selectAll('text').filter((d, index) => index === 1).style({
-                'display': this.histogramDataView.settings.yAxisSettings.title === true ? 'block' : 'none',
-            });
+            this.legend
+                .selectAll("text")
+                .filter((d, index) => index === 1)
+                .style({
+                    "display": Histogram.getDispayForAxisTitle(this.dataView.settings.yAxisSettings)
+                });
+        }
+
+        private static getDispayForAxisTitle(axisSettings: HistogramAxisSettings): string {
+            return axisSettings && axisSettings.title
+                ? null
+                : "none";
         }
 
         private getDataLegends(settings: HistogramSettings): Legend[] {
             var bottomLegendText: string = Histogram.getLegendText(settings);
-            bottomLegendText = Histogram.getLegend(bottomLegendText, settings.yAxisSettings.style, settings.yAxisSettings.displayUnits);
 
-            return [{
-                transform: SVGUtil.translate(
-                    this.viewport.width / 2,
-                    this.viewport.height),
-                text: settings.displayName,
-                dx: "1em",
-                dy: "-1em"
-            }, {
+            bottomLegendText = Histogram.getLegend(
+                bottomLegendText,
+                settings.yAxisSettings.style,
+                settings.yAxisSettings.displayUnits);
+
+            return [
+                {
+                    transform: SVGUtil.translate(
+                        this.viewport.width / 2,
+                        this.viewport.height),
+                    text: Histogram.getTailoredTextOrDefault(
+                        settings.displayName,
+                        this.viewportIn.width),
+                    dx: "-0.5em",
+                    dy: "-1em"
+                }, {
                     transform: SVGUtil.translateAndRotate(
                         this.shouldShowYOnRight() ? this.yTitleMargin : 0,
                         this.viewport.height / 2,
                         0,
                         0,
                         270),
-                    text: bottomLegendText,
+                    text: Histogram.getTailoredTextOrDefault(
+                        bottomLegendText,
+                        this.viewportIn.height),
                     dx: "3em"
-                }];
+                }
+            ];
         }
 
         private static getLegendText(settings: HistogramSettings): string {
@@ -1613,145 +2002,172 @@ module powerbi.visuals.samples {
         }
 
         private bindSelectionHandler(columnsSelection: D3.UpdateSelection): void {
-            this.setSelection(columnsSelection);
+            if (!this.interactivityService
+                || !this.dataView
+                || !this.dataView.dataPoints) {
 
-            columnsSelection.on("click", (data: HistogramData) => {
-                this.selectionManager.clear();
-
-                data.selectionIds.forEach((selectionId: SelectionId) => {
-                    this.selectionManager.select(selectionId, true).then((selectionIds: SelectionId[]) => {
-                        if (selectionIds.length > 0) {
-                            this.setSelection(columnsSelection, data);
-                        } else {
-                            this.setSelection(columnsSelection);
-                        }
-                    });
-                });
-
-                d3.event.stopPropagation();
-            });
-
-            this.root.on("click", () => {
-                this.selectionManager.clear();
-                this.setSelection(columnsSelection);
-            });
-        }
-
-        private setSelection(columnsSelection: D3.UpdateSelection, data?: HistogramData): void {
-            columnsSelection.transition()
-                .duration(this.durationAnimations)
-                .style("fill-opacity", this.MaxOpacity);
-
-            if (!data) {
                 return;
             }
 
-            columnsSelection
-                .filter((columnSelection: HistogramData) => {
-                    return columnSelection !== data;
-                })
-                .transition()
-                .duration(this.durationAnimations)
-                .style("fill-opacity", this.MinOpacity);
+            var subDataPoints: SelectableDataPoint[] = [];
+
+            this.dataView.dataPoints.forEach((dataPoint: HistogramDataPoint) => {
+                subDataPoints = subDataPoints.concat(dataPoint.subDataPoints);
+            });
+
+            var behaviorOptions: HistogramBehaviorOptions = {
+                columns: columnsSelection,
+                clearCatcher: this.clearCatcher,
+                interactivityService: this.interactivityService,
+            };
+
+            this.interactivityService.bind(
+                subDataPoints,
+                this.behavior,
+                behaviorOptions);
         }
 
-        public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] {
-            var instances: VisualObjectInstance[] = [],
+        public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstanceEnumeration {
+            var enumeration: ObjectEnumerationBuilder = new ObjectEnumerationBuilder(),
                 settings: HistogramSettings;
 
-            if (!this.histogramDataView ||
-                !this.histogramDataView.settings) {
-                return instances;
+            if (!this.dataView ||
+                !this.dataView.settings) {
+                return [];
             }
 
-            settings = this.histogramDataView.settings;
+            settings = this.dataView.settings;
 
             switch (options.objectName) {
                 case "general": {
-                    var general: VisualObjectInstance = {
-                        objectName: "general",
-                        displayName: "general",
-                        selector: null,
-                        properties: {
-                            bins: settings.bins,
-                            frequency: settings.frequency
-                        }
-                    };
+                    this.enumerateGeneral(enumeration, settings);
 
-                    instances.push(general);
                     break;
                 }
                 case "dataPoint": {
-                    var dataPoint: VisualObjectInstance = {
-                        objectName: "dataPoint",
-                        displayName: "dataPoint",
-                        selector: null,
-                        properties: {
-                            fill: settings.fillColor
-                        }
-                    };
+                    this.enumerateDataPoint(enumeration, settings);
 
-                    instances.push(dataPoint);
                     break;
                 }
                 case "labels": {
-                    var labelsSettings: HistogramLabelSettings = settings.labelSettings;
-                    var labels: VisualObjectInstance = {
-                        objectName: "labels",
-                        displayName: "labels",
-                        selector: null,
-                        properties: {
-                            show: labelsSettings.show,
-                            color: labelsSettings.color,
-                            displayUnits: labelsSettings.displayUnits,
-                            precision: labelsSettings.precision,
-                            fontSize: labelsSettings.fontSize
-                        }
-                    };
-                    instances.push(labels);
+                    this.enumerateLabels(enumeration, settings);
+
                     break;
                 }
                 case "xAxis": {
-                    var xAxisSettings: HistogramXAxisSettings = settings.xAxisSettings;
-                    var xAxis: VisualObjectInstance = {
-                        objectName: "xAxis",
-                        displayName: "X-Axis",
-                        selector: null,
-                        properties: {
-                            show: xAxisSettings.show,
-                            title: xAxisSettings.title,
-                            style: xAxisSettings.style,
-                            axisColor: xAxisSettings.axisColor,
-                            displayUnits: xAxisSettings.displayUnits,
-                            precision: xAxisSettings.precision,
-                        }
-                    };
-                    instances.push(xAxis);
+                    this.enumerateXAxis(enumeration, settings);
+
                     break;
                 }
                 case "yAxis": {
-                    var yAxisSettings: HistogramYAxisSettings = settings.yAxisSettings;
-                    var yAxis: VisualObjectInstance = {
-                        objectName: "yAxis",
-                        displayName: "Y-Axis",
-                        selector: null,
-                        properties: {
-                            show: yAxisSettings.show,
-                            position: yAxisSettings.position,
-                            start: yAxisSettings.start,
-                            end: yAxisSettings.end,
-                            title: yAxisSettings.title,
-                            style: yAxisSettings.style,
-                            axisColor: yAxisSettings.axisColor,
-                            displayUnits: yAxisSettings.displayUnits,
-                            precision: yAxisSettings.precision,
-                        }
-                    };
-                    instances.push(yAxis);
+                    this.enumerateYAxis(enumeration, settings);
+
                     break;
                 }
             }
-            return instances;
+
+            return enumeration.complete() || [];
+        }
+
+        private enumerateGeneral(
+            enumeration: ObjectEnumerationBuilder,
+            settings: HistogramSettings): void {
+
+            var general: VisualObjectInstance = {
+                objectName: "general",
+                displayName: "general",
+                selector: null,
+                properties: {
+                    bins: settings.bins,
+                    frequency: settings.frequency
+                }
+            };
+
+            enumeration.pushInstance(general);
+        }
+
+        private enumerateDataPoint(
+            enumeration: ObjectEnumerationBuilder,
+            settings: HistogramSettings): void {
+
+            var dataPoint: VisualObjectInstance = {
+                objectName: "dataPoint",
+                displayName: "dataPoint",
+                selector: null,
+                properties: {
+                    fill: settings.fillColor
+                }
+            };
+
+            enumeration.pushInstance(dataPoint);
+        }
+
+        private enumerateLabels(
+            enumeration: ObjectEnumerationBuilder,
+            settings: HistogramSettings): void {
+
+            var labelsSettings: HistogramLabelSettings = settings.labelSettings,
+                labels: VisualObjectInstance = {
+                    objectName: "labels",
+                    displayName: "labels",
+                    selector: null,
+                    properties: {
+                        show: labelsSettings.show,
+                        color: labelsSettings.color,
+                        displayUnits: labelsSettings.displayUnits,
+                        precision: labelsSettings.precision,
+                        fontSize: labelsSettings.fontSize
+                    }
+                };
+
+            enumeration.pushInstance(labels);
+        }
+
+        private enumerateXAxis(
+            enumeration: ObjectEnumerationBuilder,
+            settings: HistogramSettings): void {
+
+            var xAxisSettings: HistogramXAxisSettings = settings.xAxisSettings,
+                xAxis: VisualObjectInstance = {
+                    objectName: "xAxis",
+                    displayName: "X-Axis",
+                    selector: null,
+                    properties: {
+                        show: xAxisSettings.show,
+                        title: xAxisSettings.title,
+                        style: xAxisSettings.style,
+                        axisColor: xAxisSettings.axisColor,
+                        displayUnits: xAxisSettings.displayUnits,
+                        precision: xAxisSettings.precision,
+                    }
+                };
+
+            enumeration.pushInstance(xAxis);
+        }
+
+        private enumerateYAxis(
+            enumeration: ObjectEnumerationBuilder,
+            settings: HistogramSettings): void {
+
+            var yAxisSettings: HistogramYAxisSettings = settings.yAxisSettings,
+                yAxis: VisualObjectInstance = {
+                    objectName: "yAxis",
+                    displayName: "Y-Axis",
+                    selector: null,
+                    properties: {
+                        show: yAxisSettings.show,
+                        position: yAxisSettings.position,
+                        start: yAxisSettings.start,
+                        end: yAxisSettings.end,
+                        title: yAxisSettings.title,
+                        style: yAxisSettings.style,
+                        axisColor: yAxisSettings.axisColor,
+                        displayUnits: yAxisSettings.displayUnits,
+                        precision: yAxisSettings.precision,
+                    }
+                };
+
+            enumeration.pushInstance(yAxis);
         }
 
         private static getObjectsFromDataView(dataView: DataView): DataViewObjects {
@@ -1776,23 +2192,11 @@ module powerbi.visuals.samples {
             scrollbarVisible: boolean): IAxisProperties {
 
             var axes: IAxisProperties,
-                visualOptions: HistogramCalculateScaleAndDomainOptions,
-                width: number = this.viewport.width;
-
-            visualOptions = {
-                viewport: this.viewport,
-                margin: this.margin,
-                forcedXDomain: Histogram.rangesToArray(this.histogramDataView.data),
-                forceMerge: true,
-                showCategoryAxisLabel: false,
-                showValueAxisLabel: false,
-                categoryAxisScaleType: axisScale.linear,
-                valueAxisScaleType: null,
-                trimOrdinalDataOnOverflow: false
-            };
+                width: number = this.viewportIn.width;
 
             axes = this.calculateXAxesProperties(
-                visualOptions,
+                Histogram.rangesToArray(this.dataView.dataPoints),
+                axisScale.linear,
                 source,
                 Histogram.InnerPaddingRatio,
                 widthOfLabel);
@@ -1813,89 +2217,81 @@ module powerbi.visuals.samples {
         }
 
         private calculateXAxesProperties(
-            options: HistogramCalculateScaleAndDomainOptions,
+            forcedXDomain: any[],
+            categoryAxisScaleType: string,
             metaDataColumn: DataViewMetadataColumn,
             innerPaddingRatio: number,
             minOrdinalRectThickness: number): IAxisProperties {
 
             var xAxisProperties = HistogramAxisHelper.createAxis({
-                pixelSpan: this.viewport.width - this.YLegendSize - this.AxisSize,
-                dataDomain: options.forcedXDomain,
+                pixelSpan: this.viewportIn.width,
+                dataDomain: forcedXDomain,
                 metaDataColumn: metaDataColumn,
-                formatString: valueFormatter.getFormatString(metaDataColumn, Histogram.Properties["general"]["formatString"]),
+                formatString: valueFormatter.getFormatString(
+                    metaDataColumn,
+                    Histogram.Properties["general"]["formatString"]),
                 outerPadding: 0,
                 isScalar: false,
                 isVertical: false,
                 useTickIntervalForDisplayUnits: true,
                 isCategoryAxis: true,
                 getValueFn: (index, type) => index,
-                scaleType: options.categoryAxisScaleType,
+                scaleType: categoryAxisScaleType,
                 innerPaddingRatio: innerPaddingRatio,
                 minOrdinalRectThickness: minOrdinalRectThickness,
                 tickLabelPadding: undefined
             });
 
-            xAxisProperties.axisLabel = this.histogramDataView.settings.displayName;
+            xAxisProperties.axisLabel = this.dataView.settings.displayName;
 
             return xAxisProperties;
         }
 
         private calculateYAxes(
             source: DataViewMetadataColumn,
-            textProperties: TextProperties,
-            widthOfLabel: number,
-            scrollbarVisible: boolean): IAxisProperties {
+            heightOfLabel: number): IAxisProperties {
 
-            var yAxisSettings: HistogramYAxisSettings,
-                visualOptions: HistogramCalculateScaleAndDomainOptions;
-
-            visualOptions = {
-                viewport: this.viewport,
-                margin: this.margin,
-                forceMerge: true,
-                showCategoryAxisLabel: true,
-                showValueAxisLabel: false,
-                categoryAxisScaleType: axisScale.linear,
-                valueAxisScaleType: null,
-                trimOrdinalDataOnOverflow: false
-            };
-
-            yAxisSettings = this.histogramDataView.settings.yAxisSettings;
-
-            visualOptions.forcedYDomain = applyCustomizedDomain(
-                [yAxisSettings.start, yAxisSettings.end],
-                visualOptions.forcedYDomain);
+            var yAxisSettings: HistogramYAxisSettings = this.dataView.settings.yAxisSettings;
 
             return this.calculateYAxesProperties(
-                visualOptions,
+                [yAxisSettings.start, yAxisSettings.end],
+                axisScale.linear,
                 source,
                 Histogram.InnerPaddingRatio,
-                widthOfLabel);
+                heightOfLabel);
         }
 
         private calculateYAxesProperties(
-            options: HistogramCalculateScaleAndDomainOptions,
+            forcedYDomain: any[],
+            categoryAxisScaleType: string,
             metaDataColumn: DataViewMetadataColumn,
             innerPaddingRatio: number,
             minOrdinalRectThickness: number): IAxisProperties {
 
-            var yAxisSettings: HistogramYAxisSettings = this.histogramDataView.settings.yAxisSettings;
+            var formatString: string = undefined;
+
+            if (this.dataView.settings.frequency) {
+                formatString = valueFormatter.getFormatString(
+                    metaDataColumn,
+                    Histogram.Properties["general"]["formatString"]);
+            }
 
             return HistogramAxisHelper.createAxis({
-                pixelSpan: this.viewport.height - this.XLegendSize + 5,
-                dataDomain: combineDomain(options.forcedYDomain, [yAxisSettings.start, yAxisSettings.end]),
+                pixelSpan: this.viewportIn.height,
+                dataDomain: forcedYDomain,
                 metaDataColumn: metaDataColumn,
-                formatString: valueFormatter.getFormatString(metaDataColumn, Histogram.Properties["general"]["formatString"]),
+                formatString: formatString,
                 outerPadding: this.outerPadding,
                 isScalar: true,
                 isVertical: true,
                 useTickIntervalForDisplayUnits: true,
                 isCategoryAxis: false,
                 getValueFn: (index, type) => index,
-                scaleType: options.categoryAxisScaleType,
+                scaleType: categoryAxisScaleType,
                 innerPaddingRatio: innerPaddingRatio,
                 minOrdinalRectThickness: minOrdinalRectThickness,
-                tickLabelPadding: undefined
+                tickLabelPadding: undefined,
+                is100Pct: true
             });
         }
     }
@@ -1931,7 +2327,6 @@ module powerbi.visuals.samples {
             innerPaddingRatio: number;
             tickLabelPadding: number;
             minOrdinalRectThickness: number;
-            maxTickCount?: number;
         }
 
         /**
@@ -2005,7 +2400,7 @@ module powerbi.visuals.samples {
             var axis = d3.svg.axis()
                 .scale(scale)
                 .tickSize(6, 0)
-                .orient(isVertical ? 'left' : 'bottom')
+                .orient(isVertical ? "left" : "bottom")
                 .ticks(bestTickCount)
                 .tickValues(tickValues);
 
@@ -2019,7 +2414,7 @@ module powerbi.visuals.samples {
                 xLabelMaxWidth = Math.max(1, categoryThickness - tickLabelPadding * 2);
             }
             else {
-                // When there are 0 or 1 ticks, then xLabelMaxWidth = pixelSpan       
+                // When there are 0 or 1 ticks, then xLabelMaxWidth = pixelSpan
                 xLabelMaxWidth = tickValues.length > 1 ? getScalarLabelMaxWidth(scale, tickValues) : pixelSpan;
                 xLabelMaxWidth = xLabelMaxWidth - ScalarTickLabelPadding * 2;
             }
@@ -2047,7 +2442,7 @@ module powerbi.visuals.samples {
         export function powerOfTen(d: any): boolean {
             var value = Math.abs(d);
             // formula log2(Y)/log2(10) = log10(Y)
-            // because double issues this won't return exact value
+            // because double issues this won"t return exact value
             // we need to ceil it to nearest number.
             var log10: number = Math.log(value) / Math.LN10;
             log10 = Math.ceil(log10 - 1e-12);
@@ -2104,7 +2499,7 @@ module powerbi.visuals.samples {
             }
             else {
                 if (getValueFn == null && !isScalar) {
-                    debug.assertFail('getValueFn must be supplied for ordinal tickValues');
+                    debug.assertFail("getValueFn must be supplied for ordinal tickValues");
                 }
                 if (useTickIntervalForDisplayUnits && isScalar && tickValues.length > 1) {
                     var value1 = axisDisplayUnits ? axisDisplayUnits : tickValues[1] - tickValues[0];
@@ -2119,7 +2514,7 @@ module powerbi.visuals.samples {
                     if (axisPrecision)
                         options.precision = axisPrecision;
                     else
-                        options.detectAxisPrecision = true;
+                        options.precision = AxisHelper.calculateAxisPrecision(tickValues[1] - tickValues[0], axisDisplayUnits, formatString);
 
                     formatter = valueFormatter.create(options);
                 }
@@ -2137,7 +2532,7 @@ module powerbi.visuals.samples {
             var isCustomFormat = formatString && !NumberFormat.isStandardFormat(formatString);
             if (isCustomFormat) {
                 var precision = NumberFormat.getCustomFormatMetadata(formatString, true /*calculatePrecision*/).precision;
-                if (formatString.indexOf('%') > -1)
+                if (formatString.indexOf("%") > -1)
                     precision += 2; //percent values are multiplied by 100 during formatting
                 return Math.pow(10, -precision);
             }
@@ -2200,6 +2595,7 @@ module powerbi.visuals.samples {
             else if (isDateTime(axisType)) {
                 return getRecommendedTickValuesForADateTimeRange(maxTicks, scale.domain());
             }
+
             return getRecommendedTickValuesForAQuantitativeRange(maxTicks, scale, minTickInterval);
         }
 
@@ -2254,7 +2650,7 @@ module powerbi.visuals.samples {
                 return tickLabels;
             }
 
-            debug.assertFail('must pass a quantitative scale to this method');
+            debug.assertFail("must pass a quantitative scale to this method");
 
             return tickLabels;
         }
@@ -2272,7 +2668,7 @@ module powerbi.visuals.samples {
         }
 
         export function isOrdinalScale(scale: any): boolean {
-            return typeof scale.invert === 'undefined';
+            return typeof scale.invert === "undefined";
         }
 
         /**
@@ -2309,7 +2705,10 @@ module powerbi.visuals.samples {
 
             var dataType: ValueType = getCategoryValueType(metaDataColumn, isScalar);
 
-            var maxTicks = isVertical ? getRecommendedNumberOfTicksForYAxis(pixelSpan) : getRecommendedNumberOfTicksForXAxis(pixelSpan);
+            var maxTicks = isVertical
+                ? getRecommendedNumberOfTicksForYAxis(pixelSpan)
+                : getRecommendedNumberOfTicksForXAxis(pixelSpan);
+
             if (maxTickCount &&
                 maxTicks > maxTickCount)
                 maxTicks = maxTickCount;
@@ -2349,11 +2748,16 @@ module powerbi.visuals.samples {
                 }
 
                 if (isScalar && dataType.numeric && !dataType.dateTime) {
-                    scale = createNumericalScale(options.scaleType, pixelSpan, scalarDomain, dataType, outerPadding, bestTickCount, shouldClamp);
+                    //Note: Don't pass bestTickCount to createNumericalScale, because it overrides boundaries of the domain.
+                    scale = createNumericalScale(options.scaleType, pixelSpan, scalarDomain, dataType, outerPadding, /*bestTickCount*/null, shouldClamp);
+
+                    bestTickCount = maxTicks === 0
+                        ? 0
+                        : Math.floor((pixelSpan - outerPadding * 2) / minOrdinalRectThickness);
                 }
                 else if (isScalar && dataType.dateTime) {
                     // Use of a linear scale, instead of a D3.time.scale, is intentional since we want
-                    // to control the formatting of the time values, since d3's implementation isn't
+                    // to control the formatting of the time values, since d3"s implementation isn"t
                     // in accordance to our design.
                     //     scalarDomain: should already be in long-int time (via category.values[0].getTime())
                     scale = createLinearScale(pixelSpan, scalarDomain, outerPadding, null, shouldClamp); // DO NOT PASS TICKCOUNT
@@ -2371,7 +2775,7 @@ module powerbi.visuals.samples {
                             (pixelSpan - outerPadding * 2) / minOrdinalRectThickness);
                 }
                 else {
-                    debug.assertFail('unsupported dataType, something other than text or numeric');
+                    debug.assertFail("unsupported dataType, something other than text or numeric");
                 }
             }
 
@@ -2410,7 +2814,7 @@ module powerbi.visuals.samples {
             innerPaddingRatio: number,
             outerPaddingRatio: number): D3.Scale.OrdinalScale {
 
-            debug.assert(outerPaddingRatio >= 0 && outerPaddingRatio < 4, 'outerPaddingRatio should be a value between zero and four');
+            debug.assert(outerPaddingRatio >= 0 && outerPaddingRatio < 4, "outerPaddingRatio should be a value between zero and four");
 
             var scale = d3.scale.ordinal()
                 /* Avoid using rangeRoundBands here as it is adding some extra padding to the axis*/
@@ -2482,7 +2886,7 @@ module powerbi.visuals.samples {
                 .domain([dataDomain[0], dataDomain[1]])
                 .clamp(shouldClamp);
             // .nice(undefined) still modifies the scale boundaries, and for datetime this messes things up.
-            // we use millisecond ticks since epoch for datetime, so we don't want any "nice" with numbers like 17398203392.
+            // we use millisecond ticks since epoch for datetime, so we don"t want any "nice" with numbers like 17398203392.
             if (niceCount) {
                 scale.nice(niceCount);
             }
@@ -2490,19 +2894,25 @@ module powerbi.visuals.samples {
         }
 
         export function getRecommendedNumberOfTicksForXAxis(availableWidth: number) {
-            if (availableWidth < 300)
+            if (availableWidth < 300) {
                 return 3;
-            if (availableWidth < 500)
+            }
+
+            if (availableWidth < 500) {
                 return 5;
+            }
 
             return 8;
         }
 
         export function getRecommendedNumberOfTicksForYAxis(availableWidth: number) {
-            if (availableWidth < 150)
+            if (availableWidth < 150) {
                 return 3;
-            if (availableWidth < 300)
+            }
+
+            if (availableWidth < 300) {
                 return 5;
+            }
 
             return 8;
         }
@@ -2584,6 +2994,144 @@ module powerbi.visuals.samples {
             var closeZero = epsilon * Math.abs(ticks[1] - ticks[0]);
 
             return ticks.map((tick) => Math.abs(tick) <= closeZero ? 0 : tick);
+        }
+    }
+
+    export interface HistogramBehaviorOptions {
+        columns: D3.Selection;
+        clearCatcher: D3.Selection;
+        interactivityService: IInteractivityService;
+    }
+
+    export class HistogramBehavior implements IInteractiveBehavior {
+        private columns: D3.Selection;
+        private selectedDataPoints: SelectableDataPoint[];
+        private clearCatcher: D3.Selection;
+        private interactivityService: IInteractivityService;
+
+        public static create(): IInteractiveBehavior {
+            return new HistogramBehavior();
+        }
+
+        public bindEvents(
+            behaviorOptions: HistogramBehaviorOptions,
+            selectionHandler: ISelectionHandler): void {
+
+            this.columns = behaviorOptions.columns;
+            this.interactivityService = behaviorOptions.interactivityService;
+            this.clearCatcher = behaviorOptions.clearCatcher;
+
+            this.columns.on("click", (dataPoint: HistogramDataPoint) => {
+                selectionHandler.handleClearSelection();
+
+                if (!HistogramBehavior.areDataPointsSelected(this.selectedDataPoints, dataPoint.subDataPoints)) {
+                    dataPoint.subDataPoints.forEach((subDataPoint: SelectableDataPoint) => {
+                        selectionHandler.handleSelection(subDataPoint, true);
+                    });
+
+                    this.selectedDataPoints = dataPoint.subDataPoints;
+                } else {
+                    this.createAnEmptySelectedDataPoints();
+                }
+            });
+
+            this.clearCatcher.on("click", () => {
+                selectionHandler.handleClearSelection();
+                this.createAnEmptySelectedDataPoints();
+            });
+        }
+
+        public renderSelection(hasSelection: boolean) {
+            histogramUtils.updateFillOpacity(
+                this.columns,
+                this.interactivityService,
+                hasSelection);
+        }
+
+        public static areDataPointsSelected(
+            selectedDataPoints: SelectableDataPoint[],
+            dataPoints: SelectableDataPoint[]): boolean {
+            if (!dataPoints
+                || !selectedDataPoints
+                || dataPoints.length !== selectedDataPoints.length) {
+
+                return false;
+            }
+
+            return selectedDataPoints.every((selectedDataPoint: SelectableDataPoint) => {
+                return dataPoints.some((dataPoint: SelectableDataPoint) => {
+                    return selectedDataPoint
+                        && dataPoint
+                        && selectedDataPoint.identity
+                        && dataPoint.identity
+                        && selectedDataPoint.identity.equals(dataPoint.identity);
+                });
+            });
+        }
+
+        private createAnEmptySelectedDataPoints(): void {
+            this.selectedDataPoints = [];
+        }
+    }
+
+    export interface StateOfDataPoint {
+        selected: boolean;
+        highlight: boolean;
+    }
+
+    export module histogramUtils {
+        export var DimmedOpacity: number = 0.4;
+        export var DefaultOpacity: number = 1.0;
+
+        export function getFillOpacity(
+            selected: boolean,
+            highlight: boolean,
+            hasSelection: boolean,
+            hasPartialHighlights: boolean): number {
+
+            if ((hasPartialHighlights && !highlight) || (hasSelection && !selected)) {
+                return DimmedOpacity;
+            }
+
+            return DefaultOpacity;
+        }
+
+        export function getStateOfDataPoint(dataPoint: HistogramDataPoint): StateOfDataPoint {
+            var selected: boolean = false,
+                highlight: boolean = false;
+
+            if (dataPoint.subDataPoints && dataPoint.subDataPoints.length > 0) {
+                dataPoint.subDataPoints.forEach((subDataPoint: HistogramSubDataPoint) => {
+                    selected = selected || subDataPoint.selected;
+                    highlight = highlight || subDataPoint.highlight;
+                });
+            }
+
+            return {
+                selected: selected,
+                highlight: highlight
+            };
+        }
+
+        export function updateFillOpacity(
+            columns: D3.Selection,
+            interactivityService?: IInteractivityService,
+            hasSelection: boolean = false): void {
+            var hasHighlights: boolean = false;
+
+            if (interactivityService) {
+                hasHighlights = interactivityService.hasSelection();
+            }
+
+            columns.style("fill-opacity", (dataPoint: HistogramDataPoint) => {
+                var selectedDataPoint: StateOfDataPoint = histogramUtils.getStateOfDataPoint(dataPoint);
+
+                return histogramUtils.getFillOpacity(
+                    selectedDataPoint.selected,
+                    selectedDataPoint.highlight,
+                    !selectedDataPoint.highlight && hasSelection,
+                    !selectedDataPoint.selected && hasHighlights);
+            });
         }
     }
 }

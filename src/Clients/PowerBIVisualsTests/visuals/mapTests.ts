@@ -86,6 +86,7 @@ module powerbitests {
                     true,
                     false,
                     false,
+                    false,
                 ]);
 
                 expect(powerbi.visuals.mapCapabilities.dataRoles[0].preferredTypes.map(ValueType.fromDescriptor)).toEqual([
@@ -403,7 +404,7 @@ module powerbitests {
             let colorHelper = new ColorHelper(colors, fillProp);
 
             let enumerationBuilder = new powerbi.visuals.ObjectEnumerationBuilder();
-            var legendDataPoints = Map.createLegendData(dataView, colorHelper).dataPoints;
+            var legendDataPoints = powerbi.visuals.Legend.buildSeriesLegendData(dataView, colorHelper, powerbi.visuals.mapProps.general.formatString).dataPoints;
             Map.enumerateDataPoints(enumerationBuilder, legendDataPoints, colors, true, null, false, []);
             let enumeratedDataPoints = enumerationBuilder.complete();
 
@@ -637,7 +638,7 @@ module powerbitests {
                 let palette = new powerbi.visuals.DataColorPalette();
                 colorHelper = new ColorHelper(palette, fillProp);
                 geoTaggingAnalyzerService = powerbi.createGeoTaggingAnalyzerService(mocks.getLocalizedString);
-                data = Map.converter(dataView, colorHelper, geoTaggingAnalyzerService, /*isFilledMap*/false, /*tooltipBucketEnabled*/true);
+                data = Map.converter(dataView, colorHelper, geoTaggingAnalyzerService, /*isFilledMap*/false);
                 categoryCount = data.dataPoints.length;
             });
 
@@ -944,9 +945,7 @@ module powerbitests {
             it("Null series name doesn't throw exception", () => {
                 dataView = dataBuilder.withNullSeriesName().buildWithSeries(true, true);
                 data = Map.converter(dataView, colorHelper, geoTaggingAnalyzerService, false);
-                let legendData = Map.createLegendData(dataView, colorHelper);
                 expect(data).toBeTruthy(); // Simple checks to expect this not to fail
-                expect(legendData).toBeTruthy();
             });
         });
 
@@ -1111,9 +1110,7 @@ module powerbitests {
             it("Null series name doesn't throw exception", () => {
                 dataView = dataBuilder.withNullSeriesName().buildWithSeries(true, true);
                 data = Map.converter(dataView, colorHelper, geoTaggingAnalyzerService, false);
-                let legendData = Map.createLegendData(dataView, colorHelper);
                 expect(data).toBeTruthy(); // Simple checks to expect this not to fail
-                expect(legendData).toBeTruthy();
             });
         });
 

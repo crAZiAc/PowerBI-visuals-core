@@ -35,6 +35,7 @@ module powerbi.extensibility.v110 {
                     let updateOptions: VisualUpdateOptions = {
                         viewport: options.viewport,
                         dataViews: options.dataViews,
+                        viewMode: options.viewMode,
                         type: v100.convertLegacyUpdateType(options)
                     };
 

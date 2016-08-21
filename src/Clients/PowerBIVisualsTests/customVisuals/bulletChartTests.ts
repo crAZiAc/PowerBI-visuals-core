@@ -29,17 +29,22 @@
 module powerbitests.customVisuals {
     import VisualClass = powerbi.visuals.samples.BulletChart;
     import BulletChartData = powerbitests.customVisuals.sampleDataViews.BulletChartData;
+    import VisualSettings = powerbi.visuals.samples.BulletChartSettings;
+    import helpers = powerbitests.customVisuals.helpers;
+
     powerbitests.mocks.setLocale();
 
     describe("BulletChart", () => {
         let visualBuilder: BulletChartBuilder;
         let defaultDataViewBuilder: powerbitests.customVisuals.sampleDataViews.BulletChartData;
         let dataView: powerbi.DataView;
+        let settings: VisualSettings;
 
         beforeEach(() => {
             visualBuilder = new BulletChartBuilder(1000,500);
             defaultDataViewBuilder = new BulletChartData();
             dataView = defaultDataViewBuilder.getDataView();
+            settings = dataView.metadata.objects = <any>new VisualSettings();
         });
 
         describe('capabilities', () => {
@@ -114,59 +119,120 @@ module powerbitests.customVisuals {
                     done();
                 });
             });
-        });
 
-        describe('enumerateObjectInstances', () => {
-            it('enumerateObjectInstances no model', (done) => {
-                let enumeratuion = visualBuilder.enumerateObjectInstances({ objectName: 'labels' });
-                helpers.renderTimeout(() => {
-                    expect(enumeratuion).toBeUndefined();
+            it("only defined ranges should be visible", (done) => {
+                dataView = defaultDataViewBuilder.getDataView([
+                    BulletChartData.ColumnCategory,
+                    BulletChartData.ColumnValue,
+                    BulletChartData.ColumnTargetValue]);
+
+                settings = dataView.metadata.objects = <any>new VisualSettings();
+
+                settings.values.minimumPercent = 0;
+                settings.values.needsImprovementPercent = 25;
+                settings.values.satisfactoryPercent = null;
+                settings.values.goodPercent = 100;
+                settings.values.veryGoodPercent = 150;
+                settings.values.maximumPercent = 200;
+
+                visualBuilder.updateRenderTimeout(dataView, () => {
+                    let valuesLength = dataView.categorical.categories[0].values.length;
+                    var rangeRects = visualBuilder.rangeRects.filter((i, e) => parseFloat($(e).attr('width')) > 0);
+
+                    let badRange = rangeRects.filter((i, e) =>
+                        helpers.convertColorToHexString($(e).css('fill')) ===  helpers.convertColorToHexString(settings.colors.minColor));
+                    let needsImprovementRange = rangeRects.filter((i, e) =>
+                         helpers.convertColorToHexString($(e).css('fill')) ===  helpers.convertColorToHexString(settings.colors.needsImprovementColor));
+                    let satisfactoryRange = rangeRects.filter((i, e) =>
+                         helpers.convertColorToHexString($(e).css('fill')) ===  helpers.convertColorToHexString(settings.colors.satisfactoryColor));
+                    let goodRange = rangeRects.filter((i, e) =>
+                         helpers.convertColorToHexString($(e).css('fill')) ===  helpers.convertColorToHexString(settings.colors.goodColor));
+                    let veryGoodRange = rangeRects.filter((i, e) =>
+                         helpers.convertColorToHexString($(e).css('fill')) ===  helpers.convertColorToHexString(settings.colors.veryGoodColor));
+
+                    expect(badRange.length).toEqual(valuesLength);
+                    expect(needsImprovementRange.length).toEqual(valuesLength);
+                    expect(satisfactoryRange.length).toEqual(0);
+                    expect(goodRange.length).toEqual(valuesLength);
+                    expect(veryGoodRange.length).toEqual(valuesLength);
                     done();
                 });
             });
 
+            it("x axis labels should be tailored", (done) => {
+                dataView = defaultDataViewBuilder.getDataView([
+                    BulletChartData.ColumnCategory,
+                    BulletChartData.ColumnValue,
+                    BulletChartData.ColumnTargetValue],
+                    (source) => {
+                        switch(source.displayName) {
+                            case BulletChartData.ColumnValue:
+                                source.format = "0.00 %;-0.00 %;0.00 %";
+                                break;
+                        }
+                    });
+
+                settings = dataView.metadata.objects = <any>new VisualSettings();
+
+                settings.values.satisfactoryPercent = 1e+250;
+
+                visualBuilder.updateRenderTimeout(dataView, () => {
+                    let ticks = visualBuilder.axis.first().children("g.tick");
+                    let ticksLengthSum = _.sum(ticks.toArray(), (e: Element) => e.getBoundingClientRect().width);
+                    expect(ticksLengthSum).toBeLessThan(visualBuilder.viewport.width);
+                    done();
+                });
+            });
+        });
+
+        describe('enumerateObjectInstances', () => {
+            it('enumerateObjectInstances no model', () => {
+                let enumeratuion = visualBuilder.enumerateObjectInstances({ objectName: 'labels' });
+                expect(enumeratuion).toBeUndefined();
+            });
+
             it('enumerateObjectInstances labels', (done) => {
                 visualBuilder.updateEnumerateObjectInstancesRenderTimeout(dataView, { objectName: 'labels' }, enumeratuion => {
-                    expect(enumeratuion[0]).toBeDefined();
-                    expect(enumeratuion[0].objectName).toBe('labels');
-                    expect(enumeratuion[0].properties['labelColor']).toBe('Black');
-                    expect(enumeratuion[0].properties['fontSize']).toBe(11);
+                    expect(enumeratuion.instances[0]).toBeDefined();
+                    expect(enumeratuion.instances[0].objectName).toBe('labels');
+                    expect(enumeratuion.instances[0].properties['labelColor']).toBe('Black');
+                    expect(enumeratuion.instances[0].properties['fontSize']).toBe(11);
                     done();
                 });
             });
 
             it('enumerateObjectInstances values', (done) => {
                 visualBuilder.updateEnumerateObjectInstancesRenderTimeout(dataView, { objectName: 'values' }, enumeratuion => {
-                    expect(enumeratuion[0]).toBeDefined();
-                    expect(enumeratuion[0].objectName).toBe('values');
-                    expect(enumeratuion[0].properties['targetValue']).toBe(0);
-                    expect(enumeratuion[0].properties['targetValue2']).toBe(0);
-                    expect(enumeratuion[0].properties['minimumPercent']).toBe(0);
-                    expect(enumeratuion[0].properties['needsImprovementPercent']).toBe(25);
-                    expect(enumeratuion[0].properties['satisfactoryPercent']).toBe(50);
-                    expect(enumeratuion[0].properties['goodPercent']).toBe(100);
-                    expect(enumeratuion[0].properties['veryGoodPercent']).toBe(125);
-                    expect(enumeratuion[0].properties['maximumPercent']).toBe(200);
+                    expect(enumeratuion.instances[0]).toBeDefined();
+                    expect(enumeratuion.instances[0].objectName).toBe('values');
+                    expect(enumeratuion.instances[0].properties['targetValue']).toBe(null);
+                    expect(enumeratuion.instances[0].properties['targetValue2']).toBe(null);
+                    expect(enumeratuion.instances[0].properties['minimumPercent']).toBe(0);
+                    expect(enumeratuion.instances[0].properties['needsImprovementPercent']).toBe(null);
+                    expect(enumeratuion.instances[0].properties['satisfactoryPercent']).toBe(null);
+                    expect(enumeratuion.instances[0].properties['goodPercent']).toBe(null);
+                    expect(enumeratuion.instances[0].properties['veryGoodPercent']).toBe(null);
+                    expect(enumeratuion.instances[0].properties['maximumPercent']).toBe(null);
                     done();
                 });
             });
 
             it('enumerateObjectInstances orientation', (done) => {
                 visualBuilder.updateEnumerateObjectInstancesRenderTimeout(dataView, { objectName: 'orientation' }, enumeratuion => {
-                    expect(enumeratuion[0]).toBeDefined();
-                    expect(enumeratuion[0].objectName).toBe('orientation');
-                    expect(enumeratuion[0].properties['orientation']).toBe('Horizontal Left');
+                    expect(enumeratuion.instances[0]).toBeDefined();
+                    expect(enumeratuion.instances[0].objectName).toBe('orientation');
+                    expect(enumeratuion.instances[0].properties['orientation']).toBe('Horizontal Left');
                     done();
                 });
             });
 
             it('enumerateObjectInstances axis', (done) => {
                 visualBuilder.updateEnumerateObjectInstancesRenderTimeout(dataView, { objectName: 'axis' }, enumeratuion => {
-                    expect(enumeratuion[0]).toBeDefined();
-                    expect(enumeratuion[0].objectName).toBe('axis');
-                    expect(enumeratuion[0].properties['axisColor']).toBe('Grey');
-                    expect(enumeratuion[0].properties['measureUnits']).toBe('');
-                    expect(enumeratuion[0].properties['unitsColor']).toBe('Grey');
+                    expect(enumeratuion.instances[0]).toBeDefined();
+                    expect(enumeratuion.instances[0].objectName).toBe('axis');
+                    expect(enumeratuion.instances[0].properties['axisColor']).toBe('Grey');
+                    expect(enumeratuion.instances[0].properties['measureUnits']).toBe('');
+                    expect(enumeratuion.instances[0].properties['unitsColor']).toBe('Grey');
                     done();
                 });
             });
@@ -180,6 +246,14 @@ module powerbitests.customVisuals {
 
         public get mainElement() {
             return this.element.children("div").children("svg");
+        }
+
+        public get rangeRects() {
+            return this.mainElement.children("g").children("rect.range");
+        }
+
+        public get axis() {
+            return this.mainElement.children("g").children("g.axis");
         }
 
         protected build() {

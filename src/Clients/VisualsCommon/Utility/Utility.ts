@@ -255,6 +255,28 @@ module jsCommon {
             return uniqueName;
         }
 
+        export function constructNameFromList(list: string[], separator: string, maxCharacter: number): string {
+            let labels: string[] = [];
+            let exceeded: boolean;
+            let length = 0;
+            for (let item of list) {
+                if (length + item.length > maxCharacter && labels.length > 0) {
+                    exceeded = true;
+                    break;
+                }
+                labels.push(item);
+                length += item.length;
+            }
+
+            let separatorWithSpace = ' ' + separator + ' ';
+            let name = labels.join(separatorWithSpace);
+
+            if (exceeded)
+                name += separatorWithSpace + "...";
+
+            return name;
+        }
+
         export function constructCommaSeparatedList(list: string[], resourceProvider: IStringResourceProvider, maxValue?: number): string {
             if (!list || list.length === 0)
                 return '';
@@ -299,8 +321,8 @@ module jsCommon {
         /**
          * Remove file name reserved characters <>:"/\|?* from input string.
          */
-        export function normalizeFileName(fileName: string): string {   
-            debug.assertValue(fileName, 'fileName');         
+        export function normalizeFileName(fileName: string): string {
+            debug.assertValue(fileName, 'fileName');
             return fileName.replace(/[\<\>\:"\/\\\|\?*]/g, '');
         }
 
@@ -759,7 +781,7 @@ module jsCommon {
             let regex: RegExp = new RegExp('data:(image\/(png|jpg|jpeg|gif|svg))');
             return regex.test(url);
         }
-        
+
         public static isLocalUrl(url: string): boolean {
             return _.startsWith(url, "data:") || _.startsWith(url, "blob:");
         }
@@ -902,7 +924,7 @@ module jsCommon {
                 return null;
             if (value === undefined)
                 return defaultValue;
-            
+
             let result = Number(value);
             if (isFinite(result))
                 return result;
@@ -911,7 +933,7 @@ module jsCommon {
             return result;
         }
 
-        public static getURLParamValue(name:string) {
+        public static getURLParamValue(name: string) {
             let results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
             if (results == null) {
                 return null;
@@ -1073,7 +1095,7 @@ module jsCommon {
                 window.requestAnimationFrame = (func) => setTimeout(func, 1000 / 50);
             }
 
-            return function() {
+            return function () {
                 if (!isWaiting) {
                     isWaiting = true;
                     args = arguments;

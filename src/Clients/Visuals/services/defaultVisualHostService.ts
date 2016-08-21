@@ -170,6 +170,7 @@ module powerbi.visuals {
         }
         public getIdentityDisplayNames(dentities: DataViewScopeIdentity[]): DisplayNameIdentityPair[] { return; }        
         public setIdentityDisplayNames(displayNamesIdentityPairs: DisplayNameIdentityPair[]): void { }
+        public tooltips(): IVisualHostTooltipService { return; }
 
         private static beautify(format: string): string {
             let key = BeautifiedFormat[format];

@@ -62,15 +62,23 @@ module powerbi.data {
 
             if (dataViewCategorical) {
                 let concatenationSource: CategoryColumnsByRole = detectCategoricalRoleForHierarchicalGroup(dataViewCategorical, applicableRoleMappings);
+                let hierarchyVariationProperty = getHierarchyVariationProperty(dataView.metadata);
 
-                if (concatenationSource && concatenationSource.categories.length >= 2) {
+                // no need to concatenate unless we have multiple columns, or we are a datetime Date Table hierarchy
+                if (concatenationSource && (concatenationSource.categories.length >= 2 || hierarchyVariationProperty)) {
                     let activeItemsToIgnoreInConcatenation =
                         _.chain(projectionActiveItems && projectionActiveItems[concatenationSource.roleName])
                             .filter((activeItemInfo: DataViewProjectionActiveItemInfo) => activeItemInfo.suppressConcat)
                             .map((activeItemInfo: DataViewProjectionActiveItemInfo) => activeItemInfo.queryRef)
                             .value();
 
-                    result = applyConcatenation(dataView, objectDescriptors, concatenationSource.roleName, concatenationSource.categories, activeItemsToIgnoreInConcatenation);
+                    result = applyConcatenation(
+                        dataView,
+                        objectDescriptors,
+                        concatenationSource.roleName,
+                        concatenationSource.categories,
+                        activeItemsToIgnoreInConcatenation,
+                        hierarchyVariationProperty);
                 }
             }
 
@@ -106,6 +114,20 @@ module powerbi.data {
             return result;
         }
 
+        function getHierarchyVariationProperty(metadata: DataViewMetadata): string {
+            let hierarchyColumn = _.find(metadata.columns, (mc) => mc.expr instanceof SQHierarchyLevelExpr);
+            if (hierarchyColumn) {
+                let hierarchyLevelExpr = <SQHierarchyLevelExpr>hierarchyColumn.expr;
+                let hierarchyExpr = hierarchyLevelExpr.arg;
+                if (hierarchyExpr instanceof SQHierarchyExpr) {
+                    let variationSourceExpr = hierarchyExpr.arg;
+                    if (variationSourceExpr instanceof SQPropertyVariationSourceExpr) {
+                        return variationSourceExpr.property;
+                    }
+                }
+            }
+        }
+
         /**
          * Returns the role and its assocated category columns (from dataViewCategorical.categories)
          * that should be concatenated for the case of hierarchical group.
@@ -125,13 +147,14 @@ module powerbi.data {
             // 1. combo chart with a field for both Line and Column values, and
             // 2. chart with regression line enabled.
             // In case 1, you can pretty much get exactly the one from applicableRoleMappings for which this code is currently processing for,
-            // by looking at the index of the current split in DataViewTransformActions.splits.
-            // In case 2, however, applicableRoleMappings.length will be different than DataViewTransformActions.splits.length, hence it is
-            // not straight forward to figure out for which one in applicableRoleMappings is this code currently processing.
-            // SO... This code will just choose the category role name if it is consistent across all applicableRoleMappings.
+            // by looking at the index of the current split in DataViewTransformActions.splits.  But matching by this array index is not robust, 
+            // and the long term solution is to give a name or ID to each DataViewMapping, and have a split refer to that name or ID.
+            // In case 2, this code will filter out the DataViewMapping for regression line.
 
-            let categoricalRoleMappings: DataViewCategoricalMapping[] =
-                _.map(applicableRoleMappings, (mapping) => mapping.categorical);
+            let categoricalRoleMappings: DataViewCategoricalMapping[] = _.chain(applicableRoleMappings)
+                .filter((mapping) => !DataViewMapping.getRegressionUsage(mapping))
+                .map((mapping) => mapping.categorical)
+                .value();
             let isEveryRoleMappingForCategorical = !_.isEmpty(categoricalRoleMappings) &&
                 _.every(categoricalRoleMappings, (mapping) => !!mapping);
 
@@ -146,8 +169,7 @@ module powerbi.data {
                         dataViewCategorical.categories,
                         (categoryColumn: DataViewCategoryColumn) => categoryColumn.source.roles && !!categoryColumn.source.roles[targetRoleName]);
 
-                    // There is no need to concatenate columns unless there is actually more than one column
-                    if (categoryColumnsForTargetRole.length >= 2) {
+                    if (!_.isEmpty(categoryColumnsForTargetRole)) {
                         // At least for now, we expect all category columns for the same role to have the same number of value entries.
                         // If that's not the case, we won't run the concatenate logic for that role at all...
                         let areValuesCountsEqual: boolean = _.every(
@@ -205,18 +227,25 @@ module powerbi.data {
             return isVisualExpectingMaxOneCategoryColumn;
         }
 
-        function applyConcatenation(dataView: DataView, objectDescriptors: DataViewObjectDescriptors, roleName: string, columnsSortedByProjectionOrdering: DataViewCategoryColumn[], queryRefsToIgnore: string[]): DataView {
+        function applyConcatenation(
+            dataView: DataView,
+            objectDescriptors: DataViewObjectDescriptors,
+            roleName: string,
+            columnsSortedByProjectionOrdering: DataViewCategoryColumn[],
+            queryRefsToIgnore: string[],
+            hierarchyVariationProperty?: string): DataView {
+            
             debug.assert(dataView && dataView.categorical && _.size(dataView.categorical.categories) >= 1, 'dataView && dataView.categorical && _.size(dataView.categorical.categories) >= 1');
             debug.assertAnyValue(objectDescriptors, 'objectDescriptors');
             debug.assertValue(roleName, 'roleName');
-            debug.assert(columnsSortedByProjectionOrdering && columnsSortedByProjectionOrdering.length >= 2, 'columnsSortedByProjectionOrdering && columnsSortedByProjectionOrdering.length >= 2');
+            debug.assert(!_.isEmpty(columnsSortedByProjectionOrdering), '!_.isEmpty(columnsSortedByProjectionOrdering)');
             debug.assert(_.every(columnsSortedByProjectionOrdering, (column) => _.contains(dataView.categorical.categories, column)), 'every column in columnsSortedByProjectionOrdering should exist in dataView.categorical.categories');
 
             let formatStringPropId: DataViewObjectPropertyIdentifier = DataViewObjectDescriptors.findFormatString(objectDescriptors);
             let concatenatedValues: string[] = concatenateValues(columnsSortedByProjectionOrdering, queryRefsToIgnore, formatStringPropId);
 
             let columnsSourceSortedByProjectionOrdering = _.map(columnsSortedByProjectionOrdering, categoryColumn => categoryColumn.source);
-            let concatenatedColumnMetadata: DataViewMetadataColumn = createConcatenatedColumnMetadata(roleName, columnsSourceSortedByProjectionOrdering, queryRefsToIgnore);
+            let concatenatedColumnMetadata: DataViewMetadataColumn = createConcatenatedColumnMetadata(roleName, columnsSourceSortedByProjectionOrdering, queryRefsToIgnore, hierarchyVariationProperty);
             let transformedDataView = inheritSingle(dataView);
             addToMetadata(transformedDataView, concatenatedColumnMetadata);
 
@@ -255,7 +284,7 @@ module powerbi.data {
                     if (!_.contains(queryRefsToIgnore, categoryColumn.source.queryName)) {
                         let value = categoryColumn.values && categoryColumn.values[i];
                         let formattedValue = valueFormatter.format(value, formatString);
-                        concatenatedValues[i] = (concatenatedValues[i] === undefined) ? formattedValue : (formattedValue + ' ' + concatenatedValues[i]);
+                        concatenatedValues[i] = (concatenatedValues[i] === undefined) ? formattedValue : (concatenatedValues[i] + ' ' + formattedValue);
                     }
                 }
             }
@@ -266,18 +295,33 @@ module powerbi.data {
         /**
          * Creates the column metadata that will back the column with the concatenated values. 
          */
-        function createConcatenatedColumnMetadata(roleName: string, sourceColumnsSortedByProjectionOrdering: DataViewMetadataColumn[], queryRefsToIgnore?: string[]): DataViewMetadataColumn {
+        function createConcatenatedColumnMetadata(
+            roleName: string,
+            sourceColumnsSortedByProjectionOrdering: DataViewMetadataColumn[],
+            queryRefsToIgnore?: string[],
+            hierarchyVariationProperty?: string): DataViewMetadataColumn {
+            
             debug.assertValue(roleName, 'roleName');
             debug.assertNonEmpty(sourceColumnsSortedByProjectionOrdering, 'sourceColumnsSortedByProjectionOrdering');
             debug.assert(_.chain(sourceColumnsSortedByProjectionOrdering).map(c => c.isMeasure).uniq().value().length === 1, 'pre-condition: caller code should not attempt to combine a mix of measure columns and non-measure columns');
 
             let concatenatedDisplayName: string;
 
-            for (let columnSource of sourceColumnsSortedByProjectionOrdering) {
-                if (!_.contains(queryRefsToIgnore, columnSource.queryName)) {
-                    concatenatedDisplayName = (concatenatedDisplayName == null) ? columnSource.displayName : (columnSource.displayName + ' ' + concatenatedDisplayName);
-                }
+            // TODO: support RTL concatentation
+            if (hierarchyVariationProperty) {
+                // This is the case when we have a Date Hierarchy
+                // show as "[fieldName] [currentDateLevel]" e.g. "Sales Date Year"
+                let currentHierarchyLevelName = _.last(sourceColumnsSortedByProjectionOrdering).displayName;
+                concatenatedDisplayName = hierarchyVariationProperty + ' ' + currentHierarchyLevelName;
             }
+            else {
+                // concatenate all hierarchy field names, unless its queryName exists in queryRefsToIgnore
+                for (let columnSource of sourceColumnsSortedByProjectionOrdering) {
+                    if (!_.contains(queryRefsToIgnore, columnSource.queryName)) {
+                        concatenatedDisplayName = (concatenatedDisplayName == null) ? columnSource.displayName : (concatenatedDisplayName + ' ' + columnSource.displayName);
+                    }
+                }
+            }    
 
             let newRoles: { [name: string]: boolean } = {};
             newRoles[roleName] = true;
@@ -319,7 +363,7 @@ module powerbi.data {
             columnMetadata: DataViewMetadataColumn,
             concatenatedValues: string[],
             dataViewObjects: DataViewObjects[]): DataViewCategoryColumn {
-            debug.assert(sourceColumnsSortedByProjectionOrdering && sourceColumnsSortedByProjectionOrdering.length >= 2, 'sourceColumnsSortedByProjectionOrdering && sourceColumnsSortedByProjectionOrdering.length >= 2');
+            debug.assert(sourceColumnsSortedByProjectionOrdering && sourceColumnsSortedByProjectionOrdering.length >= 1, 'sourceColumnsSortedByProjectionOrdering && sourceColumnsSortedByProjectionOrdering.length >= 1');
             debug.assertValue(columnMetadata, 'columnMetadata');
             debug.assertValue(concatenatedValues, 'concatenatedValues');
             debug.assertAnyValue(dataViewObjects, 'dataViewObjects');

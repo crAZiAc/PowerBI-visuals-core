@@ -52,7 +52,7 @@ module powerbi.visuals {
             categorical: {
                 categories: {
                     for: { in: 'TrendLine' },
-                    dataReductionAlgorithm: { top: {} }
+                    dataReductionAlgorithm: { bottom: {} }
                 },
                 values: {
                     select: [
@@ -111,12 +111,24 @@ module powerbi.visuals {
                 }
             },
             status: {
-                displayName: data.createDisplayNameGetter('Role_DisplayName_KPI_Status'),
-                description: data.createDisplayNameGetter('Role_DisplayName_KPI_Status'),
+                displayName: data.createDisplayNameGetter('Role_DisplayName_KPI_Color_Coding'),
+                description: data.createDisplayNameGetter('Role_DisplayName_KPI_Color_Coding'),
                 properties: {
                     direction: {
                         displayName: data.createDisplayNameGetter('Visual_KPI_Direction'),
                         type: { enumeration: kpiDirection.type }
+                    },
+                    goodColor: {
+                        displayName: data.createDisplayNameGetter('Visual_KPI_Good_Color'),
+                        type: { fill: { solid: { color: true } } }
+                    },
+                    neutralColor: {
+                        displayName: data.createDisplayNameGetter('Visual_KPI_Neutral_Color'),
+                        type: { fill: { solid: { color: true } } }
+                    },
+                    badColor: {
+                        displayName: data.createDisplayNameGetter('Visual_KPI_Bad_Color'),
+                        type: { fill: { solid: { color: true } } }
                     }
                 }
             }

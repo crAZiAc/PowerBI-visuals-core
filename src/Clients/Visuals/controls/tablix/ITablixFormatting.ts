@@ -175,6 +175,38 @@ module powerbi.visuals.controls {
         outline: string;
     }
 
+    export interface TablixFormattingPropertiesMatrixTotal {
+        /*
+        * Font color of all cells within the region
+        * Default is <Undefined>
+        */
+        fontColor?: string;
+        /*
+        * Background color of all cells within the region
+        * Default is <Undefined>
+        */
+        backColor?: string;
+    }
+
+    export interface TablixFormattingPropertiesMatrixGrandTotal {
+        /*
+        * Font color of all cells within the region
+        * Default is <Undefined>
+        */
+        fontColor?: string;
+        /*
+        * Background color of all cells within the region
+        * Default is <Undefined>
+        */
+        backColor?: string;
+
+        /*
+        * Whether or not to apply formatting to headers as well
+        * Default is false
+        */
+        applyToHeaders?: boolean;
+    }
+
     /**
      * Formatting Properties for Table Values region
     */
@@ -206,6 +238,7 @@ module powerbi.visuals.controls {
         columnHeaders?: TablixFormattingPropertiesRegion;
         rowHeaders?: TablixFormattingPropertiesRegion;
         values?: TablixFormattingPropertiesValues;
-        subtotals?: TablixFormattingPropertiesRegion;
+        grandTotal?: TablixFormattingPropertiesMatrixGrandTotal;
+        subtotals?: TablixFormattingPropertiesMatrixTotal;
     }
 }

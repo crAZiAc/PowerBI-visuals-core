@@ -362,8 +362,9 @@ module powerbi.visuals.samples {
         };
 
         private layout: VisualLayout;
-        private container: JQuery;
-        private domElement: HTMLElement;
+        private root: JQuery;
+        private rendererContainer: JQuery;
+        private rendererCanvas: HTMLElement;
         private camera: any;
         private renderer: any;
         private scene: any;
@@ -390,16 +391,19 @@ module powerbi.visuals.samples {
         private selectedBar: any;
         private hoveredBar: any;
         private averageBarVector: any;
-        private zoomControl: any;
+        private zoomContainer: D3.Selection;
+        private zoomControl: D3.Selection;
         private colors: IDataColorPalette;
         private style: IVisualStyle;
+        private animationFrameId: number;
+        private cameraAnimationFrameId: number;
 
         public static capabilities: VisualCapabilities = {
             dataRoles: [
                 {
                     name: 'Category',
                     kind: VisualDataRoleKind.Grouping,
-                    displayName: data.createDisplayNameGetter('Role_DisplayName_Location'),
+                    displayName: "Location",
                     preferredTypes: [
                         { geography: { address: true } },
                         { geography: { city: true } },
@@ -509,7 +513,7 @@ module powerbi.visuals.samples {
             }
         };
 
-        private static converter(dataView: DataView, globeMapLocationCache: { [i: string]: ILocation }, colors: IDataColorPalette): GlobeMapData {
+        private static converter(dataView: DataView, colors: IDataColorPalette): GlobeMapData {
             var categorical = GlobeMapColumns.getCategoricalColumns(dataView);
             if(!categorical || !categorical.Category || _.isEmpty(categorical.Category.values)
                 || (_.isEmpty(categorical.Height) && _.isEmpty(categorical.Heat))) {
@@ -614,9 +618,9 @@ module powerbi.visuals.samples {
                 if (typeof (locations[i]) === "string") {
                     var place = locations[i].toLowerCase();
                     var placeKey = place + "/" + locationType;
-                    var location: ILocation = (_.isEmpty(categorical.X) || _.isEmpty(categorical.Y))
-                        ? globeMapLocationCache[placeKey]
-                        : { longitude: <number>categorical.X[0].values[i] || 0, latitude: <number>categorical.Y[0].values[i] || 0 };
+                    var location: ILocation = (!_.isEmpty(categorical.X) && !_.isEmpty(categorical.Y))
+                        ? { longitude: <number>categorical.X[0].values[i] || 0, latitude: <number>categorical.Y[0].values[i] || 0 }
+                        : undefined;
 
                     var height = heights[i] / maxHeight;
                     var heat = heats[i] / maxHeat;
@@ -709,7 +713,12 @@ module powerbi.visuals.samples {
         }
 
         public init(options: VisualInitOptions): void {
-            this.container = options.element;
+            this.root = $("<div>").appendTo(options.element)
+                .attr('drag-resize-disabled', "true")
+                .css({
+                    'position': "absolute"
+                });
+
             this.layout = new VisualLayout(options.viewport);
             this.readyToRender = false;
 
@@ -720,11 +729,7 @@ module powerbi.visuals.samples {
             this.style = options.style;
             this.colors = this.style.colorPalette.dataColors;
 
-            if (!THREE) {
-                loadGlobeMapLibs();
-            }
-
-            if (THREE) {
+            if ((<any>window).THREE) {
                 this.setup();
             }
         }
@@ -740,23 +745,29 @@ module powerbi.visuals.samples {
         }
 
         private initScene() {
-            var clock = new THREE.Clock();
-            var renderer = this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-            this.container.append(renderer.domElement);
-            this.domElement = renderer.domElement;
+            this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            this.rendererContainer = $("<div>").appendTo(this.root).css({
+                'width': "100%",
+                'height': "100%",
+                'position': "relative"
+            });
+
+            this.rendererContainer.append(this.renderer.domElement);
+            this.rendererCanvas = this.renderer.domElement;
             this.camera = new THREE.PerspectiveCamera(35, this.layout.viewportIn.width / this.layout.viewportIn.height, 0.1, 10000);
-            var orbitControls = this.orbitControls = new THREE.OrbitControls(this.camera, this.domElement);
+            this.orbitControls = new THREE.OrbitControls(this.camera, this.rendererCanvas);
+            this.orbitControls.enablePan = false;
             this.scene = new THREE.Scene();
 
-            renderer.setSize(this.layout.viewportIn.width, this.layout.viewportIn.height);
-            renderer.setClearColor(0xbac4d2, 1);
+            this.renderer.setSize(this.layout.viewportIn.width, this.layout.viewportIn.height);
+            this.renderer.setClearColor(0xbac4d2, 1);
             this.camera.position.z = GlobeMap.GlobeSettings.cameraRadius;
 
-            orbitControls.maxDistance = GlobeMap.GlobeSettings.cameraRadius;
-            orbitControls.minDistance = GlobeMap.GlobeSettings.earthRadius + 1;
-            orbitControls.rotateSpeed = GlobeMap.GlobeSettings.rotateSpeed;
-            orbitControls.zoomSpeed = GlobeMap.GlobeSettings.zoomSpeed;
-            orbitControls.autoRotate = GlobeMap.GlobeSettings.autoRotate;
+            this.orbitControls.maxDistance = GlobeMap.GlobeSettings.cameraRadius;
+            this.orbitControls.minDistance = GlobeMap.GlobeSettings.earthRadius + 1;
+            this.orbitControls.rotateSpeed = GlobeMap.GlobeSettings.rotateSpeed;
+            this.orbitControls.zoomSpeed = GlobeMap.GlobeSettings.zoomSpeed;
+            this.orbitControls.autoRotate = GlobeMap.GlobeSettings.autoRotate;
 
             var ambientLight = new THREE.AmbientLight(0x000000);
             var light1 = new THREE.DirectionalLight(0xffffff, 0.4);
@@ -771,27 +782,27 @@ module powerbi.visuals.samples {
             light1.position.set(20, 20, 20);
             light2.position.set(0, 0, -20);
 
-            var _zis = this;
-
             var render = () => {
                 try {
-                    if (_zis.renderLoopEnabled) requestAnimationFrame(render);
-                    if (!_zis.shouldRender()) return;
-                    orbitControls.update(clock.getDelta());
-                    _zis.setEarthTexture();
-                    _zis.intersectBars();
-                    if (_zis.heatmap &&_zis.heatmap.display) {
-                        _zis.heatmap.display(); // Needed for IE/Edge to behave nicely
+                    if (this.renderLoopEnabled) {
+                        this.animationFrameId = requestAnimationFrame(render);
                     }
-                    renderer.render(this.scene, this.camera);
-                    _zis.needsRender = false;
+                    if (!this.shouldRender()) return;
+                    this.orbitControls.update();
+                    this.setEarthTexture();
+                    if (this.heatmap && this.heatmap.display) {
+                        this.heatmap.display(); // Needed for IE/Edge to behave nicely
+                    }
+                    this.renderer.render(this.scene, this.camera);
+                    this.intersectBars();
+                    this.needsRender = false;
                     //console.log("render");
                 } catch (e) {
                     console.error(e);
                 }
             };
 
-            requestAnimationFrame(render);
+            this.animationFrameId = requestAnimationFrame(render);
         }
 
         private shouldRender(): boolean {
@@ -806,32 +817,38 @@ module powerbi.visuals.samples {
             var material = new THREE.MeshPhongMaterial({
                 map: this.mapTextures[0],
                 side: THREE.DoubleSide,
+                shading: THREE.SmoothShading,
                 shininess: 1,
-                emissive: 0xaaaaaa,
                 //wireframe: true
             });
-            return new THREE.Mesh(geometry, material);
+
+            var mesh = new THREE.Mesh(geometry, material);
+            mesh.add(new THREE.AmbientLight(0xaaaaaa, 1));
+
+            return mesh;
         }
 
         public zoomClicked(zoomDirection: any) {
-            if (this.orbitControls.enabled === false || this.orbitControls.enableZoom === false)
+            if (this.orbitControls.enabled === false)
                 return;
 
-            if (zoomDirection === -1)
-                this.orbitControls.constraint.dollyOut(Math.pow(0.95, GlobeMap.GlobeSettings.zoomSpeed));
-            else if (zoomDirection === 1)
-                this.orbitControls.constraint.dollyIn(Math.pow(0.95, GlobeMap.GlobeSettings.zoomSpeed));
+            if (zoomDirection === -1) {
+                this.orbitControls.dollyOut(Math.pow(0.95, GlobeMap.GlobeSettings.zoomSpeed));
+            } else if (zoomDirection === 1) {
+                this.orbitControls.dollyIn(Math.pow(0.95, GlobeMap.GlobeSettings.zoomSpeed));
+            }
 
             this.orbitControls.update();
             this.animateCamera(this.camera.position);
         }
 
         public rotateCam(deltaX: number, deltaY: number) {
-            if (this.orbitControls.enabled === false || this.orbitControls.enableRotate === false)
+            if (!this.orbitControls.enabled) {
                 return;
+            }
 
-            this.orbitControls.constraint.rotateLeft(2 * Math.PI * deltaX / this.domElement.offsetHeight * GlobeMap.GlobeSettings.rotateSpeed);
-            this.orbitControls.constraint.rotateUp(2 * Math.PI * deltaY / this.domElement.offsetHeight * GlobeMap.GlobeSettings.rotateSpeed);
+            this.orbitControls.rotateLeft(2 * Math.PI * deltaX / this.rendererCanvas.offsetHeight * GlobeMap.GlobeSettings.rotateSpeed);
+            this.orbitControls.rotateUp(2 * Math.PI * deltaY / this.rendererCanvas.offsetHeight * GlobeMap.GlobeSettings.rotateSpeed);
             this.orbitControls.update();
             this.animateCamera(this.camera.position);
         }
@@ -849,7 +866,7 @@ module powerbi.visuals.samples {
 
             // Can't execute in for loop because variable assignement gets overwritten
             var createTexture = (canvas: JQuery) => {
-                var texture = new THREE.Texture(canvas.get(0));
+                var texture = new THREE.Texture(<HTMLCanvasElement>canvas.get(0));
                 texture.needsUpdate = true;
                 canvas.on("ready", (e, resolution) => {
                     //console.log("level ready", resolution, texture)
@@ -906,8 +923,8 @@ module powerbi.visuals.samples {
                 texture = this.mapTextures[0];
             }
 
-            if (this.earth.material.map !== texture) {
-                this.earth.material.map = texture;
+            if ((<any>this.earth.material).map !== texture) {
+                (<any>this.earth.material).map = texture;
             }
 
             if (this.selectedBar) {
@@ -920,20 +937,27 @@ module powerbi.visuals.samples {
         }
 
         public update(options: VisualUpdateOptions) {
-            this.needsRender = true;
             this.layout.viewport = options.viewport;
+            this.root.css(this.layout.viewportIn);
+            this.zoomContainer.style({
+                'padding-left': (this.layout.viewportIn.width - parseFloat(this.zoomControl.attr("width")) + 6) + "px", //Fix for chrome
+                'display': this.layout.viewportIn.height > $(this.zoomContainer.node()).height()
+                    && this.layout.viewportIn.width > $(this.zoomContainer.node()).width()
+                    ? null : 'none'
+            }); 
 
             if(this.layout.viewportChanged) {
                 if (this.camera && this.renderer) {
                     this.camera.aspect = this.layout.viewportIn.width / this.layout.viewportIn.height;
                     this.camera.updateProjectionMatrix();
                     this.renderer.setSize(this.layout.viewportIn.width, this.layout.viewportIn.height);
+                    this.renderer.render(this.scene, this.camera);
                 }
             }
 
             if(options.type === VisualUpdateType.Data) {
                 this.cleanHeatAndBar();
-                var data = GlobeMap.converter(options.dataViews[0], this.globeMapLocationCache, this.colors);
+                var data = GlobeMap.converter(options.dataViews[0], this.colors);
                 if(data) {
                     this.data = data;
                     this.renderMagic();
@@ -955,6 +979,7 @@ module powerbi.visuals.samples {
             }
 
             this.data.dataPoints.forEach(d => this.geocodeRenderDatum(d));
+            this.data.dataPoints.forEach(d => d.location = d.location || this.globeMapLocationCache[d.placeKey]);
 
             if (!this.readyToRender) {
                 //console.log("not ready to render");
@@ -995,9 +1020,9 @@ module powerbi.visuals.samples {
                     var x = Math.cos(lngRadians) * Math.cos(latRadians);
                     var z = -Math.sin(lngRadians) * Math.cos(latRadians);
                     var y = Math.sin(latRadians);
-                    var v = new THREE.Vector3(x, y, z);
+                    var vector = new THREE.Vector3(x, y, z);
 
-                    this.averageBarVector.add(v);
+                    this.averageBarVector.add(vector);
 
                     var barHeight = GlobeMap.GlobeSettings.barHeight * renderDatum.height;
                     //this array holds the relative series values to the actual measure for example [0.2,0.3,0.5]
@@ -1020,12 +1045,15 @@ module powerbi.visuals.samples {
                     var previousMeasureValue = 0;
                     for (var j = 0; j < measuresBySeries.length; j++) {
                         previousMeasureValue += measuresBySeries[j];
-                        var geometry = new THREE.CubeGeometry(GlobeMap.GlobeSettings.barWidth, GlobeMap.GlobeSettings.barWidth, barHeight * measuresBySeries[j]);
+                        var geometry = new THREE.BoxGeometry(GlobeMap.GlobeSettings.barWidth, GlobeMap.GlobeSettings.barWidth, barHeight * measuresBySeries[j]);
                         var bar = new THREE.Mesh(geometry, this.getBarMaterialByIndex(j));
-                        bar.position = v.clone().multiplyScalar(GlobeMap.GlobeSettings.earthRadius + ((barHeight / 2) * previousMeasureValue));
-                        bar.lookAt(v);
-                        bar.toolTipData = dataPointToolTip.length === 0 ? renderDatum.toolTipData : this.getToolTipDataForSeries(renderDatum.toolTipData, dataPointToolTip[j]);
+                        var position = vector.clone().multiplyScalar(GlobeMap.GlobeSettings.earthRadius + ((barHeight / 2) * previousMeasureValue));
+                        bar.position.set(position.x, position.y, position.z);
+                        bar.lookAt(vector);
+                        (<any>bar).toolTipData = dataPointToolTip.length === 0 ? renderDatum.toolTipData : this.getToolTipDataForSeries(renderDatum.toolTipData, dataPointToolTip[j]);
+
                         this.barsGroup.add(bar);
+
                         previousMeasureValue += measuresBySeries[j];
                     }
                 }
@@ -1059,11 +1087,12 @@ module powerbi.visuals.samples {
         }
 
         private geocodeRenderDatum(renderDatum: GlobeMapDataPoint) {
-            if(renderDatum.location) {
+            if(renderDatum.location || this.globeMapLocationCache[renderDatum.placeKey]) {
                 return;
             }
 
-            this.globeMapLocationCache[renderDatum.placeKey] = <any>{}; //store empty object so we don't send AJAX request again
+            var location: ILocation = <any>{};
+            this.globeMapLocationCache[renderDatum.placeKey] = location; //store empty object so we don't send AJAX request again
             this.locationsToLoad++;
 
             try {
@@ -1073,14 +1102,16 @@ module powerbi.visuals.samples {
             }
 
             if (geocoder) {
-                geocoder(renderDatum.place, renderDatum.locationType).always((location: ILocation) => {
+                geocoder(renderDatum.place, renderDatum.locationType).always((l: ILocation) => {
                     // we use always because we want to cache unknown values. 
                     // No point asking bing again and again when it tells us it doesn't know about a location
-                    this.globeMapLocationCache[renderDatum.placeKey] = location;
-                    this.locationsLoaded++;
-                    //console.log(place, latlng);
+                    if(l) {
+                        location.latitude = l.latitude;
+                        location.longitude = l.longitude;
+                    }
 
-                    renderDatum.location = location;
+                    this.locationsLoaded++;
+
                     this.defferedRender();
                 });
             }
@@ -1097,35 +1128,50 @@ module powerbi.visuals.samples {
 
         private initRayCaster() {
             this.rayCaster = new THREE.Raycaster();
-            var mousePosNormalized = this.mousePosNormalized = new THREE.Vector2();
-            var mousePos = this.mousePos = new THREE.Vector2();
-            var element = this.container.get(0);
+            
+            var element = this.root.get(0);
             var mouseDownTime;
+            var elementStyle = window.getComputedStyle(element);
 
-            $(this.domElement).on("mousemove", (event) => {
+            $(this.rendererCanvas).on("mousemove", (event) => {
+                var elementViewHeight = element.offsetHeight - element.offsetTop
+                    - parseFloat(elementStyle.paddingTop)
+                    - parseFloat(elementStyle.paddingBottom);
+
+                var elementViewWidth = element.offsetWidth - element.offsetLeft
+                    - parseFloat(elementStyle.paddingLeft)
+                    - parseFloat(elementStyle.paddingRight);
+
+                var fractionalPositionX = event.offsetX / elementViewWidth;
+                var fractionalPositionY = event.offsetY / elementViewHeight;
+
+                this.mousePos = new THREE.Vector2(event.clientX, event.clientY);
+
                 // get coordinates in -1 to +1 space
-                var rect = element.getBoundingClientRect();
-                mousePos.x = event.clientX;
-                mousePos.y = event.clientY;
-                mousePosNormalized.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-                mousePosNormalized.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                this.mousePosNormalized = new THREE.Vector2(fractionalPositionX * 2 - 1, -fractionalPositionY * 2 + 1);
+
                 this.needsRender = true;
             }).on("mousedown", (event) => {
+                cancelAnimationFrame(this.cameraAnimationFrameId);
                 mouseDownTime = Date.now();
             }).on("mouseup", (event) => {
+
                 // Debounce slow clicks
-                if ((Date.now() - mouseDownTime) > GlobeMap.GlobeSettings.clickInterval) return;
+                if ((Date.now() - mouseDownTime) > GlobeMap.GlobeSettings.clickInterval) {
+                    return;
+                }
+
                 if (this.hoveredBar && event.shiftKey) {
                     this.selectedBar = this.hoveredBar;
                     this.animateCamera(this.selectedBar.position, () => {
                         if (!this.selectedBar) return;
-                        this.orbitControls.center.copy(this.selectedBar.position.clone().normalize().multiplyScalar(GlobeMap.GlobeSettings.earthRadius));
+                        this.orbitControls.target.copy(this.selectedBar.position.clone().normalize().multiplyScalar(GlobeMap.GlobeSettings.earthRadius));
                         this.orbitControls.minDistance = 1;
                     });
                 } else {
                     if (this.selectedBar) {
                         this.animateCamera(this.selectedBar.position, () => {
-                            this.orbitControls.center.set(0, 0, 0);
+                            this.orbitControls.target.set(0, 0, 0);
                             this.orbitControls.minDistance = GlobeMap.GlobeSettings.earthRadius + 1;
                         });
                         this.selectedBar = null;
@@ -1134,6 +1180,7 @@ module powerbi.visuals.samples {
             }).on("mousewheel DOMMouseScroll", (e: any) => {
                 this.needsRender = true;
                 if (this.orbitControls.enabled && this.orbitControls.enableZoom) {
+                    cancelAnimationFrame(this.cameraAnimationFrameId);
                     this.heatTexture.needsUpdate = true;
                     e = e.originalEvent;
                     var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
@@ -1145,16 +1192,20 @@ module powerbi.visuals.samples {
         }
 
         private intersectBars() {
-            if (!this.rayCaster || !this.barsGroup) return;
+            if (!this.rayCaster || !this.barsGroup || !this.mousePosNormalized || !this.mousePos) {
+                return;
+            }
+
             var rayCaster = this.rayCaster;
+
             rayCaster.setFromCamera(this.mousePosNormalized, this.camera);
             var intersects = rayCaster.intersectObjects(this.barsGroup.children);
 
             if (intersects && intersects.length > 0) {
                 //console.log(intersects[0], this.mousePos.x, this.mousePos.y);
                 var object = intersects[0].object;
-                if (!object || !object.toolTipData) return;
-                var toolTipData = object.toolTipData;
+                if (!object || !(<any>object).toolTipData) return;
+                var toolTipData = (<any>object).toolTipData;
                 var toolTipItems: TooltipDataItem[] = [];
                 if (toolTipData.location.displayName) toolTipItems.push(toolTipData.location);
                 if (toolTipData.series) toolTipItems.push(toolTipData.series);
@@ -1169,7 +1220,9 @@ module powerbi.visuals.samples {
         }
 
         private animateCamera(to: any, done?: Function) {
+            TooltipManager.ToolTipInstance.hide();
             if (!this.camera) return;
+            cancelAnimationFrame(this.cameraAnimationFrameId);
             var startTime = Date.now();
             var duration = GlobeMap.GlobeSettings.cameraAnimDuration;
             var endTime = startTime + duration;
@@ -1196,20 +1249,23 @@ module powerbi.visuals.samples {
                     .normalize()
                     .multiplyScalar(length);
 
-                this.camera.position = pos;
+                this.camera.position.set(pos.x, pos.y, pos.z);
 
                 if (now < endTime) {
-                    requestAnimationFrame(onUpdate);
+                    this.cameraAnimationFrameId = requestAnimationFrame(onUpdate);
                 } else if (done) {
                     done();
                 }
 
                 this.needsRender = true;
             };
-            requestAnimationFrame(onUpdate);
+
+            this.cameraAnimationFrameId = requestAnimationFrame(onUpdate);
         }
 
         public destroy() {
+            cancelAnimationFrame(this.animationFrameId);
+            cancelAnimationFrame(this.cameraAnimationFrameId);
             clearTimeout(this.deferredRenderTimerId);
             this.renderLoopEnabled = false;
             this.scene = null;
@@ -1228,12 +1284,16 @@ module powerbi.visuals.samples {
             this.renderer = null;
             this.data = null;
             this.barsGroup = null;
-            if (this.orbitControls) this.orbitControls.dispose();
+            if(this.orbitControls) {
+                this.orbitControls.dispose();
+            }
+
             this.orbitControls = null;
-            if (this.domElement) $(this.domElement)
+            if (this.rendererCanvas) $(this.rendererCanvas)
                 .off("mousemove mouseup mousedown mousewheel DOMMouseScroll");
-            this.domElement = null;
-            if (this.container) this.container.empty();
+            this.rendererCanvas = null;
+            if (this.root) this.root.empty();
+            TooltipManager.ToolTipInstance.hide();
         }
 
         private initZoomControl() {
@@ -1244,43 +1304,52 @@ module powerbi.visuals.samples {
             var startY = radius + 3;
             var gap = radius * 2;
 
-            var zoomCss = {
-                'position': 'absolute',
-                'left': 'calc(100% - ' + zoomControlWidth + 'px)',
-                'top': 'calc(100% - ' + zoomControlHeight + 'px)',
-                'zIndex': '1000',
-            };
-
-            var zoomContainer = d3.select(this.container[0])
+            this.zoomContainer = d3.select(this.root[0])
                 .append('div')
-                .style(zoomCss);
+                .style({
+                    'position': "absolute",
+                    'bottom': "-5px",
+                    'z-index': "1000",
+                    'pointer-events': "none"
+                });
 
-            this.zoomControl = zoomContainer.append("svg").attr({ "width": zoomControlWidth, "height": zoomControlHeight });
+            this.zoomControl = this.zoomContainer.append("svg").attr({
+                'width': zoomControlWidth,
+                'height': zoomControlHeight,
+                'pointer-events': "all"
+            });
 
-            var bottom = this.zoomControl.append("g").on("click", () => this.rotateCam(0, -5));
+            var bottom = this.zoomControl.append("g").on("mousedown", () => onMouseDown(() => this.rotateCam(0, -5)));
             bottom.append("circle").attr({ cx: startX + gap, cy: startY + (2 * gap), r: radius, fill: "white", opacity: 0.5, stroke: 'gray' });
             bottom.append("path").attr({ d: "M" + (startX + (2 * radius)) + " " + (startY + (radius * 4.7)) + " l12 -20 a40,70 0 0,1 -24,0z", fill: "gray" });
 
-            var left = this.zoomControl.append("g").on("click", () => this.rotateCam(5, 0));
+            var left = this.zoomControl.append("g").on("mousedown", () => onMouseDown(() => this.rotateCam(5, 0)));
             left.append("circle").attr({ cx: startX, cy: startY + gap, r: radius, fill: "white", stroke: "gray", opacity: 0.5 });
             left.append("path").attr({ d: "M" + (startX - radius / 1.5) + " " + (startY + (radius * 2)) + " l20 -12 a70,40 0 0,0 0,24z", fill: "gray" });
 
-            var top = this.zoomControl.append("g").on("click", () => this.rotateCam(0, 5));
+            var top = this.zoomControl.append("g").on("mousedown", () => onMouseDown(() => this.rotateCam(0, 5)));
             top.append("circle").attr({ cx: startX + gap, cy: startY, r: radius, fill: "white", stroke: "gray", opacity: 0.5 });
             top.append("path").attr({ d: "M" + (startX + (2 * radius)) + " " + (startY - (radius / 1.5)) + " l12 20 a40,70 0 0,0 -24,0z", fill: "gray" });
 
-            var right = this.zoomControl.append("g").on("click", () => this.rotateCam(-5, 0));
+            var right = this.zoomControl.append("g").on("mousedown", () => onMouseDown(() => this.rotateCam(-5, 0)));
             right.append("circle").attr({ cx: startX + (2 * gap), cy: startY + gap, r: radius, fill: "white", stroke: "gray", opacity: 0.5 });
             right.append("path").attr({ d: "M" + (startX + (4.7 * radius)) + " " + (startY + (radius * 2)) + " l-20 -12 a70,40 0 0,1 0,24z", fill: "gray" });
 
-            var zoomIn = this.zoomControl.append("g").on("click", () => this.zoomClicked(-1));
+            var zoomIn = this.zoomControl.append("g").on("mousedown", () => onMouseDown(() => this.zoomClicked(-1)));
             zoomIn.append("circle").attr({ cx: startX + 4 * radius, cy: startY + 6 * radius, r: radius, fill: "white", stroke: "gray", opacity: 0.5 });
             zoomIn.append("rect").attr({ x: startX + 3.5 * radius, y: startY + 5.9 * radius, width: radius, height: radius / 3, fill: "gray" });
             zoomIn.append("rect").attr({ x: startX + (4 * radius) - radius / 6, y: startY + 5.55 * radius, width: radius / 3, height: radius, fill: "gray" });
 
-            var zoomOut = this.zoomControl.append("g").on("click", () => this.zoomClicked(1));
+            var zoomOut = this.zoomControl.append("g").on("mousedown", () => onMouseDown(() => this.zoomClicked(1)));
             zoomOut.append("circle").attr({ cx: startX, cy: startY + 6 * radius, r: radius, fill: "white", stroke: "gray", opacity: "0.50" });
             zoomOut.append("rect").attr({ x: startX - (radius / 2), y: startY + 5.9 * radius, width: radius, height: radius / 3, fill: "gray" });
+
+            function onMouseDown(callback: () => void) {
+                d3.event.stopPropagation();
+                if((<any>d3.event).button === 0) {
+                    callback();
+                }
+            }
         }
 
         private initMercartorSphere() {
@@ -1325,7 +1394,7 @@ module powerbi.visuals.samples {
                 // http://mathworld.wolfram.com/MercatorProjection.html
                 // Mercator projection goes form +85.05 to -85.05 degrees
                 function interpolateUV(u, v, t) {
-                    var lat = (v - 0.5) * 90 * 2 / 180 * Math.PI; //turn from 0-1 into lat in radians
+                    var lat = (v - 0.5) * 89.99 * 2 / 180 * Math.PI; //turn from 0-1 into lat in radians
                     var sin = Math.sin(lat);
                     var normalizedV = 0.5 + 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI;
                     return new THREE.Vector2(u, normalizedV);//interplolate(normalizedV1, v, t))
@@ -1367,23 +1436,22 @@ module powerbi.visuals.samples {
                         var n3 = this.vertices[v3].clone().normalize();
                         var n4 = this.vertices[v4].clone().normalize();
 
-                        var uv1 = uvs[y][x + 1].clone();
-                        var uv2 = uvs[y][x].clone();
-                        var uv3 = uvs[y + 1][x].clone();
-                        var uv4 = uvs[y + 1][x + 1].clone();
+                        var uv1 = uvs[y][x + 1];
+                        var uv2 = uvs[y][x];
+                        var uv3 = uvs[y + 1][x];
+                        var uv4 = uvs[y + 1][x + 1];
 
-                        var normals = [n1, n2, n3, n4];
+                        this.faces.push(new THREE.Face3(v1, v2, v3, [n1, n2, n3]));
+                        this.faces.push(new THREE.Face3(v1, v3, v4, [n1, n3, n4]));
 
-                        this.faces.push(new THREE.Face4(v1, v2, v3, v4, normals));
-                        this.faceVertexUvs[0].push([uv1, uv2, uv3, uv4]);
+                        this.faceVertexUvs[0].push([uv1.clone(), uv2.clone(), uv3.clone()]);
+                        this.faceVertexUvs[0].push([uv1.clone(), uv3.clone(), uv4.clone()]);
                     }
-
                 }
 
-                this.computeCentroids();
                 this.computeFaceNormals();
-
-                this.boundingSphere = new THREE.Sphere(new THREE.Vector3(), radius);
+                this.computeVertexNormals();
+                this.computeBoundingSphere();
             };
 
             MercartorSphere.prototype = Object.create(THREE.Geometry.prototype);
@@ -1397,7 +1465,8 @@ module powerbi.visuals.samples {
             var tilesLoaded = 0;
             var canvasSize = tileSize * numSegments;
             var canvas: JQuery = $('<canvas/>').attr({ width: canvasSize, height: canvasSize });
-            var canvasElem: any = canvas.get(0);
+
+            var canvasElem: HTMLCanvasElement = <any>canvas.get(0);
             var canvasContext = canvasElem.getContext("2d");
 
             function generateQuads(res, quad) {
@@ -1465,8 +1534,4 @@ module powerbi.visuals.samples {
             return canvas;
         }
     }
-}
-
-function loadGlobeMapLibs() {
-    // include GlobeMapLibs.js
 }

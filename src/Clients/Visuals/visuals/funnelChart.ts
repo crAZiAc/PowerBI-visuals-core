@@ -37,7 +37,6 @@ module powerbi.visuals {
         funnelSmallViewPortProperties?: FunnelSmallViewPortProperties;
         behavior?: FunnelWebBehavior;
         tooltipsEnabled?: boolean;
-        tooltipBucketEnabled?: boolean;
     }
 
     export interface FunnelPercent {
@@ -206,7 +205,7 @@ module powerbi.visuals {
         private dataViews: DataView[];
         private funnelSmallViewPortProperties: FunnelSmallViewPortProperties;
         private tooltipsEnabled: boolean;
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
 
         /**
          * Note: Public for testing.
@@ -216,7 +215,6 @@ module powerbi.visuals {
         constructor(options?: FunnelChartConstructorOptions) {
             if (options) {
                 this.tooltipsEnabled = options.tooltipsEnabled;
-                this.tooltipBucketEnabled = options.tooltipBucketEnabled;
                 if (options.funnelSmallViewPortProperties) {
                     this.funnelSmallViewPortProperties = options.funnelSmallViewPortProperties;
                 }
@@ -229,7 +227,7 @@ module powerbi.visuals {
             }
         }
 
-        public static converter(dataView: DataView, colors: IDataColorPalette, hostServices: IVisualHostServices, defaultDataPointColor?: string, tooltipsEnabled: boolean = true, tooltipBucketEnabled?: boolean): FunnelData {
+        public static converter(dataView: DataView, colors: IDataColorPalette, hostServices: IVisualHostServices, defaultDataPointColor?: string, tooltipsEnabled: boolean = true): FunnelData {
             let reader = data.createIDataViewCategoricalReader(dataView);
             let dataPoints: FunnelDataPoint[] = [];
             let formatStringProp = funnelChartProps.general.formatString;
@@ -341,10 +339,8 @@ module powerbi.visuals {
                             FunnelChart.addFunnelPercentsToTooltip(pctFormatString, tooltipInfo, hostServices, firstValue ? value / firstValue : null, previousValue ? value / previousValue : null);
                         }      
 
-                        if (tooltipBucketEnabled) {
                             TooltipBuilder.addTooltipBucketItem(reader, tooltipInfo, categoryIndex);
                         }      
-                    }
                     
                     // Same color for all bars
                     let color = colorHelper.getColorForMeasure(reader.getCategoryObjects("Category", categoryIndex), '');
@@ -420,21 +416,7 @@ module powerbi.visuals {
                             FunnelChart.addFunnelPercentsToTooltip(pctFormatString, tooltipInfo, hostServices, firstValue ? value / firstValue : null, previousValue ? value / previousValue : null);
                         }
 
-                        if (tooltipBucketEnabled) {
-                            let tooltipValues = reader.getAllValuesForRole("Tooltips", categoryIndex, undefined);
-                            let tooltipMetadataColumns = reader.getAllValueMetadataColumnsForRole("Tooltips", undefined);
-
-                            if (tooltipValues && tooltipMetadataColumns) {
-                                for (let j = 0; j < tooltipValues.length; j++) {
-                                    if (tooltipValues[j] != null) {
-                                        tooltipInfo.push({
-                                            displayName: tooltipMetadataColumns[j].displayName,
-                                            value: converterHelper.formatFromMetadataColumn(tooltipValues[j], tooltipMetadataColumns[j], formatStringProp),
-                                        });
-                                    }
-                                }
-                            }
-                        }
+                        TooltipBuilder.addTooltipBucketItem(reader, tooltipInfo, categoryIndex);
                     }
                     
                     dataPoints.push({
@@ -600,6 +582,8 @@ module powerbi.visuals {
                 .append('svg')
                 .classed(FunnelChart.VisualClassName, true);
 
+            this.tooltipService = createTooltipService(options.host);
+
             if (this.behavior)
                 this.clearCatcher = appendClearCatcher(this.svg);
 
@@ -660,7 +644,7 @@ module powerbi.visuals {
                 }
 
                 if (dataView.categorical) {
-                    this.data = FunnelChart.converter(dataView, this.colors, this.hostServices, this.defaultDataPointColor, this.tooltipsEnabled, this.tooltipBucketEnabled);
+                    this.data = FunnelChart.converter(dataView, this.colors, this.hostServices, this.defaultDataPointColor, this.tooltipsEnabled);
 
                     if (this.interactivityService) {
                         this.interactivityService.applySelectionStateToData(this.data.dataPoints);
@@ -783,11 +767,18 @@ module powerbi.visuals {
                 this.interactivityService.bind(dataPoints, this.behavior, behaviorOptions);
 
                 if (this.tooltipsEnabled) {
-                    TooltipManager.addTooltip(interactors, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo);
+                    this.tooltipService.addTooltip(
+                        interactors, 
+                        (args: TooltipEventArgs<FunnelDataPoint>) => args.data.tooltipInfo,
+                        (args: TooltipEventArgs<FunnelDataPoint>) => args.data.identity);
                 }
             }
+            
             if (this.tooltipsEnabled) {
-                TooltipManager.addTooltip(shapes, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo);
+                this.tooltipService.addTooltip(
+                    shapes,
+                    (args: TooltipEventArgs<FunnelDataPoint>) => args.data.tooltipInfo,
+                    (args: TooltipEventArgs<FunnelDataPoint>) => args.data.identity);
             }
 
             SVGUtil.flushAllD3TransitionsIfNeeded(this.options);

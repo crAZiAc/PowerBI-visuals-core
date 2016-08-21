@@ -43,6 +43,7 @@ module powerbi.extensibility.v100 {
                     visual.update({
                         viewport: options.viewport,
                         dataViews: options.dataViews,
+                        viewMode: options.viewMode,
                         type: convertLegacyUpdateType(options)
                     });
                 }

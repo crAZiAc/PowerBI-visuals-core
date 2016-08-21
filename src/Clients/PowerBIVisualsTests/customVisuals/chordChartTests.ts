@@ -151,10 +151,8 @@ module powerbitests.customVisuals {
                 visualBuilder.updateRenderTimeout(dataView, () => {
                     expect(visualBuilder.mainElement.children("g.labels")[0].getBoundingClientRect().left)
                         .toBeGreaterThan(0);
-                    expect(helpers.isSomeTextElementInOrOutElement(
-                        visualBuilder.mainElement[0],
-                        visualBuilder.dataLabels.toArray(),
-                        (v1, v2) => v1 >= v2)).toBeTruthy();
+                    visualBuilder.dataLabels.toArray().forEach(e =>
+                        expect(helpers.isTextElementInOrOutElement(visualBuilder.mainElement[0], e, (v1, v2) => v1 >= v2)).toBeTruthy());
                     done();
                 });
             });

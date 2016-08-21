@@ -114,7 +114,7 @@ module powerbitests.customVisuals {
                     expect(lines.length).toBe(numOfLabels);
                     expect(labels.length).toBe(numOfLabels);
                     //The viewport is reduced
-                    visualBuilder.viewport = { height: 200, width: 350 };
+                    visualBuilder.viewport = { height: 250, width: 400 };
                     visualBuilder.update(dataView);
                     let labelsAfterResize: JQuery = $(".asterPlot .labels .data-labels");
                     let linesAfterResize: JQuery = $(".asterPlot .lines .line-label");
@@ -147,8 +147,8 @@ module powerbitests.customVisuals {
                     let labels: JQuery = $(".asterPlot .labels .data-labels");
                     let dataLabels = $(labels).first().text();
                     let maxPrecision: number = 17;
-                    expect(dataLabels).toBe("0.86618686000000000M");
-                    expect(dataLabels.length - 3).toBe(maxPrecision);
+                    expect(dataLabels).toBe("$0,000.86618686000000000M");
+                    expect(dataLabels.length - 8).toBe(maxPrecision);
                 });
 
                 it("Data Labels - Change font size", () => {
@@ -191,9 +191,9 @@ module powerbitests.customVisuals {
                     expect(labels.length).toBeGreaterThan(0);
 
                     // Verify label text is formatted correctly
-                    expect($(labels[0]).text()).toBe("0.87M");
-                    expect($(labels[3]).text()).toBe("0.31M");
-                    expect($(labels[5]).text()).toBe("1.26M");
+                    expect($(labels[0]).text()).toBe("$0,000.87M");
+                    expect($(labels[3]).text()).toBe("$0,000.31M");
+                    expect($(labels[5]).text()).toBe("$0,001.26M");
                 });
 
                 it("Data Labels should not display lines for null and zero labels", () => {

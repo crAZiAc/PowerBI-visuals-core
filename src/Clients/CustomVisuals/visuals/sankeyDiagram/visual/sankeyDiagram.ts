@@ -194,15 +194,15 @@ module powerbi.visuals.samples {
                     { "Source": { min: 0, max: 1 }, "Destination": { min: 0, max: 1 }, "Weight": { min: 1, max: 1 } }
                 ],
                 categorical: {
-                    categories: { 
-                        for: { in: SankeyDiagram.RoleNames.rows },
+                    categories: {
+                        select: [
+                            { for: { in: SankeyDiagram.RoleNames.rows } },
+                            { for: { in: SankeyDiagram.RoleNames.columns } }
+                        ],
                         dataReductionAlgorithm: { top: {} }
                     },
                     values: {
-                        select: [
-                            { bind: { to: SankeyDiagram.RoleNames.columns } },
-                            { bind: { to: SankeyDiagram.RoleNames.values } }
-                        ]
+                        for: { in: SankeyDiagram.RoleNames.values }
                     }
                 }
             }],

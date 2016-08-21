@@ -462,11 +462,6 @@ module powerbi.visuals.controls.TouchUtils {
         private touchPanel: HTMLElement;
         
         /**
-         * Boolean enabling mouse drag.
-         */
-        private allowMouseDrag: boolean;
-        
-        /**
          * Touch events are interpreted and passed on this manager.
          */
         private manager: TouchManager;
@@ -486,8 +481,9 @@ module powerbi.visuals.controls.TouchUtils {
          */
         private rect: ClientRect;
 
-        private documentMouseMoveWrapper: any;
-        private documentMouseUpWrapper: any;
+        private panelCallbacksWrapper: {startCallback: any, endCallback: any};
+        
+        private documentCallbacksWrapper: {moveCallback: any, endCallback: any};
 
         /**
          * Those setting related to swipe detection  
@@ -513,29 +509,43 @@ module powerbi.visuals.controls.TouchUtils {
 
         constructor(manager: TouchManager) {
             this.manager = manager;
-            this.allowMouseDrag = true;
             this.touchPanel = null;
             this.scale = 1;
-            this.documentMouseMoveWrapper = null;
-            this.documentMouseUpWrapper = null;
+            this.documentCallbacksWrapper = null;
+            this.panelCallbacksWrapper = null;
             this.sliding = false;
         }
 
-        public initTouch(panel: HTMLElement, touchReferencePoint?: HTMLElement, allowMouseDrag?: boolean): void {
+        public initTouch(panel: HTMLElement, touchReferencePoint?: HTMLElement): void {
             panel.style.setProperty("-ms-touch-action", "pinch-zoom");
 
             this.touchReferencePoint = touchReferencePoint;
 
             this.touchPanel = panel;
-            this.allowMouseDrag = allowMouseDrag === undefined ? true : allowMouseDrag;
-            if ("ontouchmove" in panel) {
-                panel.addEventListener("touchstart", e => this.onTouchStart(e));
-                panel.addEventListener("touchend", e => this.onTouchEnd(e));
+            this.startTouchPanelEvents();
+        }
+
+        public startTouchPanelEvents(): void {
+            if ("ontouchmove" in this.touchPanel) {
+                this.panelCallbacksWrapper = {
+                    startCallback: e => this.onTouchStart(e),
+                    endCallback: e => this.onTouchEnd(e)
+                };
+                this.touchPanel.addEventListener("touchstart", this.panelCallbacksWrapper.startCallback);
+                this.touchPanel.addEventListener("touchend", this.panelCallbacksWrapper.endCallback);
             }
-            else {
-                panel.addEventListener("mousedown", e => this.onTouchMouseDown(<MouseEvent>e));
-                panel.addEventListener("mouseup", e => this.onTouchMouseUp(<MouseEvent>e));
+        }
+
+        private clearTouchPanelEvents(): void {
+            if(this.panelCallbacksWrapper === null) 
+                return;
+            
+            if ("ontouchmove" in this.touchPanel) {
+                this.touchPanel.removeEventListener("touchstart", this.panelCallbacksWrapper.startCallback);
+                this.touchPanel.removeEventListener("touchend", this.panelCallbacksWrapper.endCallback);
             }
+
+            this.panelCallbacksWrapper = null;
         }
 
         private getXYByClient(pageX: number, pageY: number, rect: ClientRect): Point {
@@ -583,7 +593,7 @@ module powerbi.visuals.controls.TouchUtils {
         }
 
         public onTouchEnd(e: any): void {
-            this.clearTouchEvents();
+            this.clearTouchDocumentEvents();
 
             let swipeInfo = this.getSwipeInfo();
             if (this.didUserSwipe(swipeInfo)) {
@@ -603,17 +613,17 @@ module powerbi.visuals.controls.TouchUtils {
 
             this.rect = (this.touchReferencePoint ? this.touchReferencePoint : this.touchPanel).getBoundingClientRect();
 
+            this.startTouchDocumentEvents();
+        }
+
+        private startTouchDocumentEvents() {
             if ("ontouchmove" in this.touchPanel) {
-                this.documentMouseMoveWrapper = e => this.onTouchMove(e);
-                document.addEventListener("touchmove", this.documentMouseMoveWrapper);
-                this.documentMouseUpWrapper = e => this.onTouchEnd(e);
-                document.addEventListener("touchend", this.documentMouseUpWrapper);
-            }
-            else {
-                this.documentMouseMoveWrapper = e => this.onTouchMouseMove(e);
-                document.addEventListener("mousemove", this.documentMouseMoveWrapper);
-                this.documentMouseUpWrapper = e => this.onTouchMouseUp(e);
-                document.addEventListener("mouseup", this.documentMouseUpWrapper);
+                this.documentCallbacksWrapper = {
+                  moveCallback: e => this.onTouchMove(e),
+                  endCallback: e => this.onTouchEnd(e)
+                };
+                document.addEventListener("touchend", this.documentCallbacksWrapper.endCallback);
+                document.addEventListener("touchmove", this.documentCallbacksWrapper.moveCallback);
             }
 
             if ("setCapture" in this.touchPanel) {
@@ -645,7 +655,7 @@ module powerbi.visuals.controls.TouchUtils {
 
         public onTouchMouseUp(e: MouseEvent, bubble?: boolean): void {
             this.upAllTouches();
-            this.clearTouchEvents();
+            this.clearTouchDocumentEvents();
         }
 
         private getSwipeInfo(): ISwipeInfo {
@@ -713,32 +723,31 @@ module powerbi.visuals.controls.TouchUtils {
         }
 
         private upAllTouches(): void {
-            if (this.documentMouseMoveWrapper !== null)
+            if (this.documentCallbacksWrapper !== null)
                 return;
 
             this.rect = null;
             this.manager.upAllTouches();
         }
 
-        private clearTouchEvents(): void {
+        private clearTouchDocumentEvents(): void {
             if ("releaseCapture" in this.touchPanel) {
                 this.touchPanel.releaseCapture();
             }
 
-            if (this.documentMouseMoveWrapper === null)
+            if (this.documentCallbacksWrapper === null)
                 return;
 
             if ("ontouchmove" in this.touchPanel) {
-                document.removeEventListener("touchmove", this.documentMouseMoveWrapper);
-                document.removeEventListener("touchend", this.documentMouseUpWrapper);
+                document.removeEventListener("touchmove", this.documentCallbacksWrapper.moveCallback);
+                document.removeEventListener("touchend", this.documentCallbacksWrapper.endCallback);
             }
-            else {
-                document.removeEventListener("mousemove", this.documentMouseMoveWrapper);
-                document.removeEventListener("mouseup", this.documentMouseUpWrapper);
-            }
+            this.documentCallbacksWrapper = null;
+        }
 
-            this.documentMouseMoveWrapper = null;
-            this.documentMouseUpWrapper = null;
+        public clearAllTouchEvents(): void {
+            this.clearTouchDocumentEvents();
+            this.clearTouchPanelEvents();
         }
     }
 }

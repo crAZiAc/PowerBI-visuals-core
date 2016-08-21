@@ -36,7 +36,7 @@ module powerbitests.slicerHelper {
     export const SlicerVisual = 'slicer';
     export const slicerTextClassSelector = ".slicerText";
     export const slicerCountTextClassSelector = ".slicerCountText";
-    export const slicerTitleHeaderClassSelector = ".titleHeader";
+    export const slicerHeaderTextClassSelector = ".slicer-header-text";
     const SelectedClass = 'selected';
 
     export const longSlicerItems = ["First Slicer Long Name for testing",
@@ -68,7 +68,18 @@ module powerbitests.slicerHelper {
             interactivity: { selection: true }
         });
 
-        dataView.metadata.objects = options.dataViewObjects ? options.dataViewObjects : buildDefaultDataViewObjects(options.orientation);
+        dataView.metadata = powerbi.Prototype.inherit(dataView.metadata, (m) => m.objects = options.dataViewObjects ? options.dataViewObjects : buildDefaultDataViewObjects(options.orientation));
+        let original = visual.onResizing.bind(visual);
+        visual.onResizing = (viewport) => {
+            if (viewport) {
+                element.css({
+                    width: viewport.width,
+                    height: viewport.height
+                });
+            }
+            original(viewport);
+        };
+        
         return visual;
     }
 
@@ -116,7 +127,7 @@ module powerbitests.slicerHelper {
             metadata: dataViewMetadata,
             categorical: dataViewCategorical
         };
-        dataView.metadata.objects = buildDefaultDataViewObjects(orientation, true, false, true);
+        dataView.metadata = powerbi.Prototype.inherit(dataView.metadata, (m) => m.objects = buildDefaultDataViewObjects(orientation, false, false, true));
         return dataView;
     }
 
@@ -187,7 +198,7 @@ module powerbitests.slicerHelper {
     export function buildDefaultDataViewMetadata(field?: SQExpr): powerbi.DataViewMetadata {
         let result: powerbi.DataViewMetadata = {
             columns: [
-                { displayName: "Fruit", roles: { "Values": true }, queryName: 'queryName', type: ValueType.fromDescriptor({ text: true }) }]
+                { displayName: "Fruit", roles: { "Values": true }, queryName: 'queryName', type: ValueType.fromDescriptor({ text: true }), index: 0 }]
         };
         if (field)
             result.columns[0].expr = field;
@@ -197,14 +208,14 @@ module powerbitests.slicerHelper {
     export function buildBooleanValueDataViewMetadata(): powerbi.DataViewMetadata {
         return {
             columns: [
-                { displayName: "Fruit", roles: { "Values": true }, type: ValueType.fromDescriptor({ bool: true }) }]
+                { displayName: "Fruit", roles: { "Values": true }, type: ValueType.fromDescriptor({ bool: true }), index: 0 }]
         };
     }
 
     export function buildDataViewMetadataWithLongName(): powerbi.DataViewMetadata {
         return {
             columns: [
-                { displayName: "This is a long slicer header for testing", roles: { "Values": true }, type: ValueType.fromDescriptor({ text: true }) }]
+                { displayName: "This is a long slicer header for testing", roles: { "Values": true }, type: ValueType.fromDescriptor({ text: true }), index: 0 }]
         };
     }
 
@@ -356,7 +367,7 @@ module powerbitests.slicerHelper {
     export function validateSelectionState(orientation: SlicerOrientation, expectedSelected: number[], builder: TestBuilder): void {
         let actualSelected: number[] = [];
         let containerToBeValidated = getContainerToBeValidated(orientation, builder);
-        containerToBeValidated.each((index: number, element: HTMLInputElement) => {
+        containerToBeValidated.each((index: number, element: HTMLElement) => {
             if (element.classList.contains(SelectedClass))
                 actualSelected.push(index);
         });
@@ -401,6 +412,7 @@ module powerbitests.slicerHelper {
             entity: "Entity2",
             column: "PropertyName"
         });
+        public container: JQuery;
         public dataViewMetadata: powerbi.DataViewMetadata = buildDefaultDataViewMetadata();
         public dataViewCategorical: powerbi.DataViewCategorical = buildDefaultDataViewCategorical(this.field);
         public dataView: powerbi.DataView = buildDefaultDataView(this.field);
@@ -418,9 +430,10 @@ module powerbitests.slicerHelper {
 
         constructor(orientation: SlicerOrientation, height: number = 200, width: number = 300) {
             let element = helpers.testDom(height.toString(), width.toString());
+            this.container = element;
             this.hostServices = createHostServices();
             let dataView = this.dataView;
-            dataView.metadata.objects = buildDefaultDataViewObjects(orientation);
+            dataView.metadata = powerbi.Prototype.inherit(dataView.metadata, (m) => m.objects = buildDefaultDataViewObjects(orientation));
 
             let slicerRenderOptions: RenderSlicerOptions = {
                 visualType: SlicerVisual,

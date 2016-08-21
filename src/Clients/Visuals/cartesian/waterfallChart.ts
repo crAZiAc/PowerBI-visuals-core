@@ -96,7 +96,7 @@ module powerbi.visuals {
         private element: JQuery;
         private isScrollable: boolean;
         private tooltipsEnabled: boolean;
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
 
         /**
          * Note: If we overflowed horizontally then this holds the subset of data we should render.
@@ -115,7 +115,6 @@ module powerbi.visuals {
         constructor(options: WaterfallChartConstructorOptions) {
             this.isScrollable = options.isScrollable;
             this.tooltipsEnabled = options.tooltipsEnabled;
-            this.tooltipBucketEnabled = options.tooltipBucketEnabled;
             this.interactivityService = options.interactivityService;
         }
 
@@ -131,6 +130,7 @@ module powerbi.visuals {
             this.cartesianVisualHost = options.cartesianHost;
             this.options = options;
             this.element = options.element;
+            this.tooltipService = options.services.tooltips;
             this.colors = this.style.colorPalette.dataColors;
             this.mainGraphicsSVG = this.svg.append('svg');
             this.mainGraphicsContext = this.mainGraphicsSVG.append('g')
@@ -146,8 +146,7 @@ module powerbi.visuals {
             dataLabelSettings: VisualDataLabelsSettings,
             sentimentColors: WaterfallChartSentimentColors,
             interactivityService: IInteractivityService,
-            tooltipsEnabled: boolean = true,
-            tooltipBucketEnabled?: boolean): WaterfallChartData {
+            tooltipsEnabled: boolean = true): WaterfallChartData {
             debug.assertValue(palette, 'palette');
 
             let reader = data.createIDataViewCategoricalReader(dataView);
@@ -244,7 +243,7 @@ module powerbi.visuals {
                                     value: converterHelper.formatFromMetadataColumn(value, valuesMetadata, formatStringProp),
                                 });
                             }
-                            if (tooltipBucketEnabled) {
+
                                 let tooltipValues = reader.getAllValuesForRole("Tooltips", categoryIndex);
                                 if (tooltipValues && tooltipMetadataColumns) {
                                     for (let i = 0; i < tooltipValues.length; i++) {
@@ -260,7 +259,6 @@ module powerbi.visuals {
                                     }
                                 }
                             }
-                        }
                         let color = value > 0 ? increaseColor : decreaseColor;
 
                         dataPoints.push({
@@ -304,7 +302,6 @@ module powerbi.visuals {
                         });
                     }
 
-                    if (tooltipBucketEnabled) {
                         let tooltipValues = reader.getAllValuesForRole("Tooltips", 0, undefined);
                         totalTooltips = totalTooltips ? totalTooltips : tooltipValues;
                         if (tooltipValues && tooltipMetadataColumns) {
@@ -318,7 +315,6 @@ module powerbi.visuals {
                             }
                         }
                     }
-                }
                 let totalIdentity = SelectionId.createNull();
                 dataPoints.push({
                     value: pos,
@@ -394,7 +390,7 @@ module powerbi.visuals {
                 }
 
                 if (dataView.categorical) {
-                    this.data = WaterfallChart.converter(dataView, this.colors, this.hostServices, this.data.dataLabelsSettings, sentimentColors, this.interactivityService, this.tooltipsEnabled, this.tooltipBucketEnabled); 
+                    this.data = WaterfallChart.converter(dataView, this.colors, this.hostServices, this.data.dataLabelsSettings, sentimentColors, this.interactivityService, this.tooltipsEnabled); 
                 }
             }
         }
@@ -648,8 +644,12 @@ module powerbi.visuals {
             let bars = this.createRects(dataPoints);
             let connectors = this.createConnectors(dataPoints);
 
-            if (this.tooltipsEnabled)
-                TooltipManager.addTooltip(bars, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo);
+            if (this.tooltipsEnabled) {
+                this.tooltipService.addTooltip(
+                    bars, 
+                    (args: TooltipEventArgs<WaterfallChartDataPoint>) => args.data.tooltipInfo,
+                    (args: TooltipEventArgs<WaterfallChartDataPoint>) => args.data.identity);
+            }
 
             let hasSelection = this.interactivityService && this.interactivityService.hasSelection();
 

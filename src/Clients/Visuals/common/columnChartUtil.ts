@@ -58,7 +58,7 @@ module powerbi.visuals {
 
             // Min/Max comparison won't work if category source is Ordinal
             if (AxisHelper.isOrdinal(categoryType))
-                return;
+                return dataView;
 
             let categoryValues = category.values;
             let categoryObjects = category.objects;

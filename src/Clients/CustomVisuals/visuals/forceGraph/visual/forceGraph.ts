@@ -639,11 +639,19 @@ module powerbi.visuals.samples {
                 value: settings.links.displayUnits || _.max(tableRows, x => x.Weight).Weight
             });
 
+            var sourceFormatter: IValueFormatter = valueFormatter.create({
+                format: valueFormatter.getFormatString(metadata.Source, formatStringProp, true),
+            });
+
+            var targetFormatter: IValueFormatter = valueFormatter.create({
+                format: valueFormatter.getFormatString(metadata.Target, formatStringProp, true),
+            });
+
             tableRows.forEach((tableRow: ForceGraphColumns<any>) => {
                 linkedByName[tableRow.Source + "," + tableRow.Target] = 1;
 
-                var source = nodes[tableRow.Source] || (nodes[tableRow.Source] = { name: tableRow.Source, image: tableRow.SourceType || "", adj: {} });
-                var target = nodes[tableRow.Target] || (nodes[tableRow.Target] = { name: tableRow.Target, image: tableRow.TargetType || "", adj: {} });
+                var source = nodes[tableRow.Source] || (nodes[tableRow.Source] = { name: sourceFormatter.format(tableRow.Source), image: tableRow.SourceType || "", adj: {} });
+                var target = nodes[tableRow.Target] || (nodes[tableRow.Target] = { name: targetFormatter.format(tableRow.Target), image: tableRow.TargetType || "", adj: {} });
 
                 source.adj[target.name] = 1;
                 target.adj[source.name] = 1;
@@ -656,7 +664,7 @@ module powerbi.visuals.samples {
                 var link: ForceGraphLink = {
                     source: source,
                     target: target,
-                    weight: Math.max(tableRow.Weight, 0),
+                    weight: Math.max(metadata.Weight ? (tableRow.Weight || 0) : 1, 0),
                     formattedWeight: tableRow.Weight && weightFormatter.format(tableRow.Weight),
                     type: tableRow.LinkType || "",
                     tooltipInfo: tooltipInfo,
@@ -973,7 +981,7 @@ module powerbi.visuals.samples {
         }
 
         private fadeNode(node: ForceGraphNode) {
-            if (this.settings.links.colorLink !== LinkColorType.Interactive) {
+            if (!this.settings || this.settings.links.colorLink !== LinkColorType.Interactive) {
                 return;
             }
 

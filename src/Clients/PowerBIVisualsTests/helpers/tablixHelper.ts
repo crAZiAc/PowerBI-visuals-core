@@ -207,10 +207,14 @@ module powerbitests.tablixHelper {
             });
     }
 
-    export function validateMatrix(expectedValues: string[][], selector: string): void {
+    export function validateTablixTextAndTooltip(expectedValues: string[][], selector: string): void {
         var rows = $(selector);
 
-        var result: string[][] = [];
+        let resultTitle: string = "",
+            expectedTitle: string = "",
+            resultText: string = "",
+            expectedText: string = "";
+
         var errorString: string = null;
 
         var ilen = rows.length;
@@ -218,40 +222,6 @@ module powerbitests.tablixHelper {
             addError(errorString, "Actual row count " + ilen + " does not match expected number of rows " + expectedValues.length + ".");
 
         for (var i = 0; i < ilen; i++) {
-            result[i] = [];
-            var cells = rows.eq(i).find('td');
-            expect(cells.height()).not.toBe(0);
-
-            var jlen = cells.length;
-            if (jlen !== expectedValues[i].length)
-                addError(errorString, "Actual column count " + jlen + " in row " + i + " does not match expected number of columns " + expectedValues[i].length + ".");
-
-            for (var j = 0; j < jlen; j++) {
-                result[i][j] = cells.eq(j).text();
-                expectedValues[i][j] = TextUtil.replaceSpaceWithNBSP(expectedValues[i][j]);
-                if (result[i][j] !== expectedValues[i][j])
-                    addError(errorString, "Actual value " + result[i][j] + " in row " + i + " and column " + j + " does not match expected value " + expectedValues[i][j] + ".");
-            }
-        }
-
-        expect(errorString).toBeNull();
-        expect(result).toEqual(expectedValues);
-    }
-
-    export function validateTable(expectedValues: string[][], selector: string): void {
-        var rows = $(selector);
-
-        var textResult: string[][] = [];
-        var titleResult: string[][] = [];
-        var errorString: string = null;
-
-        var ilen = rows.length;
-        if (ilen !== expectedValues.length)
-            addError(errorString, "Actual row count " + ilen + " does not match expected number of rows " + expectedValues.length + ".");
-
-        for (var i = 0; i < ilen; i++) {
-            textResult[i] = [];
-            titleResult[i] = [];
             var cells = rows.eq(i).find('.tablixCellContentHost');
 
             var jlen = cells.length;
@@ -259,19 +229,17 @@ module powerbitests.tablixHelper {
                 addError(errorString, "Actual column count " + jlen + " in row " + i + " does not match expected number of columns " + expectedValues[i].length + ".");
 
             for (var j = 0; j < jlen; j++) {
-                textResult[i][j] = cells.eq(j).text();
-                titleResult[i][j] = getTitleOfTablixItem(cells.eq(j));
+                resultText = cells.eq(j).text();
+                resultTitle = getTitleOfTablixItem(cells.eq(j));
 
-                expectedValues[i][j] = TextUtil.replaceSpaceWithNBSP(expectedValues[i][j]);
+                expectedText = TextUtil.replaceSpaceWithNBSP(expectedValues[i][j]);
+                expectedTitle = expectedValues[i][j];
 
-                //this check only empty header cells
-                if (titleResult[i][j] === '' && expectedValues[i][j] === "\xa0")
-                    titleResult[i][j] = expectedValues[i][j];
+                if (resultText !== expectedText)
+                    addError(errorString, "Actual value " + resultText + " in row " + i + " and column " + j + " does not match expected value " + expectedText + ".");
 
-                if (textResult[i][j] !== expectedValues[i][j])
-                    addError(errorString, "Actual value " + textResult[i][j] + " in row " + i + " and column " + j + " does not match expected value " + expectedValues[i][j] + ".");
-                if (titleResult[i][j] !== expectedValues[i][j])
-                    addError(errorString, "Actual tooltip " + textResult[i][j] + " in row " + i + " and column " + j + " does not match expected value " + expectedValues[i][j] + ".");
+                if (resultTitle !== expectedTitle)
+                    addError(errorString, "Actual tooltip " + resultTitle + " in row " + i + " and column " + j + " does not match expected value " + expectedTitle + ".");
 
                 if (cells.eq(j).height() <= 1)
                     addError(errorString, "Actual height " + cells.eq(j).height() + " in row " + i + " and column " + j + " is expected to be > 1.");
@@ -279,8 +247,6 @@ module powerbitests.tablixHelper {
         }
 
         expect(errorString).toBeNull();
-        expect(textResult).toEqual(expectedValues);
-        expect(titleResult).toEqual(expectedValues);
     }
 
     function getTitleOfTablixItem(cells: JQuery): string {

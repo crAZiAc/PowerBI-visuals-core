@@ -43,7 +43,6 @@ module powerbi.visuals {
         disableGeometricCulling?: boolean;
         behavior?: IInteractiveBehavior;
         tooltipsEnabled?: boolean;
-        tooltipBucketEnabled?: boolean;
         smallViewPortProperties?: DonutSmallViewPortProperties;
     }
 
@@ -186,7 +185,7 @@ module powerbi.visuals {
         private hostService: IVisualHostServices;
         private settings: DonutChartSettings;
         private tooltipsEnabled: boolean;
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
         private donutProperties: DonutChartProperties;
         private maxHeightToScaleDonutLegend: number;
 
@@ -203,7 +202,6 @@ module powerbi.visuals {
                 this.disableGeometricCulling = options.disableGeometricCulling ? options.disableGeometricCulling : false;
                 this.behavior = options.behavior;
                 this.tooltipsEnabled = options.tooltipsEnabled;
-                this.tooltipBucketEnabled = options.tooltipBucketEnabled;
                 if (options.smallViewPortProperties) {
                     this.maxHeightToScaleDonutLegend = options.smallViewPortProperties.maxHeightToScaleDonutLegend;
                 }
@@ -213,8 +211,8 @@ module powerbi.visuals {
             }
         }
 
-        public static converter(dataView: DataView, colors: IDataColorPalette, defaultDataPointColor?: string, viewport?: IViewport, disableGeometricCulling?: boolean, interactivityService?: IInteractivityService, tooltipsEnabled: boolean = true, tooltipBucketEnabled?: boolean): DonutData {
-            let converter = new DonutChartConversion.DonutChartConverter(dataView, colors, defaultDataPointColor, tooltipsEnabled, tooltipBucketEnabled);
+        public static converter(dataView: DataView, colors: IDataColorPalette, defaultDataPointColor?: string, viewport?: IViewport, disableGeometricCulling?: boolean, interactivityService?: IInteractivityService, tooltipsEnabled: boolean = true): DonutData {
+            let converter = new DonutChartConversion.DonutChartConverter(dataView, colors, defaultDataPointColor, tooltipsEnabled);
             converter.convert();
             let d3PieLayout = d3.layout.pie()
                 .sort(null)
@@ -285,6 +283,7 @@ module powerbi.visuals {
             this.legend = createLegend(element, options.interactivity && options.interactivity.isInteractiveLegend, this.interactivityService, this.isScrollable);
 
             this.hostService = options.host;
+            this.tooltipService = createTooltipService(options.host);
 
             if (this.isInteractive) {
                 this.chartRotationAnimationDuration = (donutChartSettings && donutChartSettings.chartRotationAnimationDuration) ? donutChartSettings.chartRotationAnimationDuration : 0;
@@ -350,7 +349,7 @@ module powerbi.visuals {
                     }
                 }
 
-                this.data = DonutChart.converter(dataViews[0], this.colors, defaultDataPointColor, this.currentViewport, this.disableGeometricCulling, this.interactivityService, this.tooltipsEnabled, this.tooltipBucketEnabled);
+                this.data = DonutChart.converter(dataViews[0], this.colors, defaultDataPointColor, this.currentViewport, this.disableGeometricCulling, this.interactivityService, this.tooltipsEnabled);
                 this.data.defaultDataPointColor = defaultDataPointColor;
                 if (!(this.options.interactivity && this.options.interactivity.isInteractiveLegend))
                     this.renderLegend();
@@ -663,8 +662,7 @@ module powerbi.visuals {
                 this.assignInteractions(shapes, highlightShapes, data);
 
                 if (this.tooltipsEnabled) {
-                    TooltipManager.addTooltip(shapes, (tooltipEvent: TooltipEvent) => tooltipEvent.data.data.tooltipInfo);
-                    TooltipManager.addTooltip(highlightShapes, (tooltipEvent: TooltipEvent) => tooltipEvent.data.data.tooltipInfo);
+                    this.addTooltips(shapes, highlightShapes);
                 }
             }
             else {
@@ -1118,10 +1116,7 @@ module powerbi.visuals {
             this.assignInteractions(slice, highlightSlices, data);
 
             if (this.tooltipsEnabled) {
-                TooltipManager.addTooltip(slice, (tooltipEvent: TooltipEvent) => tooltipEvent.data.data.tooltipInfo);
-                if (data.hasHighlights) {
-                    TooltipManager.addTooltip(highlightSlices, (tooltipEvent: TooltipEvent) => tooltipEvent.data.data.tooltipInfo);
-                }
+                this.addTooltips(slice, highlightSlices);
             }
 
             SVGUtil.flushAllD3TransitionsIfNeeded(this.options);
@@ -1130,6 +1125,20 @@ module powerbi.visuals {
                 this.addInteractiveLegendArrow();
                 this.interactivityState.interactiveLegend.drawLegend(this.data.dataPointsToDeprecate);
                 this.setInteractiveChosenSlice(this.interactivityState.lastChosenInteractiveSliceIndex ? this.interactivityState.lastChosenInteractiveSliceIndex : 0);
+            }
+        }
+
+        private addTooltips(shapes: D3.Selection, highlightShapes: D3.Selection): void {
+            this.tooltipService.addTooltip(
+                shapes,
+                (args: TooltipEventArgs<DonutArcDescriptor>) => args.data.data.tooltipInfo,
+                (args: TooltipEventArgs<DonutArcDescriptor>) => args.data.data.identity);
+                
+            if (highlightShapes) {
+                this.tooltipService.addTooltip(
+                    highlightShapes, 
+                    (args: TooltipEventArgs<DonutArcDescriptor>) => args.data.data.tooltipInfo,
+                    (args: TooltipEventArgs<DonutArcDescriptor>) => args.data.data.identity);
             }
         }
 
@@ -1640,7 +1649,6 @@ module powerbi.visuals {
             private colorHelper: ColorHelper;
             private categoryFormatString: string;
             private tooltipsEnabled: boolean;
-            private tooltipBucketEnabled: boolean;
             public hasHighlights: boolean;
             public highlightsOverflow: boolean;
             public dataPoints: DonutDataPoint[];
@@ -1651,13 +1659,12 @@ module powerbi.visuals {
             public hasNegativeValues: boolean;
             public allValuesAreNegative: boolean;
 
-            public constructor(dataView: DataView, colors: IDataColorPalette, defaultDataPointColor?: string, tooltipsEnabled: boolean = true, tooltipBucketEnabled?: boolean) {
+            public constructor(dataView: DataView, colors: IDataColorPalette, defaultDataPointColor?: string, tooltipsEnabled: boolean = true) {
                 let reader = this.reader = data.createIDataViewCategoricalReader(dataView);
                 let dataViewCategorical = dataView.categorical;
                 this.dataViewCategorical = dataViewCategorical;
                 this.dataViewMetadata = dataView.metadata;
                 this.tooltipsEnabled = tooltipsEnabled;
-                this.tooltipBucketEnabled = tooltipBucketEnabled;
                 this.colorHelper = new ColorHelper(colors, donutChartProps.dataPoint.fill, defaultDataPointColor);
                 this.maxValue = 0;
                 this.hasNegativeValues = false;
@@ -1882,11 +1889,9 @@ module powerbi.visuals {
                             });
                         }
 
-                        if (this.tooltipBucketEnabled) {
                             // SeriesIndex is not needed for static series.
                             TooltipBuilder.addTooltipBucketItem(reader, tooltipInfo, this.categoryValues ? point.categoryIndex : 0, this.isDynamicSeries ? point.seriesIndex : undefined);
                         }
-                    }
 
                     let strokeWidth = (prevPointColor === point.color && percentage && percentage > 0) ? 1 : 0;
                     prevPointColor = (percentage && percentage > 0 ) ? point.color : prevPointColor;
@@ -1951,6 +1956,11 @@ module powerbi.visuals {
                         let value = reader.getValue("Y", categoryIndex, seriesIndex);
                         let highlightValue = this.hasHighlights ? reader.getHighlight("Y", categoryIndex, seriesIndex) : undefined;
 
+                        // Nulls won't be visualized anyway so diregard. If we don't do this and the dataset is very sparse (e.g.
+                        // a diagonal resulting from a pivot), we just chew up a bunch of memory and cycles processing the nulls.
+                        if (value == null && highlightValue == null)
+                            continue;
+
                         let valueColumn = reader.getValueColumn("Y", seriesIndex);
 
                         let label = categoryLabel;
@@ -1970,7 +1980,7 @@ module powerbi.visuals {
                             measureFormat: valueFormatter.getFormatString(valueColumn.source, formatStringProp, true),
                             measure: value,
                             highlightMeasure: highlightValue,
-                            index: categoryIndex * this.seriesCount + seriesIndex,
+                            index: dataPoints.length,
                             label: label,
                             categoryLabel: categoryLabel,
                             color: color,

@@ -41,6 +41,7 @@ module powerbi.data {
         percentile?: FieldExprPercentilePattern;
         percentOfGrandTotal?: FieldExprPercentOfGrandTotalPattern;
         selectRef?: FieldExprSelectRefPattern;
+        transformOutputRoleRef?: FieldExprTransformOutputRoleRefPattern;
     }
 
     /** By design there is no default, no-op visitor. Components concerned with patterns need to be aware of all patterns as they are added. */
@@ -57,6 +58,7 @@ module powerbi.data {
         visitPercentile(percentile: FieldExprPercentilePattern): T;
         visitPercentOfGrandTotal(percentOfGrandTotal: FieldExprPercentOfGrandTotalPattern): T;
         visitSelectRef(selectRef: FieldExprSelectRefPattern): T;
+        visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): T;
     }
 
     export interface FieldExprEntityPattern {
@@ -112,6 +114,10 @@ module powerbi.data {
     }
 
     export interface FieldExprSelectRefPattern {
+        expressionName: string;
+    }
+
+    export interface FieldExprTransformOutputRoleRefPattern {
         expressionName: string;
     }
 
@@ -207,6 +213,10 @@ module powerbi.data {
 
             public visitSelectRef(selectRef: FieldExprSelectRefPattern): SQSelectRefExpr {
                 return SQExprBuilder.selectRef(selectRef.expressionName);
+            }
+
+            public visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): SQTransformOutputRoleRefExpr {
+                return SQExprBuilder.transformOutputRoleRef(transformOutputRoleRef.expressionName);
             }
         }
     }
@@ -392,6 +402,14 @@ module powerbi.data {
                 }
             };
         }
+
+        public visitTransformOutputRoleRef(expr: SQTransformOutputRoleRefExpr): FieldExprPattern {
+            return {
+                transformOutputRoleRef: {
+                    expressionName: expr.role
+                }
+            };
+        }
     }
 
     class SourceExprPatternBuilder extends DefaultSQExprVisitor<SourceExprPattern> {
@@ -494,6 +512,8 @@ module powerbi.data {
                 return visitPercentOfGrandTotal(fieldExprPattern.percentOfGrandTotal, visitor);
             if (fieldExprPattern.selectRef)
                 return visitSelectRef(fieldExprPattern.selectRef, visitor);
+            if (fieldExprPattern.transformOutputRoleRef)
+                return visitTransformOutputRoleRef(fieldExprPattern.transformOutputRoleRef, visitor);
 
             debug.assertFail('failed to visit a fieldExprPattern.');
             return;
@@ -584,6 +604,13 @@ module powerbi.data {
             debug.assertValue(visitor, 'visitor');
 
             return visitor.visitPercentOfGrandTotal(percentOfGrandTotal);
+        }
+
+        function visitTransformOutputRoleRef<T>(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern, visitor: IFieldExprPatternVisitor<T>): T {
+            debug.assertValue(transformOutputRoleRef, 'transformOutputRoleRef');
+            debug.assertValue(visitor, 'visitor');
+
+            return visitor.visitTransformOutputRoleRef(transformOutputRoleRef);
         }
 
         export function toColumnRefSQExpr(columnPattern: FieldExprColumnPattern): SQColumnRefExpr {
@@ -707,6 +734,10 @@ module powerbi.data {
             public visitPercentOfGrandTotal(percentOfGrandTotal: FieldExprPercentOfGrandTotalPattern): QueryAggregateFunction {
                 return SQExprInfo.getAggregate(SQExprBuilder.fieldExpr(percentOfGrandTotal.baseExpr));
             }
+
+            public visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): QueryAggregateFunction {
+                return;
+            }
         }
 
         class FieldExprPatternIsAggregationVisitor implements IFieldExprPatternVisitor<boolean> {
@@ -759,6 +790,10 @@ module powerbi.data {
             public visitPercentOfGrandTotal(percentOfGrandTotal: FieldExprPercentOfGrandTotalPattern): boolean {
                 return true;
             }
+
+            public visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): boolean {
+                return false;
+            }
         }
 
         class FieldExprToEntityExprPatternBuilder implements IFieldExprPatternVisitor<FieldExprEntityItemPattern> {
@@ -810,6 +845,10 @@ module powerbi.data {
 
             public visitPercentOfGrandTotal(percentOfGrandTotal: FieldExprPercentOfGrandTotalPattern): FieldExprEntityItemPattern {
                 return FieldExprPattern.visit(percentOfGrandTotal.baseExpr, this);
+            }
+
+            public visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): FieldExprEntityItemPattern {
+                return;
             }
 
             private static toEntityItemExprPattern(exprPattern: FieldExprEntityItemPattern): FieldExprEntityItemPattern {
@@ -874,6 +913,10 @@ module powerbi.data {
 
             public visitPercentOfGrandTotal(percentOfGrandTotal: FieldExprPercentOfGrandTotalPattern): string {
                 return FieldExprPattern.visit(percentOfGrandTotal.baseExpr, this);
+            }
+
+            public visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): string {
+                return;
             }
         }
     }

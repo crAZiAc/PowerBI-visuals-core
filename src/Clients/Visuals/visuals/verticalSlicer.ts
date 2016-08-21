@@ -31,6 +31,7 @@ module powerbi.visuals {
     import SlicerOrientation = slicerOrientation.Orientation;
     import SemanticFilter = powerbi.data.SemanticFilter;
     import SQExpr = powerbi.data.SQExpr;
+    import DisplayNameKeys = SlicerUtil.DisplayNameKeys;
 
     export interface CheckboxStyle {
         transform: string;
@@ -42,7 +43,6 @@ module powerbi.visuals {
         private element: JQuery;
         private currentViewport: IViewport;
         private dataView: DataView;
-        private header: D3.Selection;
         private body: D3.Selection;
         private container: D3.Selection;
         private listView: IListView;
@@ -55,12 +55,15 @@ module powerbi.visuals {
             'fontSize': '14px',
         };
         private domHelper: SlicerUtil.DOMHelper;
+        private searchContainer: D3.Selection;
+        private interactivityService: IInteractivityService;
 
         constructor(options?: SlicerConstructorOptions) {
             if (options) {
                 this.behavior = options.behavior;
             }
-            this.domHelper = options.domHelper;
+            this.domHelper = new SlicerUtil.DOMHelper();
+            this.hostServices = options.hostServices;
         }
 
         // SlicerValueHandler
@@ -81,14 +84,22 @@ module powerbi.visuals {
             return SlicerUtil.getUpdatedSelfFilter(searchKey, metadata);
         }
 
-        public init(slicerInitOptions: SlicerInitOptions): IInteractivityService {
-            this.element = slicerInitOptions.visualInitOptions.element;
+        public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] {
+            return SlicerUtil.ObjectEnumerator.enumerateObjectInstances(options, this.data, this.settings, this.dataView);
+        }
+
+        public onModeChange(mode: string): void {
+            // Doesn't require any changes except fire update on visual.
+            this.hostServices.persistProperties({});
+        }
+
+        public init(slicerInitOptions: SlicerInitOptions, element: JQuery): IInteractivityService {
+            this.element = element;
             this.currentViewport = slicerInitOptions.visualInitOptions.viewport;
             let hostServices = this.hostServices = slicerInitOptions.visualInitOptions.host;
 
-            let settings = this.settings = Slicer.DefaultStyleProperties();
+            let settings = this.settings = DataConversion.DefaultSlicerProperties();
             let domHelper = this.domHelper;
-            let bodyViewport = domHelper.getSlicerBodyViewport(this.currentViewport, settings, this.textProperties);
             let interactivityService: IInteractivityService;
 
             if (this.behavior)
@@ -97,17 +108,9 @@ module powerbi.visuals {
             let containerDiv = document.createElement('div');
             containerDiv.className = Selectors.Container.class;
             let container = this.container = d3.select(containerDiv);
+            this.searchContainer = domHelper.addSearch(hostServices, container);
 
-            let header = domHelper.createSlicerHeader(hostServices);
-            containerDiv.appendChild(header);
-            this.header = d3.select(header);
-
-            this.body = container.append('div').classed(SlicerUtil.Selectors.Body.class, true)
-                .style({
-                    'height': PixelConverter.toString(bodyViewport.height),
-                    'width': PixelConverter.toString(bodyViewport.width),
-                });
-
+            this.body = container.append('div').classed(SlicerUtil.Selectors.Body.class, true);
             let rowEnter = (rowSelection: D3.Selection) => {
                 this.onEnterSelection(rowSelection);
             };
@@ -127,7 +130,7 @@ module powerbi.visuals {
                 update: rowUpdate,
                 loadMoreData: () => slicerInitOptions.loadMoreData(),
                 scrollEnabled: true,
-                viewport: domHelper.getSlicerBodyViewport(this.currentViewport, settings, this.textProperties),
+                viewport: this.currentViewport,
                 baseContainer: this.body,
                 isReadMode: () => {
                     return (this.hostServices.getViewMode() !== ViewMode.Edit);
@@ -138,34 +141,36 @@ module powerbi.visuals {
 
             // Append container to DOM
             this.element.get(0).appendChild(containerDiv);
+            this.interactivityService = interactivityService;
 
             return interactivityService;
         }
 
         public render(options: SlicerRenderOptions): void {
-            let data = this.data = options.data;
             this.currentViewport = options.viewport;
             let dataView = options.dataView;
-
-            if (!dataView || !data) {
+            let localizedSelectAllText = this.hostServices.getLocalizedString(DisplayNameKeys.SelectAll);
+            this.data = DataConversion.convert(dataView, localizedSelectAllText, this.interactivityService, this.hostServices);
+            if (!dataView || !this.data || _.isEmpty(this.data.slicerDataPoints)) {
                 this.listView.empty();
                 return;
             }
 
             this.dataView = dataView;
-            let settings = this.settings = data.slicerSettings;
+            let settings = this.settings = this.data.slicerSettings;
             let domHelper = this.domHelper;
 
-            domHelper.updateSlicerBodyDimensions(this.currentViewport, this.body, settings);
             this.updateSelectionStyle();
+            // Set available height for scroll container.
+            // this.body.style("height", this.getAvailableHeight() + "px");
             this.listView
-                .viewport(domHelper.getSlicerBodyViewport(this.currentViewport, settings, this.textProperties))
+                .viewport(this.currentViewport)
                 .rowHeight(domHelper.getRowHeight(settings, this.textProperties))
                 .data(
-                    data.slicerDataPoints,
-                    (d: SlicerDataPoint) => $.inArray(d, data.slicerDataPoints),
-                    options.resetScrollbarPosition
-                    );
+                this.data.slicerDataPoints,
+                (d: SlicerDataPoint) => this.data && $.inArray(d, this.data.slicerDataPoints),
+                options.resetScrollbarPosition
+                );
         }
 
         private updateSelectionStyle(): void {
@@ -213,11 +218,10 @@ module powerbi.visuals {
             if (data && settings) {
                 // Style Slicer Header
                 let domHelper = this.domHelper;
-                domHelper.styleSlicerHeader(this.header, settings, data.categorySourceName);
-
-                let headerText = this.header.select(SlicerUtil.Selectors.TitleHeader.selector);
-                headerText.attr('title', data.categorySourceName);
+                this.searchContainer.classed(SlicerUtil.Selectors.SearchHeaderShow.class, settings.search.enabled);
+                this.searchContainer.classed(SlicerUtil.Selectors.SearchHeaderCollapsed.class, !settings.search.enabled);
                 
+
                 let labelText = rowSelection.selectAll(SlicerUtil.Selectors.LabelText.selector);
                 labelText.text((d: SlicerDataPoint) => {
                     return d.value;
@@ -244,8 +248,7 @@ module powerbi.visuals {
                     let slicerItemContainers = body.selectAll(Selectors.ItemContainer.selector);
                     let slicerItemLabels = body.selectAll(SlicerUtil.Selectors.LabelText.selector);
                     let slicerItemInputs = body.selectAll(Selectors.Input.selector);
-                    let slicerClear = this.header.select(SlicerUtil.Selectors.Clear.selector);
-                    let searchInput = this.header.select('input');
+                    let searchInput = this.searchContainer.select('input');
                     if (!searchInput.empty()) {
                         let element: HTMLInputElement = <HTMLInputElement>searchInput.node();
                         let exisingSearchKey: string = element && element.value;
@@ -265,7 +268,6 @@ module powerbi.visuals {
                         itemContainers: slicerItemContainers,
                         itemLabels: slicerItemLabels,
                         itemInputs: slicerItemInputs,
-                        clear: slicerClear,
                         interactivityService: interactivityService,
                         settings: data.slicerSettings,
                         searchInput: searchInput,

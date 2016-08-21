@@ -34,7 +34,6 @@ module powerbi.visuals.samples {
     import getCategoryIndexOfRole = powerbi.data.DataRoleHelper.getCategoryIndexOfRole;
     import getMeasureIndexOfRole = powerbi.data.DataRoleHelper.getMeasureIndexOfRole;
     import registerStandardInteractivityHandlers = powerbi.visuals.InteractivityUtils.registerStandardInteractivityHandlers;
-    import createDisplayNameGetter = powerbi.data.createDisplayNameGetter;
     import IInteractiveBehavior = powerbi.visuals.IInteractiveBehavior;
     import DataViewObjectDescriptor = powerbi.data.DataViewObjectDescriptor;
     import Lazy = jsCommon.Lazy;
@@ -381,27 +380,27 @@ module powerbi.visuals.samples {
                 {
                     name: EnhancedScatterChart.ColumnCategory,
                     kind: VisualDataRoleKind.Grouping,
-                    displayName: createDisplayNameGetter("Role_DisplayName_Details"),
+                    displayName: "Details",
                 }, {
                     name: EnhancedScatterChart.ColumnSeries,
                     kind: VisualDataRoleKind.Grouping,
-                    displayName: createDisplayNameGetter("Role_DisplayName_Legend"),
+                    displayName: "Legend",
                 }, {
                     name: EnhancedScatterChart.ColumnX,
                     kind: VisualDataRoleKind.Measure,
-                    displayName: createDisplayNameGetter("Role_DisplayName_X"),
+                    displayName: "X Axis",
                 }, {
                     name: EnhancedScatterChart.ColumnY,
                     kind: VisualDataRoleKind.Measure,
-                    displayName: createDisplayNameGetter("Role_DisplayName_Y"),
+                    displayName: "Y Axis",
                 }, {
                     name: EnhancedScatterChart.ColumnSize,
                     kind: VisualDataRoleKind.Measure,
-                    displayName: createDisplayNameGetter("Role_DisplayName_Size"),
+                    displayName: "Size",
                 }, {
                     name: EnhancedScatterChart.ColumnGradient,
                     kind: VisualDataRoleKind.Measure,
-                    displayName: createDisplayNameGetter("Role_DisplayName_Gradient"),
+                    displayName: "Color saturation",
                 }, {
                     name: EnhancedScatterChart.ColumnColorFill,
                     kind: VisualDataRoleKind.Grouping,
@@ -441,74 +440,97 @@ module powerbi.visuals.samples {
                 }
             ],
             dataViewMappings: [{
-                conditions: [{
-                    "Category": { max: 1 },
-                    "Series": { max: 1 },
-                    "X": { max: 1 },
-                    "Y": { max: 1 },
-                    "Size": { max: 1 },
-                    "Gradient": { max: 0 },
-                    "ColorFill": { max: 1 },
-                    "Shape": { max: 1 },
-                    "Image": { max: 0 },
-                    "Rotation": { max: 1 },
-                    "Backdrop": { max: 1 },
-                    "X Start": { max: 1 },
-                    "X End": { max: 1 },
-                    "Y Start": { max: 1 },
-                    "Y End": { max: 1 }
-                }, {
-                    "Category": { max: 1 },
-                    "Series": { max: 0 },
-                    "X": { max: 1 },
-                    "Y": { max: 1 },
-                    "Size": { max: 1 },
-                    "Gradient": { max: 1 },
-                    "ColorFill": { max: 1 },
-                    "Shape": { max: 1 },
-                    "Image": { max: 0 },
-                    "Rotation": { max: 1 },
-                    "Backdrop": { max: 1 },
-                    "X Start": { max: 1 },
-                    "X End": { max: 1 },
-                    "Y Start": { max: 1 },
-                    "Y End": { max: 1 }
-                }, {
-                    "Category": { max: 1 },
-                    "Series": { max: 1 },
-                    "X": { max: 1 },
-                    "Y": { max: 1 },
-                    "Size": { max: 1 },
-                    "Gradient": { max: 0 },
-                    "ColorFill": { max: 0 },
-                    "Shape": { max: 0 },
-                    "Image": { max: 1 },
-                    "Rotation": { max: 1 },
-                    "Backdrop": { max: 1 },
-                    "X Start": { max: 1 },
-                    "X End": { max: 1 },
-                    "Y Start": { max: 1 },
-                    "Y End": { max: 1 }
-                }, {
-                    "Category": { max: 1 },
-                    "Series": { max: 0 },
-                    "X": { max: 1 },
-                    "Y": { max: 1 },
-                    "Size": { max: 1 },
-                    "Gradient": { max: 1 },
-                    "ColorFill": { max: 0 },
-                    "Shape": { max: 0 },
-                    "Image": { max: 1 },
-                    "Rotation": { max: 1 },
-                    "Backdrop": { max: 1 },
-                    "X Start": { max: 1 },
-                    "X End": { max: 1 },
-                    "Y Start": { max: 1 },
-                    "Y End": { max: 1 }
-                }],
+                conditions: [
+                    {
+                        "Category": { max: 1 },
+                        "Series": { max: 0 },
+                        "X": { max: 1 },
+                        "Y": { max: 1 },
+                        "Size": { max: 1 },
+                        "Gradient": { max: 1 },
+                        "ColorFill": { max: 0 },
+                        "Shape": { max: 1 },
+                        "Image": { max: 0 },
+                        "Rotation": { max: 1 },
+                        "Backdrop": { max: 1 },
+                        "X Start": { max: 1 },
+                        "X End": { max: 1 },
+                        "Y Start": { max: 1 },
+                        "Y End": { max: 1 }
+                    }, {
+                        "Category": { max: 1 },
+                        "Series": { max: 0 },
+                        "X": { max: 1 },
+                        "Y": { max: 1 },
+                        "Size": { max: 1 },
+                        "Gradient": { max: 0 },
+                        "ColorFill": { max: 1 },
+                        "Shape": { max: 1 },
+                        "Image": { max: 0 },
+                        "Rotation": { max: 1 },
+                        "Backdrop": { max: 1 },
+                        "X Start": { max: 1 },
+                        "X End": { max: 1 },
+                        "Y Start": { max: 1 },
+                        "Y End": { max: 1 }
+                    }, {
+                        "Category": { max: 1 },
+                        "Series": { max: 0 },
+                        "X": { max: 1 },
+                        "Y": { max: 1 },
+                        "Size": { max: 1 },
+                        "Gradient": { max: 0 },
+                        "ColorFill": { max: 0 },
+                        "Shape": { max: 0 },
+                        "Image": { max: 1 },
+                        "Rotation": { max: 1 },
+                        "Backdrop": { max: 1 },
+                        "X Start": { max: 1 },
+                        "X End": { max: 1 },
+                        "Y Start": { max: 1 },
+                        "Y End": { max: 1 }
+                    }, {
+                        "Category": { max: 1 },
+                        "Series": { max: 1 },
+                        "X": { max: 1 },
+                        "Y": { max: 1 },
+                        "Size": { max: 1 },
+                        "Gradient": { max: 0 },
+                        "ColorFill": { max: 1 },
+                        "Shape": { max: 1 },
+                        "Image": { max: 0 },
+                        "Rotation": { max: 1 },
+                        "Backdrop": { max: 1 },
+                        "X Start": { max: 1 },
+                        "X End": { max: 1 },
+                        "Y Start": { max: 1 },
+                        "Y End": { max: 1 }
+                    }, {
+                        "Category": { max: 1 },
+                        "Series": { max: 1 },
+                        "X": { max: 1 },
+                        "Y": { max: 1 },
+                        "Size": { max: 1 },
+                        "Gradient": { max: 0 },
+                        "ColorFill": { max: 0 },
+                        "Shape": { max: 0 },
+                        "Image": { max: 1 },
+                        "Rotation": { max: 1 },
+                        "Backdrop": { max: 1 },
+                        "X Start": { max: 1 },
+                        "X End": { max: 1 },
+                        "Y Start": { max: 1 },
+                        "Y End": { max: 1 }
+                    }
+                ],
                 categorical: {
                     categories: {
-                        for: { in: EnhancedScatterChart.ColumnCategory },
+                        select: [
+                            { bind: { to: EnhancedScatterChart.ColumnCategory } },
+                            { bind: { to: EnhancedScatterChart.ColumnColorFill } },
+                            { bind: { to: EnhancedScatterChart.ColumnImage } },
+                            { bind: { to: EnhancedScatterChart.ColumnBackdrop } }
+                        ],
                         dataReductionAlgorithm: { sample: {} }
                     },
                     values: {
@@ -519,15 +541,12 @@ module powerbi.visuals.samples {
                                 { bind: { to: EnhancedScatterChart.ColumnY } },
                                 { bind: { to: EnhancedScatterChart.ColumnSize } },
                                 { bind: { to: EnhancedScatterChart.ColumnGradient } },
-                                { bind: { to: EnhancedScatterChart.ColumnColorFill } },
                                 { bind: { to: EnhancedScatterChart.ColumnShape } },
-                                { bind: { to: EnhancedScatterChart.ColumnImage } },
                                 { bind: { to: EnhancedScatterChart.ColumnRotation } },
-                                { bind: { to: EnhancedScatterChart.ColumnBackdrop } },
                                 { bind: { to: EnhancedScatterChart.ColumnXStart } },
                                 { bind: { to: EnhancedScatterChart.ColumnXEnd } },
                                 { bind: { to: EnhancedScatterChart.ColumnYStart } },
-                                { bind: { to: EnhancedScatterChart.ColumnYEnd } },
+                                { bind: { to: EnhancedScatterChart.ColumnYEnd } }
                             ],
                             dataReductionAlgorithm: { top: {} }
                         }
@@ -537,26 +556,22 @@ module powerbi.visuals.samples {
             }],
             objects: {
                 dataPoint: {
-                    displayName: createDisplayNameGetter("Visual_DataPoint"),
+                    displayName: "Data colors",
                     properties: {
                         defaultColor: {
-                            displayName: createDisplayNameGetter("Visual_DefaultColor"),
+                            displayName: "Default color",
                             type: { fill: { solid: { color: true } } }
                         },
                         showAllDataPoints: {
-                            displayName: createDisplayNameGetter("Visual_DataPoint_Show_All"),
-                            type: { bool: true }
-                        },
-                        useShape: {
-                            displayName: createDisplayNameGetter("Visual_UseImage"),
+                            displayName: "Show all",
                             type: { bool: true }
                         },
                         fill: {
-                            displayName: createDisplayNameGetter("Visual_Fill"),
+                            displayName: "Fill",
                             type: { fill: { solid: { color: true } } }
                         },
                         fillRule: {
-                            displayName: createDisplayNameGetter("Visual_Gradient"),
+                            displayName: "Color saturation",
                             type: { fillRule: {} },
                             rule: {
                                 inputRole: EnhancedScatterChart.ColumnGradient,
@@ -569,7 +584,7 @@ module powerbi.visuals.samples {
                     }
                 },
                 general: {
-                    displayName: createDisplayNameGetter("Visual_General"),
+                    displayName: "General",
                     properties: {
                         formatString: {
                             type: { formatting: { formatString: true } },
@@ -577,30 +592,30 @@ module powerbi.visuals.samples {
                     },
                 },
                 categoryAxis: {
-                    displayName: createDisplayNameGetter("Visual_XAxis"),
+                    displayName: "X-Axis",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         axisScale: {
-                            displayName: createDisplayNameGetter("Visual_Axis_Scale"),
+                            displayName: "Scale type",
                             type: { formatting: { axisScale: true } }
                         },
                         start: {
-                            displayName: createDisplayNameGetter("Visual_Axis_Start"),
+                            displayName: "Start",
                             type: { numeric: true }
                         },
                         end: {
-                            displayName: createDisplayNameGetter("Visual_Axis_End"),
+                            displayName: "End",
                             type: { numeric: true }
                         },
                         showAxisTitle: {
-                            displayName: createDisplayNameGetter("Visual_Axis_Title"),
+                            displayName: "Title",
                             type: { bool: true }
                         },
                         axisStyle: {
-                            displayName: createDisplayNameGetter("Visual_Axis_Style"),
+                            displayName: "Style",
                             type: { formatting: { axisStyle: true } }
                         },
                         axisColor: {
@@ -614,34 +629,34 @@ module powerbi.visuals.samples {
                     }
                 },
                 valueAxis: {
-                    displayName: createDisplayNameGetter("Visual_YAxis"),
+                    displayName: "Y-Axis",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         position: {
-                            displayName: createDisplayNameGetter("Visual_YAxis_Position"),
+                            displayName: "Position",
                             type: { formatting: { yAxisPosition: true } }
                         },
                         axisScale: {
-                            displayName: createDisplayNameGetter("Visual_Axis_Scale"),
+                            displayName: "Scale type",
                             type: { formatting: { axisScale: true } }
                         },
                         start: {
-                            displayName: createDisplayNameGetter("Visual_Axis_Start"),
+                            displayName: "Start",
                             type: { numeric: true }
                         },
                         end: {
-                            displayName: createDisplayNameGetter("Visual_Axis_End"),
+                            displayName: "End",
                             type: { numeric: true }
                         },
                         showAxisTitle: {
-                            displayName: createDisplayNameGetter("Visual_Axis_Title"),
+                            displayName: "Title",
                             type: { bool: true }
                         },
                         axisStyle: {
-                            displayName: createDisplayNameGetter("Visual_Axis_Style"),
+                            displayName: "Style",
                             type: { formatting: { axisStyle: true } }
                         },
                         axisColor: {
@@ -655,25 +670,25 @@ module powerbi.visuals.samples {
                     }
                 },
                 legend: {
-                    displayName: createDisplayNameGetter("Visual_Legend"),
+                    displayName: "Legend",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         position: {
-                            displayName: createDisplayNameGetter("Visual_LegendPosition"),
-                            description: createDisplayNameGetter("Visual_LegendPositionDescription"),
+                            displayName: "Position",
+                            description: "Select the location for the legend",
                             type: { enumeration: legendPosition.type },
                         },
                         showTitle: {
-                            displayName: createDisplayNameGetter("Visual_LegendShowTitle"),
-                            description: createDisplayNameGetter("Visual_LegendShowTitleDescription"),
+                            displayName: "Title",
+                            description: "Display a title for legend symbols",
                             type: { bool: true }
                         },
                         titleText: {
                             displayName: "Legend Name",
-                            description: createDisplayNameGetter("Visual_LegendNameDescription"),
+                            description: "Title text",
                             type: { text: true }
                         },
                         labelColor: {
@@ -687,14 +702,14 @@ module powerbi.visuals.samples {
                     }
                 },
                 categoryLabels: {
-                    displayName: createDisplayNameGetter("Visual_CategoryLabels"),
+                    displayName: "Category labels",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         color: {
-                            displayName: createDisplayNameGetter("Visual_LabelsFill"),
+                            displayName: "Color",
                             type: { fill: { solid: { color: true } } }
                         },
                         fontSize: {
@@ -704,10 +719,10 @@ module powerbi.visuals.samples {
                     },
                 },
                 fillPoint: {
-                    displayName: createDisplayNameGetter("Visual_FillPoint"),
+                    displayName: "Fill point",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter("Visual_Fill"),
+                            displayName: "Fill",
                             type: { bool: true }
                         },
                     },
@@ -716,7 +731,7 @@ module powerbi.visuals.samples {
                     displayName: "Backdrop",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter("Visual_Show"),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         url: {
@@ -738,7 +753,7 @@ module powerbi.visuals.samples {
                     displayName: "Outline",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter("Visual_Outline"),
+                            displayName: "Outline",
                             type: { bool: true }
                         }
                     }
@@ -1574,7 +1589,7 @@ module powerbi.visuals.samples {
                         null, /* value */
                         category ? [category] : undefined, /* categories */
                         seriesData, /* seriesData */
-                        undefined /* seriesIndex */); 
+                        undefined /* seriesIndex */);
 
                     var dataPoint: EnhancedScatterChartDataPoint = {
                         x: xVal,
@@ -1646,7 +1661,7 @@ module powerbi.visuals.samples {
             };
         }
 
-        public setData(dataViews: DataView[]) {
+        public setData(dataViews: DataView[]): void {
             this.data = EnhancedScatterChart.getDefaultData();
 
             if (dataViews && dataViews.length > 0) {
@@ -1946,7 +1961,7 @@ module powerbi.visuals.samples {
 
                     maxMainYaxisSide += 10;
 
-                    if (showY1OnRight && renderY1Axis){
+                    if (showY1OnRight && renderY1Axis) {
                         maxSecondYaxisSide += 15;
                     }
 
@@ -2054,7 +2069,7 @@ module powerbi.visuals.samples {
                 dataLabelUtils.cleanDataLabels(this.mainGraphicsG);
             }
 
-            this.renderCrosshair();
+            this.renderCrosshair(data);
 
             var behaviorOptions: EnhancedScatterBehaviorOptions;
 
@@ -2264,14 +2279,14 @@ module powerbi.visuals.samples {
         /**
          * Public for testability.
          */
-        public renderCrosshair(): D3.Selection {
+        public renderCrosshair(data: EnhancedScatterChartData): D3.Selection {
             if (!this.mainGraphicsSVGSelection) {
                 return;
             }
 
             this.crosshairCanvasSelection = this.addCrosshairCanvasToDOM(this.mainGraphicsSVGSelection);
 
-            if (this.data && this.data.crosshair) {
+            if (data && data.crosshair) {
                 this.crosshairVerticalLineSelection = this.addCrosshairLineToDOM(
                     this.crosshairCanvasSelection, EnhancedScatterChart.CrosshairVerticalLineSelector);
 
@@ -2281,9 +2296,21 @@ module powerbi.visuals.samples {
                 this.crosshairTextSelection = this.addCrosshairTextToDOM(this.crosshairCanvasSelection);
 
                 this.bindCrosshairEvents();
+            } else {
+                this.clearCrosshair();
             }
 
             return this.crosshairCanvasSelection;
+        }
+
+        public clearCrosshair(): void {
+            if (!this.crosshairCanvasSelection) {
+                return;
+            }
+
+            this.crosshairCanvasSelection
+                .selectAll("*")
+                .remove();
         }
 
         /**
@@ -3090,28 +3117,42 @@ module powerbi.visuals.samples {
             var enumeration = new ObjectEnumerationBuilder();
 
             switch (options.objectName) {
-                case "dataPoint":
-                    var categoricalDataView: DataViewCategorical = this.dataView && this.dataView.categorical ? this.dataView.categorical : null;
-                    if (!GradientUtils.hasGradientRole(categoricalDataView))
+                case "dataPoint": {
+                    var categoricalDataView: DataViewCategorical = this.dataView && this.dataView.categorical
+                        ? this.dataView.categorical
+                        : null;
+
+                    if (!GradientUtils.hasGradientRole(categoricalDataView)) {
                         this.enumerateDataPoints(enumeration);
+                    }
+
                     break;
-                case "categoryAxis":
+                }
+                case "categoryAxis": {
                     this.getCategoryAxisValues(enumeration);
+
                     break;
-                case "valueAxis":
+                }
+                case "valueAxis": {
                     this.getValueAxisValues(enumeration);
+
                     break;
-                case "categoryLabels":
-                    if (this.data)
+                }
+                case "categoryLabels": {
+                    if (this.data) {
                         dataLabelUtils.enumerateCategoryLabels(enumeration, this.data.dataLabelsSettings, true);
-                    else
+                    } else {
                         dataLabelUtils.enumerateCategoryLabels(enumeration, null, true);
+                    }
+
                     break;
-                case "fillPoint":
+                }
+                case "fillPoint": {
                     var sizeRange = this.data.sizeRange;
                     // Check if the card should be shown or not
-                    if (sizeRange && sizeRange.min)
+                    if (sizeRange && sizeRange.min) {
                         break;
+                    }
 
                     enumeration.pushInstance({
                         objectName: "fillPoint",
@@ -3120,8 +3161,10 @@ module powerbi.visuals.samples {
                             show: this.data.fillPoint,
                         },
                     });
+
                     break;
-                case "backdrop":
+                }
+                case "backdrop": {
                     enumeration.pushInstance({
                         objectName: "backdrop",
                         displayName: "Backdrop",
@@ -3131,8 +3174,10 @@ module powerbi.visuals.samples {
                             url: this.data.backdrop ? this.data.backdrop.url : null
                         },
                     });
+
                     break;
-                case "crosshair":
+                }
+                case "crosshair": {
                     enumeration.pushInstance({
                         objectName: "crosshair",
                         selector: null,
@@ -3140,8 +3185,10 @@ module powerbi.visuals.samples {
                             show: this.data.crosshair
                         },
                     });
+
                     break;
-                case "outline":
+                }
+                case "outline": {
                     enumeration.pushInstance({
                         objectName: "outline",
                         selector: null,
@@ -3149,12 +3196,17 @@ module powerbi.visuals.samples {
                             show: this.data.outline
                         },
                     });
+
                     break;
-                case "legend":
+                }
+                case "legend": {
                     this.enumerateLegend(enumeration);
+
                     break;
+                }
             }
-            return enumeration.complete();
+
+            return enumeration.complete() || [];
         }
 
         public hasLegend(): boolean {

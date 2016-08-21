@@ -768,8 +768,8 @@ module powerbitests {
                         0: { value: 1 },
                         1: { value: 2 },
                         2: { value: 3 },
-                       3: { value: 4 },
-                       4: { value: 5 },
+                        3: { value: 4 },
+                        4: { value: 5 },
                         5: { value: 6 },
                     }
                 },
@@ -782,8 +782,8 @@ module powerbitests {
                             0: { value: 1.1 },
                             1: { value: 2.1 },
                             2: { value: 3.1 },
-                           3: { value: 4.1 },
-                           4: { value: 5.1 },
+                            3: { value: 4.1 },
+                            4: { value: 5.1 },
                             5: { value: 6.1 },
                         }
                     },
@@ -796,8 +796,8 @@ module powerbitests {
                             0: { value: 1.2 },
                             1: { value: 2.2 },
                             2: { value: 3.2 },
-                           3: { value: 4.2 },
-                           4: { value: 5.2 },
+                            3: { value: 4.2 },
+                            4: { value: 5.2 },
                             5: { value: 6.2 },
                         }
                     },
@@ -810,8 +810,8 @@ module powerbitests {
                             0: { value: 1.3 },
                             1: { value: 2.3 },
                             2: { value: 3.3 },
-                           3: { value: 4.3 },
-                           4: { value: 5.3 },
+                            3: { value: 4.3 },
+                            4: { value: 5.3 },
                             5: { value: 6.3 },
                         }
                     },
@@ -822,8 +822,8 @@ module powerbitests {
                             0: { value: 1.4 },
                             1: { value: 2.4 },
                             2: { value: 3.4 },
-                           3: { value: 4.4 },
-                           4: { value: 5.4 },
+                            3: { value: 4.4 },
+                            4: { value: 5.4 },
                             5: { value: 6.4 },
                         }
                     },
@@ -878,7 +878,8 @@ module powerbitests {
                 columnGroupSourceProductWithNulls,
                 columnGroupSourceColor,
                 measureSource1,
-            ]},
+            ]
+        },
         matrix: matrixOneRowGroupCompositeTwoColumnGroupsCompositeOneGroupInstance
     };
 
@@ -2628,2116 +2629,2029 @@ module powerbitests {
     }
     //#endregion
 
-    describe("Matrix capabilities", () => {
-        it("Matrix registered capabilities", () => {
-            expect(powerbi.visuals.plugins.matrix.capabilities).toBe(matrixCapabilities);
+    describe("Matrix Visual", () => {
+
+        describe("Capabilities", () => {
+            it("Matrix registered capabilities", () => {
+                expect(powerbi.visuals.plugins.matrix.capabilities).toBe(matrixCapabilities);
+            });
+
+            it("Capabilities should include dataViewMappings", () => expect(matrixCapabilities.dataViewMappings).toBeDefined());
+
+            it("Capabilities should include dataRoles", () => expect(matrixCapabilities.dataRoles).toBeDefined());
+
+            it("Capabilities should allow measure only matrices", () => {
+                let allowedProjections1: QueryProjectionsByRole =
+                    {
+                        'Values': new QueryProjectionCollection([{ queryRef: "0" }])
+                    };
+                let allowedProjections2: QueryProjectionsByRole =
+                    {
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "0" },
+                            { queryRef: "1" },
+                            { queryRef: "2" }
+                        ])
+                    };
+
+                let dataViewMappings = matrixCapabilities.dataViewMappings;
+                let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
+                expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[0]];
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+            });
+
+            it("Capabilities should allow matrices with row groups only", () => {
+                let allowedProjections1: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([{ queryRef: "0" }])
+                    };
+                let allowedProjections2: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([
+                            { queryRef: "2" },
+                            { queryRef: "0" },
+                            { queryRef: "1" }
+                        ])
+                    };
+
+                let dataViewMappings = matrixCapabilities.dataViewMappings;
+                let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
+                // with one item in the rows, it satisfies  { 'Rows': { min: 1 }, 'Columns': { min: 0 }, 'Values': { min: 0 } },
+                expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[1]];
+
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+            });
+
+            it("Capabilities should allow matrices with row groups and arbitrary number of measures", () => {
+                let allowedProjections1: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([{ queryRef: "0" }]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "1" },
+                            { queryRef: "2" },
+                            { queryRef: "3" }
+                        ])
+                    };
+                let allowedProjections2: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([
+                            { queryRef: "3" },
+                            { queryRef: "2" },
+                            { queryRef: "1" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "0" }
+                        ])
+                    };
+                let allowedProjections3: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([
+                            { queryRef: "1" },
+                            { queryRef: "0" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "2" },
+                            { queryRef: "3" }
+                        ])
+                    };
+                let allowedProjections4: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([
+                            { queryRef: "0" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "1" }
+                        ])
+                    };
+
+                let dataViewMappings = matrixCapabilities.dataViewMappings;
+                let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
+                expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[1]];
+
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections3, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections4, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+            });
+
+            it("Capabilities should allow matrices with column groups only", () => {
+                let allowedProjections1: QueryProjectionsByRole =
+                    {
+                        'Columns': new QueryProjectionCollection([{ queryRef: "0" }])
+                    };
+                let allowedProjections2: QueryProjectionsByRole =
+                    {
+                        'Columns': new QueryProjectionCollection([
+                            { queryRef: "2" },
+                            { queryRef: "0" },
+                            { queryRef: "1" }
+                        ])
+                    };
+
+                var dataViewMappings = matrixCapabilities.dataViewMappings;
+                let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
+                expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[2]];
+
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+            });
+
+            it("Capabilities should allow matrices with column groups and measures", () => {
+                let allowedProjections1: QueryProjectionsByRole =
+                    {
+                        'Columns': new QueryProjectionCollection([{ queryRef: "1" }]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "2" },
+                            { queryRef: "3" },
+                            { queryRef: "0" }
+                        ])
+                    };
+                let allowedProjections2: QueryProjectionsByRole =
+                    {
+                        'Columns': new QueryProjectionCollection([
+                            { queryRef: "0" },
+                            { queryRef: "2" },
+                            { queryRef: "1" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "3" }
+                        ])
+                    };
+                let allowedProjections3: QueryProjectionsByRole =
+                    {
+                        'Columns': new QueryProjectionCollection([
+                            { queryRef: "3" },
+                            { queryRef: "2" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "0" },
+                            { queryRef: "1" }
+                        ])
+                    };
+                let allowedProjections4: QueryProjectionsByRole =
+                    {
+                        'Columns': new QueryProjectionCollection([
+                            { queryRef: "1" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "0" }
+                        ])
+                    };
+
+                var dataViewMappings = matrixCapabilities.dataViewMappings;
+                let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
+                expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[2]];
+
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections3, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections4, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
+            });
+
+            it("Capabilities should allow matrices with row groups and arbitrary number of column groups and measures", () => {
+                let allowedProjections1: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([
+                            { queryRef: "0" }
+                        ]),
+                        'Columns': new QueryProjectionCollection([
+                            { queryRef: "1" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "2" }
+                        ])
+                    };
+                let allowedProjections2: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([
+                            { queryRef: "0" },
+                            { queryRef: "1" }
+                        ]),
+                        'Columns': new QueryProjectionCollection([
+                            { queryRef: "2" },
+                            { queryRef: "3" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "4" }
+                        ])
+                    };
+                let allowedProjections3: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([
+                            { queryRef: "0" },
+                            { queryRef: "1" }
+                        ]),
+                        'Columns': new QueryProjectionCollection([
+                            { queryRef: "2" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "3" },
+                            { queryRef: "4" }
+                        ])
+                    };
+                let allowedProjections4: QueryProjectionsByRole =
+                    {
+                        'Rows': new QueryProjectionCollection([
+                            { queryRef: "0" }
+                        ]),
+                        'Columns': new QueryProjectionCollection([
+                            { queryRef: "1" },
+                            { queryRef: "2" }
+                        ]),
+                        'Values': new QueryProjectionCollection([
+                            { queryRef: "3" },
+                            { queryRef: "4" }
+                        ])
+                    };
+
+                var dataViewMappings = matrixCapabilities.dataViewMappings;
+                let expectedDataViewMapping = _.cloneDeep(dataViewMappings);
+                expectedDataViewMapping[0].conditions.splice(0, 1);
+
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMapping);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMapping);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections3, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMapping);
+                expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections4, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMapping);
+            });
+
+            it("Capabilities should suppressDefaultTitle", () => {
+                expect(matrixCapabilities.suppressDefaultTitle).toBe(true);
+            });
+
+            it("FormatString property should match calculated", () => {
+                expect(powerbi.data.DataViewObjectDescriptors.findFormatString(matrixCapabilities.objects)).toEqual(TablixObjects.PropColumnFormatString.getPropertyID());
+            });
         });
 
-        it("Capabilities should include dataViewMappings", () => expect(matrixCapabilities.dataViewMappings).toBeDefined());
-
-        it("Capabilities should include dataRoles", () => expect(matrixCapabilities.dataRoles).toBeDefined());
-
-        it("Capabilities should allow measure only matrices", () => {
-            let allowedProjections1: QueryProjectionsByRole =
-                {
-                    'Values': new QueryProjectionCollection([{ queryRef: "0" }])
+        describe("Customize Query", () => {
+            it("CustomizeQuery picks up enabled row subtotals", () => {
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: false,
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                    }
                 };
-            let allowedProjections2: QueryProjectionsByRole =
-                {
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "0" },
-                        { queryRef: "1" },
-                        { queryRef: "2" }
-                    ])
+                let dataViewMapping = createCompiledDataViewMapping(objects);
+
+                Matrix.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
+
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.After);
+                expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.None);
+            });
+
+            it("CustomizeQuery picks up enabled column subtotals", () => {
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        rowSubtotals: false,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                    }
                 };
+                let dataViewMapping = createCompiledDataViewMapping(objects);
 
-            let dataViewMappings = matrixCapabilities.dataViewMappings;
-            let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
-            expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[0]];
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-        });
+                Matrix.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
 
-        it("Capabilities should allow matrices with row groups only", () => {
-            let allowedProjections1: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([{ queryRef: "0" }])
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.None);
+                expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.After);
+            });
+
+            it("CustomizeQuery picks up enabled row and column subtotals", () => {
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                    }
                 };
-            let allowedProjections2: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([
-                        { queryRef: "2" },
-                        { queryRef: "0" },
-                        { queryRef: "1" }
-                    ])
+                let dataViewMapping = createCompiledDataViewMapping(objects);
+
+                Matrix.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
+
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.After);
+                expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.After);
+            });
+
+            it("CustomizeQuery handles missing settings", () => {
+                let dataViewMapping = createCompiledDataViewMapping();
+
+                Matrix.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
+
+                // Totals default to Enabled (After)
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.After);
+                expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.After);
+            });
+
+            it("CustomizeQuery handles missing subtotal settings", () => {
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        rowSubtotals: undefined,
+                        columnSubtotals: undefined,
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                    }
                 };
+                let dataViewMapping = createCompiledDataViewMapping(objects);
 
-            let dataViewMappings = matrixCapabilities.dataViewMappings;
-            let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
-            // with one item in the rows, it satisfies  { 'Rows': { min: 1 }, 'Columns': { min: 0 }, 'Values': { min: 0 } },
-            expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[1]];
+                Matrix.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
 
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-        });
+                // Totals default to Enabled (After)
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.After);
+                expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.After);
+            });
 
-        it("Capabilities should allow matrices with row groups and arbitrary number of measures", () => {
-            let allowedProjections1: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([{ queryRef: "0" }]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "1" },
-                        { queryRef: "2" },
-                        { queryRef: "3" }
-                    ])
+            it("CustomizeQuery modifies DataReduction if there are Columns", () => {
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                    }
                 };
-            let allowedProjections2: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([
-                        { queryRef: "3" },
-                        { queryRef: "2" },
-                        { queryRef: "1" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "0" }
-                    ])
+                let dataViewMapping = createCompiledDataViewMapping(objects, true);
+
+                Matrix.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
+
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm).toExist();
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window).toExist();
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window.count).toExist();
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window.count).toEqual(100);
+            });
+
+            it("CustomizeQuery doesn't modify DataReduction if there are no Columns", () => {
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                    }
                 };
-            let allowedProjections3: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([
-                        { queryRef: "1" },
-                        { queryRef: "0" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "2" },
-                        { queryRef: "3" }
-                    ])
-                };
-            let allowedProjections4: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([
-                        { queryRef: "0" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "1" }
-                    ])
-                };
+                let dataViewMapping = createCompiledDataViewMapping(objects, false);
 
-            let dataViewMappings = matrixCapabilities.dataViewMappings;
-            let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
-            expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[1]];
+                Matrix.customizeQuery({
+                    dataViewMappings: [dataViewMapping]
+                });
 
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections3, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections4, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-        });
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm).toExist();
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window).toExist();
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window.count).toExist();
+                expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window.count).toEqual(500);
+            });
 
-        it("Capabilities should allow matrices with column groups only", () => {
-            let allowedProjections1: QueryProjectionsByRole =
-                {
-                    'Columns': new QueryProjectionCollection([{ queryRef: "0" }])
-                };
-            let allowedProjections2: QueryProjectionsByRole =
-                {
-                    'Columns': new QueryProjectionCollection([
-                        { queryRef: "2" },
-                        { queryRef: "0" },
-                        { queryRef: "1" }
-                    ])
-                };
+            function createCompiledDataViewMapping(objects?: powerbi.DataViewObjects, includeColumns: boolean = false): CompiledDataViewMapping {
+                let columnItems: powerbi.data.CompiledDataViewRoleItem[] = [];
 
-            var dataViewMappings = matrixCapabilities.dataViewMappings;
-            let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
-            expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[2]];
-
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-        });
-
-        it("Capabilities should allow matrices with column groups and measures", () => {
-            let allowedProjections1: QueryProjectionsByRole =
-                {
-                    'Columns': new QueryProjectionCollection([{ queryRef: "1" }]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "2" },
-                        { queryRef: "3" },
-                        { queryRef: "0" }
-                    ])
-                };
-            let allowedProjections2: QueryProjectionsByRole =
-                {
-                    'Columns': new QueryProjectionCollection([
-                        { queryRef: "0" },
-                        { queryRef: "2" },
-                        { queryRef: "1" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "3" }
-                    ])
-                };
-            let allowedProjections3: QueryProjectionsByRole =
-                {
-                    'Columns': new QueryProjectionCollection([
-                        { queryRef: "3" },
-                        { queryRef: "2" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "0" },
-                        { queryRef: "1" }
-                    ])
-                };
-            let allowedProjections4: QueryProjectionsByRole =
-                {
-                    'Columns': new QueryProjectionCollection([
-                        { queryRef: "1" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "0" }
-                    ])
-                };
-
-            var dataViewMappings = matrixCapabilities.dataViewMappings;
-            let expectedDataViewMappings = _.cloneDeep(dataViewMappings);
-            expectedDataViewMappings[0].conditions = [expectedDataViewMappings[0].conditions[2]];
-
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections3, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections4, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMappings);
-        });
-
-        it("Capabilities should allow matrices with row groups and arbitrary number of column groups and measures", () => {
-            let allowedProjections1: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([
-                        { queryRef: "0" }
-                    ]),
-                    'Columns': new QueryProjectionCollection([
-                        { queryRef: "1" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "2" }
-                    ])
-                };
-            let allowedProjections2: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([
-                        { queryRef: "0" },
-                        { queryRef: "1" }
-                    ]),
-                    'Columns': new QueryProjectionCollection([
-                        { queryRef: "2" },
-                        { queryRef: "3" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "4" }
-                    ])
-                };
-            let allowedProjections3: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([
-                        { queryRef: "0" },
-                        { queryRef: "1" }
-                    ]),
-                    'Columns': new QueryProjectionCollection([
-                        { queryRef: "2" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "3" },
-                        { queryRef: "4" }
-                    ])
-                };
-            let allowedProjections4: QueryProjectionsByRole =
-                {
-                    'Rows': new QueryProjectionCollection([
-                        { queryRef: "0" }
-                    ]),
-                    'Columns': new QueryProjectionCollection([
-                        { queryRef: "1" },
-                        { queryRef: "2" }
-                    ]),
-                    'Values': new QueryProjectionCollection([
-                        { queryRef: "3" },
-                        { queryRef: "4" }
-                    ])
-                };
-
-            var dataViewMappings = matrixCapabilities.dataViewMappings;
-            let expectedDataViewMapping = _.cloneDeep(dataViewMappings);
-            expectedDataViewMapping[0].conditions.splice(0, 1);
-
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections1, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMapping);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections2, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMapping);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections3, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMapping);
-            expect(DataViewAnalysis.chooseDataViewMappings(allowedProjections4, dataViewMappings, {}).supportedMappings).toEqual(expectedDataViewMapping);
-        });
-
-        it("Capabilities should suppressDefaultTitle", () => {
-            expect(matrixCapabilities.suppressDefaultTitle).toBe(true);
-        });
-
-        it("FormatString property should match calculated", () => {
-            expect(powerbi.data.DataViewObjectDescriptors.findFormatString(matrixCapabilities.objects)).toEqual(TablixObjects.PropColumnFormatString.getPropertyID());
-        });
-    });
-
-    describe("Customize Query", () => {
-        it("CustomizeQuery picks up enabled row subtotals", () => {
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: false,
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
+                if (includeColumns) {
+                    columnItems.push({ queryName: 'table.field' });
                 }
-            };
-            let dataViewMapping = createCompiledDataViewMapping(objects);
 
-            Matrix.customizeQuery({
-                dataViewMappings: [dataViewMapping]
-            });
-
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.After);
-            expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.None);
-        });
-
-        it("CustomizeQuery picks up enabled column subtotals", () => {
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    rowSubtotals: false,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                }
-            };
-            let dataViewMapping = createCompiledDataViewMapping(objects);
-
-            Matrix.customizeQuery({
-                dataViewMappings: [dataViewMapping]
-            });
-
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.None);
-            expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.After);
-        });
-
-        it("CustomizeQuery picks up enabled row and column subtotals", () => {
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                }
-            };
-            let dataViewMapping = createCompiledDataViewMapping(objects);
-
-            Matrix.customizeQuery({
-                dataViewMappings: [dataViewMapping]
-            });
-
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.After);
-            expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.After);
-        });
-
-        it("CustomizeQuery handles missing settings", () => {
-            let dataViewMapping = createCompiledDataViewMapping();
-
-            Matrix.customizeQuery({
-                dataViewMappings: [dataViewMapping]
-            });
-
-            // Totals default to Enabled (After)
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.After);
-            expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.After);
-        });
-
-        it("CustomizeQuery handles missing subtotal settings", () => {
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    rowSubtotals: undefined,
-                    columnSubtotals: undefined,
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                }
-            };
-            let dataViewMapping = createCompiledDataViewMapping(objects);
-
-            Matrix.customizeQuery({
-                dataViewMappings: [dataViewMapping]
-            });
-
-            // Totals default to Enabled (After)
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).for.in.subtotalType).toEqual(CompiledSubtotalType.After);
-            expect(dataViewMapping.matrix.columns.for.in.subtotalType).toEqual(CompiledSubtotalType.After);
-        });
-
-        it("CustomizeQuery modifies DataReduction if there are Columns", () => {
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                }
-            };
-            let dataViewMapping = createCompiledDataViewMapping(objects, true);
-
-            Matrix.customizeQuery({
-                dataViewMappings: [dataViewMapping]
-            });
-
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm).toExist();
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window).toExist();
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window.count).toExist();
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window.count).toEqual(100);
-        });
-
-        it("CustomizeQuery doesn't modify DataReduction if there are no Columns", () => {
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                }
-            };
-            let dataViewMapping = createCompiledDataViewMapping(objects, false);
-
-            Matrix.customizeQuery({
-                dataViewMappings: [dataViewMapping]
-            });
-
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm).toExist();
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window).toExist();
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window.count).toExist();
-            expect((<CompiledDataViewRoleForMappingWithReduction>dataViewMapping.matrix.rows).dataReductionAlgorithm.window.count).toEqual(500);
-        });
-
-        function createCompiledDataViewMapping(objects?: powerbi.DataViewObjects, includeColumns: boolean = false): CompiledDataViewMapping {
-            let columnItems: powerbi.data.CompiledDataViewRoleItem[] = [];
-
-            if (includeColumns) {
-                columnItems.push({ queryName: 'table.field' });
-            }
-
-            return {
-                metadata: {
-                    objects: objects,
-                    columns: [],
-                },
-                matrix: {
-                    rows: {
-                        for: {
-                            in: { role: "Rows", items: [] }
+                return {
+                    metadata: {
+                        objects: objects,
+                        columns: [],
+                    },
+                    matrix: {
+                        rows: {
+                            for: {
+                                in: { role: "Rows", items: [] }
+                            },
+                            dataReductionAlgorithm: {
+                                window: {
+                                    count: 500
+                                }
+                            }
                         },
-                        dataReductionAlgorithm: {
-                            window: {
-                                count: 500
+                        columns: {
+                            for: {
+                                in: { role: "Columns", items: columnItems }
                             }
                         }
-                    },
-                    columns: {
-                        for: {
-                            in: { role: "Columns", items: columnItems }
-                        }
                     }
-                }
-            };
-        }
-    });
-
-    describe("Tablix control tests", () => {
-
-        it("touch disabled", () => {
-
-            let matrix = matrixOneMeasure;
-            let navigator = createHierarchyNavigator(matrix);
-            let binder = new powerbi.visuals.MatrixBinder(navigator, { });
-            let layoutManager = powerbi.visuals.controls.internal.CanvasTablixLayoutManager.createLayoutManager(binder, undefined);
-            let parent = document.createElement("div");
-            let tablixControl = new TablixControl(navigator, layoutManager, binder, parent, { interactive: true, enableTouchSupport: false });
-
-            expect(tablixControl["_touchManager"]).toBeUndefined();
-        });
-    });
-
-    describe("Matrix hierarchy navigator tests", () => {
-
-        describe("getDepth", () => {
-
-            it("returns the correct depth for an empty hierarchy", () => {
-                let matrix = _.cloneDeep(matrixThreeRowGroupsOneGroupInstance);
-                matrix.columns.root = {};
-                matrix.rows.root = {};
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getRowHierarchyDepth()).toBe(3);
-                expect(navigator.getColumnHierarchyDepth()).toBe(1);
-            });
-
-            it("returns the correct depth for a measure only hierarchy", () => {
-                let matrix = _.cloneDeep(matrixOneMeasure);
-                matrix.columns.root = {};
-                matrix.rows.root = {};
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getRowHierarchyDepth()).toBe(1);
-                expect(navigator.getColumnHierarchyDepth()).toBe(1);
-
-            });
-
-            it("returns the correct depth for group only hierarchy", () => {
-                let matrix = matrixThreeMeasuresThreeRowGroups;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getRowHierarchyDepth()).toBe(3);
-                expect(navigator.getColumnHierarchyDepth()).toBe(1);
-            });
-
-            it("returns the correct depth for group and measure hierarchy", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getRowHierarchyDepth()).toBe(2);
-                expect(navigator.getColumnHierarchyDepth()).toBe(3);
-            });
-        });
-
-        describe("getLeafCount", () => {
-
-            it("returns the right leaf count for a placeholder hierarchy", () => {
-                let matrix = matrixOneMeasure;
-                let rowHierarchy = matrix.rows.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLeafCount(rowHierarchy)).toBe(1);
-            });
-
-            it("returns the right leaf count for an empty hierarchy", () => {
-                let matrix = matrixThreeRowGroupsOneGroupInstance;
-                let columnHierarchy = matrix.columns.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLeafCount(columnHierarchy)).toBe(0);
-            });
-
-            it("returns the right leaf count for a one level deep hierarchy", () => {
-                let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
-                let rowHierarchy = matrix.rows.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLeafCount(rowHierarchy)).toBe(1);
-            });
-
-            it("returns the right leaf count for a three level deep hierarchy", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let columnHierarchy = matrix.columns.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLeafCount(columnHierarchy)).toBe(12);
-            });
-        });
-
-        describe("getLeafAt", () => {
-
-            it("returns the correct leaf from a placeholder hierarchy", () => {
-                let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
-                let rowHierarchy = matrix.rows.root.children;
-                let rowHierarchyItem = rowHierarchy[0];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLeafAt(rowHierarchy, 0)).toBe(rowHierarchyItem);
-            });
-
-            it("returns the correct leaf from a one level deep hierarchy", () => {
-                let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
-                let columnHierarchy = matrix.columns.root.children;
-                let columnHierarchyItem = columnHierarchy[0];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLeafAt(columnHierarchy, 0)).toBe(columnHierarchyItem);
-            });
-
-            it("returns the correct leaf from a three level deep hierarchy", () => {
-                let matrix = matrixThreeMeasuresThreeRowGroups;
-                let rowHierarchy = matrix.rows.root.children;
-                let rowHierarchyItem = rowHierarchy[1].children[1].children[1];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLeafAt(rowHierarchy, 7)).toBe(rowHierarchyItem);
-            });
-        });
-
-        describe("getParent", () => {
-
-            it("returns null for outermost node in a one level deep hierarchy", () => {
-                let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
-                let node = matrix.columns.root.children[0];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getParent(node)).toBeNull();
-            });
-
-            it("returns null for outermost node in a three level deep hierarchy", () => {
-                let matrix = matrixThreeRowGroupsThreeColumnGroupsOneInstance;
-                let node = matrix.rows.root.children[0];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getParent(node)).toBeNull();
-            });
-
-            it("returns the correct parent for an innermost node in a three level deep hierarchy", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let parentNode = matrix.columns.root.children[1].children[1];
-                let node = parentNode.children[1];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getParent(node)).toBe(parentNode);
-            });
-
-            it("returns the correct parent for a non-innermost node in a three level deep hierarchy", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let parentNode = matrix.columns.root.children[0];
-                let node = parentNode.children[1];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getParent(node)).toBe(parentNode);
-            });
-        });
-
-        describe("getIndex", () => {
-
-            it("returns the correct index for outermost nodes", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let rowHierarchy = matrix.rows.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getIndex(rowHierarchy[0])).toBe(0);
-                expect(navigator.getIndex(rowHierarchy[1])).toBe(1);
-                expect(navigator.getIndex(rowHierarchy[2])).toBe(2);
-                expect(navigator.getIndex(rowHierarchy[3])).toBe(3);
-            });
-
-            it("returns the correct index for innermost nodes", () => {
-                let matrix = matrixThreeRowGroups;
-                let rowHierarchy = matrix.rows.root.children;
-                let rowHierarchyItem0 = rowHierarchy[0].children[0].children[0];
-                let rowHierarchyItem1 = rowHierarchy[0].children[0].children[1];
-                let rowHierarchyItemAgain0 = rowHierarchy[1].children[1].children[0];
-                let rowHierarchyItemAgain1 = rowHierarchy[1].children[1].children[1];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getIndex(rowHierarchyItem0)).toBe(0);
-                expect(navigator.getIndex(rowHierarchyItem1)).toBe(1);
-                expect(navigator.getIndex(rowHierarchyItemAgain0)).toBe(0);
-                expect(navigator.getIndex(rowHierarchyItemAgain1)).toBe(1);
-            });
-
-            it("returns the correct index for non-innermost nodes", () => {
-                let matrix = matrixThreeRowGroups;
-                let rowHierarchy = matrix.rows.root.children;
-                let rowHierarchyItem0 = rowHierarchy[0].children[0];
-                let rowHierarchyItem1 = rowHierarchy[0].children[1];
-                let rowHierarchyItemAgain0 = rowHierarchy[1].children[0];
-                let rowHierarchyItemAgain1 = rowHierarchy[1].children[1];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getIndex(rowHierarchyItem0)).toBe(0);
-                expect(navigator.getIndex(rowHierarchyItem1)).toBe(1);
-                expect(navigator.getIndex(rowHierarchyItemAgain0)).toBe(0);
-                expect(navigator.getIndex(rowHierarchyItemAgain1)).toBe(1);
-            });
-        });
-
-        describe("isLeaf", () => {
-
-            it("returns true for nodes in a one level deep placeholder hierarchy", () => {
-                let matrix = matrixThreeMeasures;
-                let rowHierarchy = matrix.rows.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.isLeaf(rowHierarchy[0])).toBeTruthy();
-            });
-
-            it("returns true for nodes in a one level deep hierarchy", () => {
-                let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
-                let rowHierarchy = matrix.rows.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.isLeaf(rowHierarchy[0])).toBeTruthy();
-            });
-
-            it("returns true for innermost nodes in a three level deep hierarchy", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let columnHierarchy = matrix.columns.root.children;
-                let columnHierarchyItem = columnHierarchy[1].children[2].children[0];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.isLeaf(columnHierarchyItem)).toBeTruthy();
-            });
-
-            it("returns false for outermost nodes in a three level deep hierarchy", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let columnHierarchy = matrix.columns.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.isLeaf(columnHierarchy[0])).toBeFalsy();
-            });
-
-            it("returns false for non-innermost nodes in a three level deep hierarchy", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let columnHierarchy = matrix.columns.root.children;
-                let columnHierarchyItem = columnHierarchy[0].children[1];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.isLeaf(columnHierarchyItem)).toBeFalsy();
-            });
-        });
-
-        describe("isRowHierarchyLeaf", () => {
-            // TODO
-        });
-
-        describe("isColumnHierarchyLeaf", () => {
-            // TODO
-        });
-
-        describe("isLastItem", () => {
-
-            it("returns true if the last item is the only item in the collection", () => {
-                let matrix = matrixOneRowGroupOneColumnGroupOneInstance;
-                let items = matrix.rows.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.isLastItem(items[0], items)).toBe(true);
-            });
-
-            it("handles incomplete data", () => {
-                let matrix = matrixOneRowGroupOneColumnGroupOneInstance;
-                let rows = matrix.rows.root.children;
-                let columns = matrix.columns.root.children;
-                let navigator = createHierarchyNavigator(matrix, false);
-                expect(navigator.isLastItem(rows[0], rows)).toBe(false);
-                expect(navigator.isLastItem(columns[0], columns)).toBe(true);
-
-                navigator.update(matrix, true);
-                expect(navigator.isLastItem(rows[0], rows)).toBe(true);
-                expect(navigator.isLastItem(columns[0], columns)).toBe(true);
-            });
-
-            it("returns true if the last item is the last item in its parents collection, but not on the level", () => {
-                let matrix = matrixThreeMeasuresThreeRowGroups;
-                let items = matrix.rows.root.children[0].children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.isLastItem(items[1], items)).toBeTruthy();
-            });
-
-            it("returns false if the item is not the last item in its parents collection", () => {
-                let matrix = matrixThreeMeasuresThreeRowGroups;
-                let items = matrix.rows.root.children[1].children[1].children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.isLastItem(items[0], items)).toBeFalsy();
-            });
-        });
-
-        describe("getChildren", () => {
-
-            it("returns undefined for leaf node", () => {
-                let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
-                let node = matrix.columns.root.children[0];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getChildren(node)).toBeUndefined();
-            });
-
-            it("returns the correct collection of children", () => {
-                let matrix = matrixThreeMeasuresThreeRowGroups;
-                let node = matrix.rows.root.children[0];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getChildren(node)).toBe(node.children);
-            });
-        });
-
-        describe("getCount", () => {
-
-            it("returns zero if there are no children", () => {
-                let matrix = matrixThreeRowGroupsOneGroupInstance;
-                let columnHierarchy = matrix.columns.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getCount(columnHierarchy)).toBe(0);
-            });
-
-            it("returns the length of the children array", () => {
-                let matrix = matrixThreeMeasuresThreeRowGroups;
-                let columnHierarchy = matrix.columns.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getCount(columnHierarchy)).toBe(3);
-            });
-        });
-
-        describe("getAt", () => {
-
-            it("returns undefined if index is out of bounds", () => {
-                let matrix = matrixThreeRowGroupsOneGroupInstance;
-                let columnHierarchy = matrix.columns.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getAt(columnHierarchy, 0)).toBeUndefined();
-            });
-
-            it("returns the right node from the hierarchy", () => {
-                let matrix = matrixThreeRowGroups;
-                let rowHierarchy = matrix.rows.root.children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getAt(rowHierarchy, 1)).toBe(rowHierarchy[1]);
-            });
-
-            it("returns the right node from the children collection", () => {
-                let matrix = matrixThreeRowGroups;
-                let children = matrix.rows.root.children[0].children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getAt(children, 1)).toBe(children[1]);
-            });
-        });
-
-        describe("getLevel", () => {
-
-            it("returns undefined for root node", () => {
-                let matrix = matrixThreeRowGroupsThreeColumnGroupsOneInstance;
-                let rootNode = matrix.columns.root;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLevel(rootNode)).toBeUndefined();
-            });
-
-            it("returns zero for outermost nodes", () => {
-                let matrix = matrixThreeRowGroupsThreeColumnGroupsOneInstance;
-                let node = matrix.rows.root.children[0];
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLevel(node)).toBe(0);
-            });
-
-            it("returns one for nodes on the second level", () => {
-                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
-                let nodes = matrix.rows.root.children[1].children;
-                let navigator = createHierarchyNavigator(matrix);
-
-                expect(navigator.getLevel(nodes[0])).toBe(1);
-                expect(navigator.getLevel(nodes[1])).toBe(1);
-            });
-        });
-
-        describe("getIntersection", () => {
-
-            it("returns values in the intersection", () => {
-                let matrix = matrixThreeMeasuresThreeRowGroups;
-                let rowHierarchy = matrix.rows.root.children;
-                let columnHierarchy = matrix.columns.root.children;
-                let level2RowItems: MatrixVisualNode[] = [
-                    rowHierarchy[0].children[0],
-                    rowHierarchy[0].children[1],
-                    rowHierarchy[1].children[0],
-                    rowHierarchy[1].children[1]
-                ];
-                let level3RowItems: MatrixVisualNode[] = [
-                    level2RowItems[0].children[0],
-                    level2RowItems[0].children[1],
-                    level2RowItems[1].children[0],
-                    level2RowItems[1].children[1],
-                    level2RowItems[2].children[0],
-                    level2RowItems[2].children[1],
-                    level2RowItems[3].children[0],
-                    level2RowItems[3].children[1]
-                ];
-                let level1ColumnItems: MatrixVisualNode[] = [
-                    columnHierarchy[0],
-                    columnHierarchy[1],
-                    columnHierarchy[2]
-                ];
-
-                let expectedValues: string[][] = [
-                    ["1,000.00", "1,001.00", "1,002.00"],
-                    ["1,010.00", "1,011.00", "1,012.00"],
-                    ["1,100.00", "1,101.00", "1,102.00"],
-                    ["1,110.00", "1,111.00", "1,112.00"],
-                    ["2,000.00", "2,001.00", "2,002.00"],
-                    ["2,010.00", "2,011.00", "2,012.00"],
-                    ["2,100.00", "2,101.00", "2,102.00"],
-                    ["2,110.00", "2,111.00", "2,112.00"]
-                ];
-
-                let navigator = createHierarchyNavigator(matrix);
-                validateIntersections(navigator, level3RowItems, level1ColumnItems, expectedValues);
-            });
-
-            it("returns empty string if there are no measures", () => {
-                let matrix = matrixThreeRowGroupsThreeColumnGroups;
-                let rowHierarchy = matrix.rows.root.children;
-                let rowLeaves = rowHierarchy[0].children[0].children.concat(rowHierarchy[0].children[1].children);
-                let columnHierarchy = matrix.columns.root.children;
-                let columnLeaves = columnHierarchy[0].children[0].children.concat(columnHierarchy[0].children[1]);
-
-                let expectedValues: string[][] = [
-                    ["", "", ""],
-                    ["", "", ""],
-                    ["", "", ""]
-                ];
-
-                let navigator = createHierarchyNavigator(matrix);
-                validateIntersections(navigator, rowLeaves, columnLeaves, expectedValues);
-            });
-
-            function validateIntersections(navigator: MatrixHierarchyNavigator, rowLeaves: MatrixVisualNode[], columnLeaves: MatrixVisualNode[], expectedValues: string[][]): void {
-                let result: string[][] = [];
-
-                for (let i = 0, ilen = rowLeaves.length; i < ilen; i++) {
-                    result[i] = [];
-                    for (let j = 0, jlen = columnLeaves.length; j < jlen; j++)
-                        result[i][j] = navigator.getIntersection(rowLeaves[i], columnLeaves[j]).textContent || '';
-                }
-
-                expect(result).toEqual(expectedValues);
+                };
             }
         });
 
-        describe("getCorer", () => {
+        describe("Matrix hierarchy navigator tests", () => {
 
-            it("returns empty value for the upper left cell of a 3x3 corner", () => {
-                let matrix = matrixThreeRowGroupsThreeColumnGroups;
-                let navigator = createHierarchyNavigator(matrix);
+            describe("getDepth", () => {
+                it("returns the correct depth for an empty hierarchy", () => {
+                    let matrix = _.cloneDeep(matrixThreeRowGroupsOneGroupInstance);
+                    matrix.columns.root = {};
+                    matrix.rows.root = {};
+                    let navigator = createHierarchyNavigator(matrix);
 
-                expect(navigator.getCorner(0, 0).metadata).toBeNull();
-                expect(navigator.getCorner(0, 0).isColumnHeaderLeaf).toBeFalsy();
+                    expect(navigator.getRowHierarchyDepth()).toBe(3);
+                    expect(navigator.getColumnHierarchyDepth()).toBe(1);
+                });
+
+                it("returns the correct depth for a measure only hierarchy", () => {
+                    let matrix = _.cloneDeep(matrixOneMeasure);
+                    matrix.columns.root = {};
+                    matrix.rows.root = {};
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getRowHierarchyDepth()).toBe(1);
+                    expect(navigator.getColumnHierarchyDepth()).toBe(1);
+
+                });
+
+                it("returns the correct depth for group only hierarchy", () => {
+                    let matrix = matrixThreeMeasuresThreeRowGroups;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getRowHierarchyDepth()).toBe(3);
+                    expect(navigator.getColumnHierarchyDepth()).toBe(1);
+                });
+
+                it("returns the correct depth for group and measure hierarchy", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getRowHierarchyDepth()).toBe(2);
+                    expect(navigator.getColumnHierarchyDepth()).toBe(3);
+                });
             });
 
-            it("returns row header for the lower left cell of a 3x3 corner", () => {
-                let matrix = matrixThreeRowGroupsThreeColumnGroups;
-                let navigator = createHierarchyNavigator(matrix);
+            describe("getLeafCount", () => {
 
-                expect(navigator.getCorner(0, 2).metadata.displayName).toBe("RowGroup1");
-                expect(navigator.getCorner(0, 2).isColumnHeaderLeaf).toBeTruthy();
+                it("returns the right leaf count for a placeholder hierarchy", () => {
+                    let matrix = matrixOneMeasure;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getLeafCount(rowHierarchy)).toBe(1);
+                });
+
+                it("returns the right leaf count for an empty hierarchy", () => {
+                    let matrix = matrixThreeRowGroupsOneGroupInstance;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getLeafCount(columnHierarchy)).toBe(0);
+                });
+
+                it("returns the right leaf count for a one level deep hierarchy", () => {
+                    let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getLeafCount(rowHierarchy)).toBe(1);
+                });
+
+                it("returns the right leaf count for a three level deep hierarchy", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getLeafCount(columnHierarchy)).toBe(12);
+                });
             });
 
-            it("returns column header for the upper right cell of a 3x3 corner", () => {
-                let matrix = matrixThreeRowGroupsThreeColumnGroups;
-                let navigator = createHierarchyNavigator(matrix);
+            describe("getLeafAt", () => {
 
-                expect(navigator.getCorner(2, 0).metadata.displayName).toBe("ColGroup1");
-                expect(navigator.getCorner(2, 0).isColumnHeaderLeaf).toBeFalsy();
+                it("returns the correct leaf from a placeholder hierarchy", () => {
+                    let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let rowHierarchyItem = rowHierarchy[0];
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getLeafAt(rowHierarchy, 0)).toBe(rowHierarchyItem);
+                });
+
+                it("returns the correct leaf from a one level deep hierarchy", () => {
+                    let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let columnHierarchyItem = columnHierarchy[0];
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getLeafAt(columnHierarchy, 0)).toBe(columnHierarchyItem);
+                });
+
+                it("returns the correct leaf from a three level deep hierarchy", () => {
+                    let matrix = matrixThreeMeasuresThreeRowGroups;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let rowHierarchyItem = rowHierarchy[1].children[1].children[1];
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getLeafAt(rowHierarchy, 7)).toBe(rowHierarchyItem);
+                });
             });
 
-            it("returns row header for the lower right cell of a 3x3 corner", () => {
-                let matrix = matrixThreeRowGroupsThreeColumnGroups;
-                let navigator = createHierarchyNavigator(matrix);
+            describe("getParent", () => {
 
-                expect(navigator.getCorner(2, 2).metadata.displayName).toBe("RowGroup3");
-                expect(navigator.getCorner(2, 2).isColumnHeaderLeaf).toBeTruthy();
-            });
-        });
+                it("returns null for outermost node in a one level deep hierarchy", () => {
+                    let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
+                    let node = matrix.columns.root.children[0];
+                    let navigator = createHierarchyNavigator(matrix);
 
-        describe("headerItemEquals", () => {
+                    expect(navigator.getParent(node)).toBeNull();
+                });
 
-            it("returns true if the two items are the same", () => {
-                let matrix = matrixOneRowGroupOneColumnGroupOneGroupInstance;
-                let rowNode = matrix.rows.root.children[0];
-                let columnNode = matrix.columns.root.children[0];
-                let navigator = createHierarchyNavigator(matrix);
+                it("returns null for outermost node in a three level deep hierarchy", () => {
+                    let matrix = matrixThreeRowGroupsThreeColumnGroupsOneInstance;
+                    let node = matrix.rows.root.children[0];
+                    let navigator = createHierarchyNavigator(matrix);
 
-                expect(navigator.headerItemEquals(rowNode, rowNode)).toBeTruthy();
-                expect(navigator.headerItemEquals(columnNode, columnNode)).toBeTruthy();
-            });
+                    expect(navigator.getParent(node)).toBeNull();
+                });
 
-            it("returns false if the two items are not same even if they have the same content", () => {
-                let matrix = matrixOneRowGroupOneColumnGroupOneGroupInstance;
-                let rowNode = matrix.rows.root.children[0];
-                let columnNode = matrix.columns.root.children[0];
-                let navigator = createHierarchyNavigator(matrix);
+                it("returns the correct parent for an innermost node in a three level deep hierarchy", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let parentNode = matrix.columns.root.children[1].children[1];
+                    let node = parentNode.children[1];
+                    let navigator = createHierarchyNavigator(matrix);
 
-                expect(navigator.headerItemEquals(rowNode, columnNode)).toBeFalsy();
-                expect(navigator.headerItemEquals(columnNode, rowNode)).toBeFalsy();
-            });
-        });
+                    expect(navigator.getParent(node)).toBe(parentNode);
+                });
 
-        describe("bodyCellItemEquals", () => {
+                it("returns the correct parent for a non-innermost node in a three level deep hierarchy", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let parentNode = matrix.columns.root.children[0];
+                    let node = parentNode.children[1];
+                    let navigator = createHierarchyNavigator(matrix);
 
-            it("returns true if the two items are the same", () => {
-                let dataView = matrixTwoMeasuresDataView;
-                let navigator = createHierarchyNavigator(dataView.matrix);
-                let cell1 = navigator.getIntersection(dataView.matrix.rows.root.children[0], dataView.matrix.columns.root.children[0]);
-                expect(cell1).toBeDefined();
-                let cell2 = navigator.getIntersection(dataView.matrix.rows.root.children[0], dataView.matrix.columns.root.children[0]);
-                expect(cell2).toBeDefined();
-
-                expect(navigator.bodyCellItemEquals(cell1, cell2)).toBeTruthy();
+                    expect(navigator.getParent(node)).toBe(parentNode);
+                });
             });
 
-            it("returns false if the two items are not same", () => {
-                let dataView = matrixTwoMeasuresDataView;
-                let navigator = createHierarchyNavigator(dataView.matrix);
-                let cell1 = navigator.getIntersection(dataView.matrix.rows.root.children[0], dataView.matrix.columns.root.children[0]);
-                expect(cell1).toBeDefined();
-                let cell2 = navigator.getIntersection(dataView.matrix.rows.root.children[0], dataView.matrix.columns.root.children[1]);
-                expect(cell2).toBeDefined();
+            describe("getIndex", () => {
 
-                expect(navigator.bodyCellItemEquals(cell1, cell2)).toBeFalsy();
-            });
-        });
-    });
+                it("returns the correct index for outermost nodes", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
 
-    describe("Matrix logic", () => {
-        let v: powerbi.IVisual;
+                    expect(navigator.getIndex(rowHierarchy[0])).toBe(0);
+                    expect(navigator.getIndex(rowHierarchy[1])).toBe(1);
+                    expect(navigator.getIndex(rowHierarchy[2])).toBe(2);
+                    expect(navigator.getIndex(rowHierarchy[3])).toBe(3);
+                });
 
-        beforeEach(() => {
-            v = powerbi.visuals.plugins.matrix.create();
-            let element = powerbitests.helpers.testDom("500", "500");
-            element["visible"] = () => { return true; };
-            v.init({
-                element: element,
-                host: mocks.createVisualHostServices(),
-                style: powerbi.visuals.visualStyles.create(),
-                viewport: {
-                    height: 500,
-                    width: 500
-                },
-                animation: { transitionImmediate: true }
-            });
-        });
+                it("returns the correct index for innermost nodes", () => {
+                    let matrix = matrixThreeRowGroups;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let rowHierarchyItem0 = rowHierarchy[0].children[0].children[0];
+                    let rowHierarchyItem1 = rowHierarchy[0].children[0].children[1];
+                    let rowHierarchyItemAgain0 = rowHierarchy[1].children[1].children[0];
+                    let rowHierarchyItemAgain1 = rowHierarchy[1].children[1].children[1];
+                    let navigator = createHierarchyNavigator(matrix);
 
-        it("loadMoreData calls control refresh", () => {
-            //Passing a Dataview with Create Operation to ensure previousDataView is not null when performing Append Operation
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureDataView],
-                operationKind: powerbi.VisualDataChangeOperationKind.Create
-            });
+                    expect(navigator.getIndex(rowHierarchyItem0)).toBe(0);
+                    expect(navigator.getIndex(rowHierarchyItem1)).toBe(1);
+                    expect(navigator.getIndex(rowHierarchyItemAgain0)).toBe(0);
+                    expect(navigator.getIndex(rowHierarchyItemAgain1)).toBe(1);
+                });
 
-            let nav = getHierarchyNavigator(v);
-            let control = getTablixControl(v);
-            let navSpy = spyOn(nav, "update");
-            let controlSpy = spyOn(control, "refresh");
+                it("returns the correct index for non-innermost nodes", () => {
+                    let matrix = matrixThreeRowGroups;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let rowHierarchyItem0 = rowHierarchy[0].children[0];
+                    let rowHierarchyItem1 = rowHierarchy[0].children[1];
+                    let rowHierarchyItemAgain0 = rowHierarchy[1].children[0];
+                    let rowHierarchyItemAgain1 = rowHierarchy[1].children[1];
+                    let navigator = createHierarchyNavigator(matrix);
 
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureDataView],
-                operationKind: powerbi.VisualDataChangeOperationKind.Append
+                    expect(navigator.getIndex(rowHierarchyItem0)).toBe(0);
+                    expect(navigator.getIndex(rowHierarchyItem1)).toBe(1);
+                    expect(navigator.getIndex(rowHierarchyItemAgain0)).toBe(0);
+                    expect(navigator.getIndex(rowHierarchyItemAgain1)).toBe(1);
+                });
             });
 
-            expect(navSpy).toHaveBeenCalled();
-            expect(controlSpy).toHaveBeenCalled();
-        });
+            describe("isLeaf", () => {
 
-        it("loadMore would refresh the tablix model", (done) => {
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureOneRowGroupOneGroupInstanceDataView],
-                operationKind: powerbi.VisualDataChangeOperationKind.Create
+                it("returns true for nodes in a one level deep placeholder hierarchy", () => {
+                    let matrix = matrixThreeMeasures;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.isLeaf(rowHierarchy[0])).toBeTruthy();
+                });
+
+                it("returns true for nodes in a one level deep hierarchy", () => {
+                    let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.isLeaf(rowHierarchy[0])).toBeTruthy();
+                });
+
+                it("returns true for innermost nodes in a three level deep hierarchy", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let columnHierarchyItem = columnHierarchy[1].children[2].children[0];
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.isLeaf(columnHierarchyItem)).toBeTruthy();
+                });
+
+                it("returns false for outermost nodes in a three level deep hierarchy", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.isLeaf(columnHierarchy[0])).toBeFalsy();
+                });
+
+                it("returns false for non-innermost nodes in a three level deep hierarchy", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let columnHierarchyItem = columnHierarchy[0].children[1];
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.isLeaf(columnHierarchyItem)).toBeFalsy();
+                });
             });
 
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureOneRowGroupTwoGroupInstancesDataView],
-                operationKind: powerbi.VisualDataChangeOperationKind.Append
+            describe("isRowHierarchyLeaf", () => {
+                // TODO
             });
 
-            //Checking it's rendering 2 rows
-            setTimeout(() => {
-                expect($('.tablixValueNumeric').length).toBe(matrixOneMeasureOneRowGroupTwoGroupInstancesDataView.matrix.rows.root.children.length + 1);
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("needsMoreData waitingForData", () => {
-            let matrix = matrixThreeRowGroups;
-
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [rowGroupSource1, rowGroupSource2, rowGroupSource3], segment: {} },
-                    matrix: matrix
-                }]
+            describe("isColumnHierarchyLeaf", () => {
+                // TODO
             });
 
-            setWaitingForData(v, true);
-            let matrixVisual: Matrix = <Matrix>v;
-            let lastLeaf = matrix.rows.root.children[1].children[1].children[1];
-            let result = matrixVisual.needsMoreData(lastLeaf);
+            describe("isLastItem", () => {
 
-            expect(result).toBe(false);
-        });
+                it("returns true if the last item is the only item in the collection", () => {
+                    let matrix = matrixOneRowGroupOneColumnGroupOneInstance;
+                    let items = matrix.rows.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
 
-        it("needsMoreData notLeaf", () => {
+                    expect(navigator.isLastItem(items[0], items)).toBe(true);
+                });
 
-            let matrix = matrixThreeRowGroups;
+                it("handles incomplete data", () => {
+                    let matrix = matrixOneRowGroupOneColumnGroupOneInstance;
+                    let rows = matrix.rows.root.children;
+                    let columns = matrix.columns.root.children;
+                    let navigator = createHierarchyNavigator(matrix, false);
+                    expect(navigator.isLastItem(rows[0], rows)).toBe(false);
+                    expect(navigator.isLastItem(columns[0], columns)).toBe(true);
 
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [rowGroupSource1, rowGroupSource2, rowGroupSource3], segment: {} },
-                    matrix: matrix
-                }]
+                    navigator.update(matrix, true);
+                    expect(navigator.isLastItem(rows[0], rows)).toBe(true);
+                    expect(navigator.isLastItem(columns[0], columns)).toBe(true);
+                });
+
+                it("returns true if the last item is the last item in its parents collection, but not on the level", () => {
+                    let matrix = matrixThreeMeasuresThreeRowGroups;
+                    let items = matrix.rows.root.children[0].children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.isLastItem(items[1], items)).toBeTruthy();
+                });
+
+                it("returns false if the item is not the last item in its parents collection", () => {
+                    let matrix = matrixThreeMeasuresThreeRowGroups;
+                    let items = matrix.rows.root.children[1].children[1].children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.isLastItem(items[0], items)).toBeFalsy();
+                });
             });
 
-            let matrixVisual: Matrix = <Matrix>v;
-            let item = matrix.rows.root.children[1].children[1];
-            let result = matrixVisual.needsMoreData(item);
+            describe("getChildren", () => {
 
-            expect(result).toBe(false);
-        });
+                it("returns undefined for leaf node", () => {
+                    let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
+                    let node = matrix.columns.root.children[0];
+                    let navigator = createHierarchyNavigator(matrix);
 
-        it("needsMoreData segmentComplete", () => {
+                    expect(navigator.getChildren(node)).toBeUndefined();
+                });
 
-            let matrix = matrixThreeRowGroups;
+                it("returns the correct collection of children", () => {
+                    let matrix = matrixThreeMeasuresThreeRowGroups;
+                    let node = matrix.rows.root.children[0];
+                    let navigator = createHierarchyNavigator(matrix);
 
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [rowGroupSource1, rowGroupSource2, rowGroupSource3] },
-                    matrix: matrix
-                }]
+                    expect(navigator.getChildren(node)).toBe(node.children);
+                });
             });
 
-            let matrixVisual: Matrix = <Matrix>v;
-            let lastLeaf = matrix.rows.root.children[1].children[1].children[1];
-            let result = matrixVisual.needsMoreData(lastLeaf);
+            describe("getCount", () => {
 
-            expect(result).toBe(false);
-        });
+                it("returns zero if there are no children", () => {
+                    let matrix = matrixThreeRowGroupsOneGroupInstance;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
 
-        it("needsMoreData belowThreshold", () => {
+                    expect(navigator.getCount(columnHierarchy)).toBe(0);
+                });
 
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                it("returns the length of the children array", () => {
+                    let matrix = matrixThreeMeasuresThreeRowGroups;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
 
-            v.onDataChanged({
-                dataViews: [matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresDataView]
+                    expect(navigator.getCount(columnHierarchy)).toBe(3);
+                });
             });
 
-            let matrixVisual: Matrix = <Matrix>v;
-            let leaf = matrix.rows.root.children[0].children[0];
-            let result = matrixVisual.needsMoreData(leaf);
+            describe("getAt", () => {
 
-            expect(result).toBe(false);
-        });
+                it("returns undefined if index is out of bounds", () => {
+                    let matrix = matrixThreeRowGroupsOneGroupInstance;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
 
-        it("needsMoreData aboveThreshold", () => {
+                    expect(navigator.getAt(columnHierarchy, 0)).toBeUndefined();
+                });
 
-            v.onDataChanged({
-                dataViews: [matrixThreeMeasuresThreeRowGroupsDataView]
+                it("returns the right node from the hierarchy", () => {
+                    let matrix = matrixThreeRowGroups;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getAt(rowHierarchy, 1)).toBe(rowHierarchy[1]);
+                });
+
+                it("returns the right node from the children collection", () => {
+                    let matrix = matrixThreeRowGroups;
+                    let children = matrix.rows.root.children[0].children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getAt(children, 1)).toBe(children[1]);
+                });
             });
 
-            let matrixVisual: Matrix = <Matrix>v;
-            let leaf = matrixThreeMeasuresThreeRowGroups.rows.root.children[1].children[1].children[1];
-            let result = matrixVisual.needsMoreData(leaf);
+            describe("getLevel", () => {
 
-            expect(result).toBe(true);
-        });
+                it("returns undefined for root node", () => {
+                    let matrix = matrixThreeRowGroupsThreeColumnGroupsOneInstance;
+                    let rootNode = matrix.columns.root;
+                    let navigator = createHierarchyNavigator(matrix);
 
-        it("bindRowHeader callback", () => {
-            let callBackCalled = false;
-            let binderOptions: powerbi.visuals.MatrixBinderOptions = {
-                onBindRowHeader: () => { callBackCalled = true; }
-            };
+                    expect(navigator.getLevel(rootNode)).toBeUndefined();
+                });
 
-            let binder = new powerbi.visuals.MatrixBinder(null, binderOptions);
-            binder.onDataViewChanged(Matrix.converter(matrixOneMeasureDataView));
-            let ext = new powerbi.visuals.controls.internal.TablixCellPresenter(false, Controls.TablixLayoutKind.Canvas);
+                it("returns zero for outermost nodes", () => {
+                    let matrix = matrixThreeRowGroupsThreeColumnGroupsOneInstance;
+                    let node = matrix.rows.root.children[0];
+                    let navigator = createHierarchyNavigator(matrix);
 
-            let position = new TablixUtils.CellPosition();
+                    expect(navigator.getLevel(node)).toBe(0);
+                });
 
-            binder.bindRowHeader({}, {
-                type: null, item: null, colSpan: 0, rowSpan: 0, textAlign: "",
-                extension: ext,
-                position: position,
-                contentHeight: 0, contentWidth: 0, applyStyle: function () { }, unfixRowHeight: function () { },
-                containerHeight: 0, containerWidth: 0
+                it("returns one for nodes on the second level", () => {
+                    let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+                    let nodes = matrix.rows.root.children[1].children;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getLevel(nodes[0])).toBe(1);
+                    expect(navigator.getLevel(nodes[1])).toBe(1);
+                });
             });
 
-            expect(callBackCalled).toBe(true);
-        });
+            describe("getIntersection", () => {
 
-        it("unbindColumnHeader multimeasure not sortable", () => {
-            let binderOptions = {
-                onBindRowHeader: () => { },
-                onColumnHeaderClick: () => { },
-                layoutKind: powerbi.visuals.controls.TablixLayoutKind.Canvas
-            };
-            let hierarchyNavigator = createHierarchyNavigator(matrixTwoRowGroupsTwoColumnGroupsTwoMeasures);
-            let binder = new powerbi.visuals.MatrixBinder(hierarchyNavigator, binderOptions);
-            let unregisterCalled: boolean = false;
-            let ext = new powerbi.visuals.controls.internal.TablixCellPresenter(false, Controls.TablixLayoutKind.Canvas);
-            let position = new TablixUtils.CellPosition();
-            binder.unbindColumnHeader({ isSubtotal: true }, {
-                type: null, item: null, colSpan: 0, rowSpan: 0, textAlign: "",
-                extension: ext,
-                position,
-                contentHeight: 0, contentWidth: 0, applyStyle: function () { }, unfixRowHeight: function () { },
-                containerHeight: 0, containerWidth: 0
-            });
+                it("returns values in the intersection", () => {
+                    let matrix = matrixThreeMeasuresThreeRowGroups;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let columnHierarchy = matrix.columns.root.children;
+                    let level2RowItems: MatrixVisualNode[] = [
+                        rowHierarchy[0].children[0],
+                        rowHierarchy[0].children[1],
+                        rowHierarchy[1].children[0],
+                        rowHierarchy[1].children[1]
+                    ];
+                    let level3RowItems: MatrixVisualNode[] = [
+                        level2RowItems[0].children[0],
+                        level2RowItems[0].children[1],
+                        level2RowItems[1].children[0],
+                        level2RowItems[1].children[1],
+                        level2RowItems[2].children[0],
+                        level2RowItems[2].children[1],
+                        level2RowItems[3].children[0],
+                        level2RowItems[3].children[1]
+                    ];
+                    let level1ColumnItems: MatrixVisualNode[] = [
+                        columnHierarchy[0],
+                        columnHierarchy[1],
+                        columnHierarchy[2]
+                    ];
 
-            expect(unregisterCalled).toBe(false);
-        });
+                    let expectedValues: string[][] = [
+                        ["1,000.00", "1,001.00", "1,002.00"],
+                        ["1,010.00", "1,011.00", "1,012.00"],
+                        ["1,100.00", "1,101.00", "1,102.00"],
+                        ["1,110.00", "1,111.00", "1,112.00"],
+                        ["2,000.00", "2,001.00", "2,002.00"],
+                        ["2,010.00", "2,011.00", "2,012.00"],
+                        ["2,100.00", "2,101.00", "2,102.00"],
+                        ["2,110.00", "2,111.00", "2,112.00"]
+                    ];
 
-        it("RefreshControl invisible parent", () => {
-            let control = { refresh() { } };
-            let controlSpy = spyOn(control, "refresh");
-            setShouldAllowHeaderResize(v, () => { return true; });
-            setHierarchyNavigator(v, { update() { } });
-            setTablixControl(v, control);
-            getElement(v).css('display', 'none');
-            setIsInteractive(v, true);
+                    let navigator = createHierarchyNavigator(matrix);
+                    validateIntersections(navigator, level3RowItems, level1ColumnItems, expectedValues);
+                });
 
-            v.onResizing({ width: 100, height: 100 });
+                it("returns empty string if there are no measures", () => {
+                    let matrix = matrixThreeRowGroupsThreeColumnGroups;
+                    let rowHierarchy = matrix.rows.root.children;
+                    let rowLeaves = rowHierarchy[0].children[0].children.concat(rowHierarchy[0].children[1].children);
+                    let columnHierarchy = matrix.columns.root.children;
+                    let columnLeaves = columnHierarchy[0].children[0].children.concat(columnHierarchy[0].children[1]);
 
-            expect(controlSpy).not.toHaveBeenCalled();
-        });
+                    let expectedValues: string[][] = [
+                        ["", "", ""],
+                        ["", "", ""],
+                        ["", "", ""]
+                    ];
 
-        it("RefreshControl invisible parent but dashboard layout", () => {
-            let control = { refresh() { } };
-            let controlSpy = spyOn(control, "refresh");
-            setShouldAllowHeaderResize(v, () => { return true; });
-            setHierarchyNavigator(v, { update() { } });
-            setTablixControl(v, control);
-            getElement(v).css('display', 'none');
-            setIsInteractive(v, false);
+                    let navigator = createHierarchyNavigator(matrix);
+                    validateIntersections(navigator, rowLeaves, columnLeaves, expectedValues);
+                });
 
-            v.onResizing({ width: 100, height: 100 });
+                describe("setting isTotal flags", () => {
 
-            expect(controlSpy).toHaveBeenCalled();
-        });
+                    it("returns false for all flags for 1 measure, 0 rows, 0 columns", () => {
+                        let matrix = matrixOneMeasure;
+                        let navigator = createHierarchyNavigator(matrix);
+                        navigator.update();
+                        let rowLeaves: powerbi.DataViewMatrixNode[] = navigator['rowHierarchy']['leafNodes'];
+                        let columnLeaves: powerbi.DataViewMatrixNode[] = navigator['columnHierarchy']['leafNodes'];
 
-        it("ShouldClearControl noSort", (done) => {
-            v.onDataChanged({ dataViews: [matrixOneMeasureDataView] });
-            let refreshSpy = spyOn(v, "refreshControl").and.callFake(() => { });
-            setWaitingForSort(v, false);
-            v.onDataChanged({ dataViews: [matrixOneMeasureDataView] });
+                        let item: powerbi.visuals.MatrixVisualBodyItem;
+                        for (let column of columnLeaves) {
+                            for (let row of rowLeaves) {
+                                item = navigator.getIntersection(row, column);
+                                expect(item.isColumnGrandTotal).toBe(false);
+                                expect(item.isRowGrandTotal).toBe(false);
+                                expect(item.isColumnSubTotal).toBe(false);
+                                expect(item.isRowSubTotal).toBe(false);
+                            }
+                        }
+                    });
 
-            setTimeout(() => {
-                expect(refreshSpy).toHaveBeenCalledWith(true);
-                done();
-            }, DefaultWaitForRender);
-        });
+                    it("returns false for all flags for 2 measures, 0 rows, 0 columns", () => {
+                        let matrix = matrixTwoMeasures;
+                        let navigator = createHierarchyNavigator(matrix);
+                        navigator.update();
+                        let rowLeaves: powerbi.DataViewMatrixNode[] = navigator['rowHierarchy']['leafNodes'];
+                        let columnLeaves: powerbi.DataViewMatrixNode[] = navigator['columnHierarchy']['leafNodes'];
 
-        it("ShouldClearControl sort", (done) => {
-            v.onDataChanged({ dataViews: [matrixOneMeasureDataView] });
-            let refreshSpy = spyOn(v, "refreshControl").and.callFake(() => { });
-            setWaitingForSort(v, true);
-            v.onDataChanged({ dataViews: [matrixOneMeasureDataView] });
+                        let item: powerbi.visuals.MatrixVisualBodyItem;
+                        for (let column of columnLeaves) {
+                            for (let row of rowLeaves) {
+                                item = navigator.getIntersection(row, column);
+                                expect(item.isColumnGrandTotal).toBe(false);
+                                expect(item.isRowGrandTotal).toBe(false);
+                                expect(item.isColumnSubTotal).toBe(false);
+                                expect(item.isRowSubTotal).toBe(false);
+                            }
+                        }
+                    });
 
-            setTimeout(() => {
-                expect(refreshSpy).toHaveBeenCalledWith(true);
-                done();
-            }, DefaultWaitForRender);
-        });
+                    it("returns proper Totals flags for complex Matrix", () => {
+                        let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                        let navigator = createHierarchyNavigator(matrix);
+                        navigator.update();
+                        let rowLeaves: powerbi.DataViewMatrixNode[] = navigator['rowHierarchy']['leafNodes'];
+                        let columnLeaves: powerbi.DataViewMatrixNode[] = navigator['columnHierarchy']['leafNodes'];
 
-        it("ColumnWidthChangedCallback ColumnAutoSizeProperty on", (done) => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            setIsInteractive(v, true);
-            let objects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true
-                }
-            };
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            v.onDataChanged({ dataViews: [dataView] });
-            setTimeout(() => {
-                let matrixVisual = <Matrix>v;
-                let colWidthManager = matrixVisual.getColumnWidthManager();
-                let persistedColWidths = colWidthManager.getColumnWidthObjects();
-                expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
+                        let item: powerbi.visuals.MatrixVisualBodyItem;
+                        let colId = 0, rowId = 0;
+                        for (let column of columnLeaves) {
+                            for (let row of rowLeaves) {
+                                item = navigator.getIntersection(row, column);
 
-                for (let colWidthObj in persistedColWidths) {
-                    expect(persistedColWidths[colWidthObj].width).toBeUndefined();
-                    expect(persistedColWidths[colWidthObj].isFixed).toBe(false);
-                }
-                done();
-            }, DefaultWaitForRender);
-        });
+                                expect(item.isColumnGrandTotal).toBe(_.contains([12, 13], colId));
+                                expect(item.isRowGrandTotal).toBe(_.contains([10], rowId));
+                                expect(item.isColumnSubTotal).toBe(_.contains([4, 5, 10, 11], colId));
+                                expect(item.isRowSubTotal).toBe(_.contains([2, 5, 7, 9], rowId));
 
-        it("ColumnWidthChangedCallback ColumnAutoSizeProperty off - Known columns width", (done) => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            let objects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: false
-                }
-            };
+                                rowId++;
+                            }
 
-            let columns: DataViewMetadataColumn[] = [
-                createColumnWithWidth(rowGroupSource1, 300),
-                createColumnWithWidth(rowGroupSource2, 200),
-                createColumnWithWidth(measureSource1, 50),
-                createColumnWithWidth(measureSource2, 75),
-                powerbi.Prototype.inheritSingle(columnGroupSource1),
-                powerbi.Prototype.inheritSingle(columnGroupSource2),
-            ];
+                            colId++;
+                            rowId = 0;
+                        }
+                    });
 
-            let dataView = getMatrixColumnWidthDataView2(columns, matrix, objects);
+                });
 
-            v.onDataChanged({ dataViews: [dataView] });
-            setTimeout(() => {
-                let matrixVisual = <Matrix>v;
-                let colWidthManager = matrixVisual.getColumnWidthManager();
+                function validateIntersections(navigator: MatrixHierarchyNavigator, rowLeaves: MatrixVisualNode[], columnLeaves: MatrixVisualNode[], expectedValues: string[][]): void {
+                    let result: string[][] = [];
 
-                let persistedColWidths = colWidthManager.getColumnWidthObjects();
-                expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
-                for (let i = 0; i < 4; i++) {
-                    expect(isColumnWidthMatchObject(persistedColWidths, columns[i])).toBeTruthy();
-                }
-
-                //Resizing
-                colWidthManager.onColumnWidthChanged("Measure1", 45);
-                expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
-                expect(persistedColWidths["Measure1"].width).toBe(45);
-                expect(persistedColWidths["Measure1"].isFixed).toBe(true);
-                for (let i = 0; i < 4 && columns[i].queryName !== "Measure1"; i++) {
-                    expect(isColumnWidthMatchObject(persistedColWidths, columns[i])).toBeTruthy();
-                }
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("ColumnWidthChangedCallback ColumnAutoSizeProperty off - Unknown columns width", (done) => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            let objects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: false
-                }
-            };
-
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            v.onDataChanged({ dataViews: [dataView] });
-            setTimeout(() => {
-                let matrixVisual = <Matrix>v;
-                let colWidthManager = matrixVisual.getColumnWidthManager();
-                let persistedColWidths = colWidthManager.getColumnWidthObjects();
-                expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
-                for (let obj in persistedColWidths) {
-                    expect(persistedColWidths[obj].isFixed).toBe(true);
-                    expect(persistedColWidths[obj].width).toBe(undefined);
-                }
-
-                //Resizing
-                colWidthManager.onColumnWidthChanged("Measure1", 45);
-                expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
-                expect(persistedColWidths["Measure1"].width).toBe(45);
-                expect(persistedColWidths["Measure1"].isFixed).toBe(true);
-
-                for (let obj in persistedColWidths) {
-                    if (obj !== "Measure1") {
-                        expect(persistedColWidths[obj].isFixed).toBe(true);
-                        expect(persistedColWidths[obj].width).toBe(undefined);
+                    for (let i = 0, ilen = rowLeaves.length; i < ilen; i++) {
+                        result[i] = [];
+                        for (let j = 0, jlen = columnLeaves.length; j < jlen; j++)
+                            result[i][j] = navigator.getIntersection(rowLeaves[i], columnLeaves[j]).textContent || '';
                     }
+
+                    expect(result).toEqual(expectedValues);
                 }
-                done();
-            }, DefaultWaitForRender);
+            });
+
+            describe("getCorer", () => {
+
+                it("returns empty value for the upper left cell of a 3x3 corner", () => {
+                    let matrix = matrixThreeRowGroupsThreeColumnGroups;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getCorner(0, 0).metadata).toBeNull();
+                    expect(navigator.getCorner(0, 0).isColumnHeaderLeaf).toBeFalsy();
+                });
+
+                it("returns row header for the lower left cell of a 3x3 corner", () => {
+                    let matrix = matrixThreeRowGroupsThreeColumnGroups;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getCorner(0, 2).metadata.displayName).toBe("RowGroup1");
+                    expect(navigator.getCorner(0, 2).isColumnHeaderLeaf).toBeTruthy();
+                });
+
+                it("returns column header for the upper right cell of a 3x3 corner", () => {
+                    let matrix = matrixThreeRowGroupsThreeColumnGroups;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getCorner(2, 0).metadata.displayName).toBe("ColGroup1");
+                    expect(navigator.getCorner(2, 0).isColumnHeaderLeaf).toBeFalsy();
+                });
+
+                it("returns row header for the lower right cell of a 3x3 corner", () => {
+                    let matrix = matrixThreeRowGroupsThreeColumnGroups;
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.getCorner(2, 2).metadata.displayName).toBe("RowGroup3");
+                    expect(navigator.getCorner(2, 2).isColumnHeaderLeaf).toBeTruthy();
+                });
+            });
+
+            describe("headerItemEquals", () => {
+
+                it("returns true if the two items are the same", () => {
+                    let matrix = matrixOneRowGroupOneColumnGroupOneGroupInstance;
+                    let rowNode = matrix.rows.root.children[0];
+                    let columnNode = matrix.columns.root.children[0];
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.headerItemEquals(rowNode, rowNode)).toBeTruthy();
+                    expect(navigator.headerItemEquals(columnNode, columnNode)).toBeTruthy();
+                });
+
+                it("returns false if the two items are not same even if they have the same content", () => {
+                    let matrix = matrixOneRowGroupOneColumnGroupOneGroupInstance;
+                    let rowNode = matrix.rows.root.children[0];
+                    let columnNode = matrix.columns.root.children[0];
+                    let navigator = createHierarchyNavigator(matrix);
+
+                    expect(navigator.headerItemEquals(rowNode, columnNode)).toBeFalsy();
+                    expect(navigator.headerItemEquals(columnNode, rowNode)).toBeFalsy();
+                });
+            });
+
+            describe("bodyCellItemEquals", () => {
+
+                it("returns true if the two items are the same", () => {
+                    let dataView = matrixTwoMeasuresDataView;
+                    let navigator = createHierarchyNavigator(dataView.matrix);
+                    let cell1 = navigator.getIntersection(dataView.matrix.rows.root.children[0], dataView.matrix.columns.root.children[0]);
+                    expect(cell1).toBeDefined();
+                    let cell2 = navigator.getIntersection(dataView.matrix.rows.root.children[0], dataView.matrix.columns.root.children[0]);
+                    expect(cell2).toBeDefined();
+
+                    expect(navigator.bodyCellItemEquals(cell1, cell2)).toBeTruthy();
+                });
+
+                it("returns false if the two items are not same", () => {
+                    let dataView = matrixTwoMeasuresDataView;
+                    let navigator = createHierarchyNavigator(dataView.matrix);
+                    let cell1 = navigator.getIntersection(dataView.matrix.rows.root.children[0], dataView.matrix.columns.root.children[0]);
+                    expect(cell1).toBeDefined();
+                    let cell2 = navigator.getIntersection(dataView.matrix.rows.root.children[0], dataView.matrix.columns.root.children[1]);
+                    expect(cell2).toBeDefined();
+
+                    expect(navigator.bodyCellItemEquals(cell1, cell2)).toBeFalsy();
+                });
+            });
         });
 
-        it("ColumnWidthChangedCallback ColumnAutoSizeProperty off then resize", (done) => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            let objects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: false
-                }
-            };
+        describe("Matrix logic", () => {
+            let v: powerbi.IVisual;
 
-            let columns: DataViewMetadataColumn[] = [
-                createColumnWithWidth(rowGroupSource1, 300),
-                createColumnWithWidth(rowGroupSource2, 200),
-                createColumnWithWidth(measureSource1, 50),
-                createColumnWithWidth(measureSource2, 75),
-                columnGroupSource1,
-                columnGroupSource2,
-            ];
+            beforeEach(() => {
+                v = powerbi.visuals.plugins.matrix.create();
+                let element = powerbitests.helpers.testDom("500", "500");
+                element["visible"] = () => { return true; };
+                v.init({
+                    element: element,
+                    host: mocks.createVisualHostServices(),
+                    style: powerbi.visuals.visualStyles.create(),
+                    viewport: {
+                        height: 500,
+                        width: 500
+                    },
+                    animation: { transitionImmediate: true }
+                });
+            });
 
-            let dataView = getMatrixColumnWidthDataView2(columns, matrix, objects);
+            it("loadMoreData calls control refresh", () => {
+                //Passing a Dataview with Create Operation to ensure previousDataView is not null when performing Append Operation
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureDataView],
+                    operationKind: powerbi.VisualDataChangeOperationKind.Create
+                });
 
-            setIsInteractive(v, true);
-            v.onDataChanged({ dataViews: [dataView] });
-            setTimeout(() => {
-                let matrixVisual = <Matrix>v;
-                let colWidthManager = matrixVisual.getColumnWidthManager();
-                expect(matrixVisual.persistingObjects).toBe(false);
+                let nav = getHierarchyNavigator(v);
+                let control = getTablixControl(v);
+                let navSpy = spyOn(nav, "update");
+                let controlSpy = spyOn(control, "refresh");
 
-                // Resize
-                colWidthManager.onColumnWidthChanged("Measure1", 120);
-                expect(matrixVisual.persistingObjects).toBe(true);
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureDataView],
+                    operationKind: powerbi.VisualDataChangeOperationKind.Append
+                });
 
-                columns[2].objects["general"]["columnWidth"] = 120;
+                expect(navSpy).toHaveBeenCalled();
+                expect(controlSpy).toHaveBeenCalled();
+            });
 
-                // Passing the new DataView after persisting
+            it("loadMore would refresh the tablix model", (done) => {
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureOneRowGroupOneGroupInstanceDataView],
+                    operationKind: powerbi.VisualDataChangeOperationKind.Create
+                });
+
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureOneRowGroupTwoGroupInstancesDataView],
+                    operationKind: powerbi.VisualDataChangeOperationKind.Append
+                });
+
+                //Checking it's rendering 2 rows
+                setTimeout(() => {
+                    expect($('.tablixValueNumeric').length).toBe(matrixOneMeasureOneRowGroupTwoGroupInstancesDataView.matrix.rows.root.children.length + 1);
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("needsMoreData waitingForData", () => {
+                let matrix = matrixThreeRowGroups;
+
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [rowGroupSource1, rowGroupSource2, rowGroupSource3], segment: {} },
+                        matrix: matrix
+                    }]
+                });
+
+                setWaitingForData(v, true);
+                let matrixVisual: Matrix = <Matrix>v;
+                let lastLeaf = matrix.rows.root.children[1].children[1].children[1];
+                let result = matrixVisual.needsMoreData(lastLeaf);
+
+                expect(result).toBe(false);
+            });
+
+            it("needsMoreData notLeaf", () => {
+
+                let matrix = matrixThreeRowGroups;
+
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [rowGroupSource1, rowGroupSource2, rowGroupSource3], segment: {} },
+                        matrix: matrix
+                    }]
+                });
+
+                let matrixVisual: Matrix = <Matrix>v;
+                let item = matrix.rows.root.children[1].children[1];
+                let result = matrixVisual.needsMoreData(item);
+
+                expect(result).toBe(false);
+            });
+
+            it("needsMoreData segmentComplete", () => {
+
+                let matrix = matrixThreeRowGroups;
+
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [rowGroupSource1, rowGroupSource2, rowGroupSource3] },
+                        matrix: matrix
+                    }]
+                });
+
+                let matrixVisual: Matrix = <Matrix>v;
+                let lastLeaf = matrix.rows.root.children[1].children[1].children[1];
+                let result = matrixVisual.needsMoreData(lastLeaf);
+
+                expect(result).toBe(false);
+            });
+
+            it("needsMoreData belowThreshold", () => {
+
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasures;
+
+                v.onDataChanged({
+                    dataViews: [matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresDataView]
+                });
+
+                let matrixVisual: Matrix = <Matrix>v;
+                let leaf = matrix.rows.root.children[0].children[0];
+                let result = matrixVisual.needsMoreData(leaf);
+
+                expect(result).toBe(false);
+            });
+
+            it("needsMoreData aboveThreshold", () => {
+
+                v.onDataChanged({
+                    dataViews: [matrixThreeMeasuresThreeRowGroupsDataView]
+                });
+
+                let matrixVisual: Matrix = <Matrix>v;
+                let leaf = matrixThreeMeasuresThreeRowGroups.rows.root.children[1].children[1].children[1];
+                let result = matrixVisual.needsMoreData(leaf);
+
+                expect(result).toBe(true);
+            });
+
+            it("bindRowHeader callback", () => {
+                let callBackCalled = false;
+                let binderOptions: powerbi.visuals.MatrixBinderOptions = {
+                    onBindRowHeader: () => { callBackCalled = true; }
+                };
+
+                let binder = new powerbi.visuals.MatrixBinder(null, binderOptions);
+                binder.onDataViewChanged(Matrix.converter(matrixOneMeasureDataView));
+                let ext = new powerbi.visuals.controls.internal.TablixCellPresenter(false, Controls.TablixLayoutKind.Canvas);
+
+                let position = new TablixUtils.CellPosition();
+
+                binder.bindRowHeader({}, {
+                    type: null, item: null, colSpan: 0, rowSpan: 0, textAlign: "",
+                    extension: ext,
+                    position: position,
+                    contentHeight: 0, contentWidth: 0, applyStyle: function () { }, unfixRowHeight: function () { },
+                    containerHeight: 0, containerWidth: 0
+                });
+
+                expect(callBackCalled).toBe(true);
+            });
+
+            it("unbindColumnHeader multimeasure not sortable", () => {
+                let binderOptions = {
+                    onBindRowHeader: () => { },
+                    onColumnHeaderClick: () => { },
+                    layoutKind: powerbi.visuals.controls.TablixLayoutKind.Canvas
+                };
+                let hierarchyNavigator = createHierarchyNavigator(matrixTwoRowGroupsTwoColumnGroupsTwoMeasures);
+                let binder = new powerbi.visuals.MatrixBinder(hierarchyNavigator, binderOptions);
+                let unregisterCalled: boolean = false;
+                let ext = new powerbi.visuals.controls.internal.TablixCellPresenter(false, Controls.TablixLayoutKind.Canvas);
+                let position = new TablixUtils.CellPosition();
+                binder.unbindColumnHeader({ isSubtotal: true }, {
+                    type: null, item: null, colSpan: 0, rowSpan: 0, textAlign: "",
+                    extension: ext,
+                    position,
+                    contentHeight: 0, contentWidth: 0, applyStyle: function () { }, unfixRowHeight: function () { },
+                    containerHeight: 0, containerWidth: 0
+                });
+
+                expect(unregisterCalled).toBe(false);
+            });
+
+            it("RefreshControl invisible parent", () => {
+                let control = { refresh() { } };
+                let controlSpy = spyOn(control, "refresh");
+                setShouldAllowHeaderResize(v, () => { return true; });
+                setHierarchyNavigator(v, { update() { } });
+                setTablixControl(v, control);
+                getElement(v).css('display', 'none');
+                setIsInteractive(v, true);
+
+                v.onResizing({ width: 100, height: 100 });
+
+                expect(controlSpy).not.toHaveBeenCalled();
+            });
+
+            it("RefreshControl invisible parent but dashboard layout", () => {
+                let control = { refresh() { } };
+                let controlSpy = spyOn(control, "refresh");
+                setShouldAllowHeaderResize(v, () => { return true; });
+                setHierarchyNavigator(v, { update() { } });
+                setTablixControl(v, control);
+                getElement(v).css('display', 'none');
+                setIsInteractive(v, false);
+
+                v.onResizing({ width: 100, height: 100 });
+
+                expect(controlSpy).toHaveBeenCalled();
+            });
+
+            it("ShouldClearControl noSort", (done) => {
+                v.onDataChanged({ dataViews: [matrixOneMeasureDataView] });
+                let refreshSpy = spyOn(v, "refreshControl").and.callFake(() => { });
+                setWaitingForSort(v, false);
+                v.onDataChanged({ dataViews: [matrixOneMeasureDataView] });
+
+                setTimeout(() => {
+                    expect(refreshSpy).toHaveBeenCalledWith(true);
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("ShouldClearControl sort", (done) => {
+                v.onDataChanged({ dataViews: [matrixOneMeasureDataView] });
+                let refreshSpy = spyOn(v, "refreshControl").and.callFake(() => { });
+                setWaitingForSort(v, true);
+                v.onDataChanged({ dataViews: [matrixOneMeasureDataView] });
+
+                setTimeout(() => {
+                    expect(refreshSpy).toHaveBeenCalledWith(true);
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("ColumnWidthChangedCallback ColumnAutoSizeProperty on", (done) => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                setIsInteractive(v, true);
+                let objects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: true
+                    }
+                };
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
                 v.onDataChanged({ dataViews: [dataView] });
                 setTimeout(() => {
-                    expect(matrixVisual.persistingObjects).toBe(false);
+                    let matrixVisual = <Matrix>v;
+                    let colWidthManager = matrixVisual.getColumnWidthManager();
+                    let persistedColWidths = colWidthManager.getColumnWidthObjects();
+                    expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
+
+                    for (let colWidthObj in persistedColWidths) {
+                        expect(persistedColWidths[colWidthObj].width).toBeUndefined();
+                        expect(persistedColWidths[colWidthObj].isFixed).toBe(false);
+                    }
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("ColumnWidthChangedCallback ColumnAutoSizeProperty off - Known columns width", (done) => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                let objects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: false
+                    }
+                };
+
+                let columns: DataViewMetadataColumn[] = [
+                    createColumnWithWidth(rowGroupSource1, 300),
+                    createColumnWithWidth(rowGroupSource2, 200),
+                    createColumnWithWidth(measureSource1, 50),
+                    createColumnWithWidth(measureSource2, 75),
+                    powerbi.Prototype.inheritSingle(columnGroupSource1),
+                    powerbi.Prototype.inheritSingle(columnGroupSource2),
+                ];
+
+                let dataView = getMatrixColumnWidthDataView2(columns, matrix, objects);
+
+                v.onDataChanged({ dataViews: [dataView] });
+                setTimeout(() => {
+                    let matrixVisual = <Matrix>v;
+                    let colWidthManager = matrixVisual.getColumnWidthManager();
 
                     let persistedColWidths = colWidthManager.getColumnWidthObjects();
                     expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
-                    expect(persistedColWidths["Measure1"].width).toBe(120);
+                    for (let i = 0; i < 4; i++) {
+                        expect(isColumnWidthMatchObject(persistedColWidths, columns[i])).toBeTruthy();
+                    }
+
+                    //Resizing
+                    colWidthManager.onColumnWidthChanged("Measure1", 45);
+                    expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
+                    expect(persistedColWidths["Measure1"].width).toBe(45);
+                    expect(persistedColWidths["Measure1"].isFixed).toBe(true);
+                    for (let i = 0; i < 4 && columns[i].queryName !== "Measure1"; i++) {
+                        expect(isColumnWidthMatchObject(persistedColWidths, columns[i])).toBeTruthy();
+                    }
+
                     done();
                 }, DefaultWaitForRender);
-            }, DefaultWaitForRender);
-        });
-    });
-
-    describe("EnumerateObjectInstances", () => {
-        let v: powerbi.IVisual;
-
-        beforeEach(() => {
-            v = powerbi.visuals.plugins.matrix.create();
-            let element = powerbitests.helpers.testDom("500", "500");
-            element["visible"] = () => { return true; };
-            v.init({
-                element: element,
-                host: mocks.createVisualHostServices(),
-                style: powerbi.visuals.visualStyles.create(),
-                viewport: {
-                    height: 500,
-                    width: 500
-                },
-                animation: { transitionImmediate: true }
             });
-        });
 
-        it("general: both totals off", () => {
-            let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasure;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ],
-                        objects: {
-                            general: {
-                                rowSubtotals: false,
-                                columnSubtotals: false,
-                                autoSizeColumnWidth: true,
-                            }
+            it("ColumnWidthChangedCallback ColumnAutoSizeProperty off - Unknown columns width", (done) => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                let objects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: false
+                    }
+                };
+
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
+                v.onDataChanged({ dataViews: [dataView] });
+                setTimeout(() => {
+                    let matrixVisual = <Matrix>v;
+                    let colWidthManager = matrixVisual.getColumnWidthManager();
+                    let persistedColWidths = colWidthManager.getColumnWidthObjects();
+                    expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
+                    for (let obj in persistedColWidths) {
+                        expect(persistedColWidths[obj].isFixed).toBe(true);
+                        expect(persistedColWidths[obj].width).toBe(undefined);
+                    }
+
+                    //Resizing
+                    colWidthManager.onColumnWidthChanged("Measure1", 45);
+                    expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
+                    expect(persistedColWidths["Measure1"].width).toBe(45);
+                    expect(persistedColWidths["Measure1"].isFixed).toBe(true);
+
+                    for (let obj in persistedColWidths) {
+                        if (obj !== "Measure1") {
+                            expect(persistedColWidths[obj].isFixed).toBe(true);
+                            expect(persistedColWidths[obj].width).toBe(undefined);
                         }
-                    },
-                    matrix: matrix
-                }]
+                    }
+                    done();
+                }, DefaultWaitForRender);
             });
 
-            let objects = v.enumerateObjectInstances({ objectName: "general" });
-            expect(objects).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
-                        rowSubtotals: false,
-                        columnSubtotals: false,
+            it("ColumnWidthChangedCallback ColumnAutoSizeProperty off then resize", (done) => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                let objects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: false
                     }
-                }]
+                };
+
+                let columns: DataViewMetadataColumn[] = [
+                    createColumnWithWidth(rowGroupSource1, 300),
+                    createColumnWithWidth(rowGroupSource2, 200),
+                    createColumnWithWidth(measureSource1, 50),
+                    createColumnWithWidth(measureSource2, 75),
+                    columnGroupSource1,
+                    columnGroupSource2,
+                ];
+
+                let dataView = getMatrixColumnWidthDataView2(columns, matrix, objects);
+
+                setIsInteractive(v, true);
+                v.onDataChanged({ dataViews: [dataView] });
+                setTimeout(() => {
+                    let matrixVisual = <Matrix>v;
+                    let colWidthManager = matrixVisual.getColumnWidthManager();
+                    expect(matrixVisual.persistingObjects).toBe(false);
+
+                    // Resize
+                    colWidthManager.onColumnWidthChanged("Measure1", 120);
+                    expect(matrixVisual.persistingObjects).toBe(true);
+
+                    columns[2].objects["general"]["columnWidth"] = 120;
+
+                    // Passing the new DataView after persisting
+                    v.onDataChanged({ dataViews: [dataView] });
+                    setTimeout(() => {
+                        expect(matrixVisual.persistingObjects).toBe(false);
+
+                        let persistedColWidths = colWidthManager.getColumnWidthObjects();
+                        expect(Object.getOwnPropertyNames(persistedColWidths)).toHaveLength(4);
+                        expect(persistedColWidths["Measure1"].width).toBe(120);
+                        done();
+                    }, DefaultWaitForRender);
+                }, DefaultWaitForRender);
             });
         });
 
-        it("general both totals on", () => {
-            let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ],
-                        objects: {
-                            general: {
-                                autoSizeColumnWidth: true,
-                                textSize: 8,
-                                rowSubtotals: true,
-                                columnSubtotals: true,
+        describe("EnumerateObjectInstances", () => {
+            let v: powerbi.IVisual;
+
+            beforeEach(() => {
+                v = powerbi.visuals.plugins.matrix.create();
+                let element = powerbitests.helpers.testDom("500", "500");
+                element["visible"] = () => { return true; };
+                v.init({
+                    element: element,
+                    host: mocks.createVisualHostServices(),
+                    style: powerbi.visuals.visualStyles.create(),
+                    viewport: {
+                        height: 500,
+                        width: 500
+                    },
+                    animation: { transitionImmediate: true }
+                });
+            });
+
+            it("general: both totals off", () => {
+                let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasure;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ],
+                            objects: {
+                                general: {
+                                    rowSubtotals: false,
+                                    columnSubtotals: false,
+                                    autoSizeColumnWidth: true,
+                                }
                             }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                let objects = v.enumerateObjectInstances({ objectName: "general" });
+                expect(objects).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            rowSubtotals: false,
+                            columnSubtotals: false,
                         }
-                    },
-                    matrix: matrix
-                }]
+                    }]
+                });
             });
 
-            let objects = v.enumerateObjectInstances({ objectName: "general" });
-            expect(objects).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
-                        rowSubtotals: true,
-                        columnSubtotals: true,
-                    }
-                }]
-            });
-        });
-
-        it("general: both totals on but suppressed by no aggregation", () => {
-            let matrix = _.cloneDeep(matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals);
-            matrix.columns.levels[0].sources[0] = columnGroupSourceNonAggregatable;
-            matrix.rows.levels[0].sources[0] = rowGroupSourceNonAggregatable;
-
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                }
-            };
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ],
-                        objects: objects
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            let result = v.enumerateObjectInstances({ objectName: "general" });
-            expect(result).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
-                    }
-                }]
-            });
-        });
-
-        it("general: non-aggregatable field is NOT the last row field", () => {
-            let matrix = _.cloneDeep(matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals);
-            matrix.rows.levels[0].sources[0].discourageAggregationAcrossGroups = true;
-
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                }
-            };
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            v.onDataChanged({ dataViews: [dataView] });
-
-            let result = v.enumerateObjectInstances({ objectName: "general" });
-            expect(result).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
-                        rowSubtotals: true,
-                        columnSubtotals: true,
-                    }
-                }]
-            });
-        });
-
-        it("general: non-aggregatable field is NOT the last column field", () => {
-            let matrix = _.cloneDeep(matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals);
-            matrix.columns.levels[0].sources[0].discourageAggregationAcrossGroups = true;
-
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                }
-            };
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            v.onDataChanged({ dataViews: [dataView] });
-
-            let result = v.enumerateObjectInstances({ objectName: "general" });
-            expect(result).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
-                        rowSubtotals: true,
-                        columnSubtotals: true,
-                    }
-                }]
-            });
-            matrix.columns.levels[0].sources[0].discourageAggregationAcrossGroups = false;
-        });
-
-        it("general: non-aggregatable field is the last row field", () => {
-            let matrix = _.cloneDeep(matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals);
-            matrix.rows.levels[1].sources[0].discourageAggregationAcrossGroups = true;
-
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                }
-            };
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            v.onDataChanged({ dataViews: [dataView] });
-
-            let result = v.enumerateObjectInstances({ objectName: "general" });
-            expect(result).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
-                        columnSubtotals: true,
-                    }
-                }]
-            });
-        });
-
-        it("general: non-aggregatable field is the last column field", () => {
-            let matrix = _.cloneDeep(matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals);
-            matrix.columns.levels[2].sources[0].discourageAggregationAcrossGroups = true;
-
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    autoSizeColumnWidth: true,
-                    textSize: 8,
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                }
-            };
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            v.onDataChanged({ dataViews: [dataView] });
-
-            let result = v.enumerateObjectInstances({ objectName: "general" });
-            expect(result).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
-                        rowSubtotals: true,
-                    }
-                }]
-            });
-            matrix.columns.levels[0].sources[0].discourageAggregationAcrossGroups = false;
-        });
-
-        it("general: no objects", () => {
-            let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasure;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            let objects = v.enumerateObjectInstances({ objectName: "general" });
-            expect(objects).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
-                        rowSubtotals: true,
-                        columnSubtotals: true,
-                    }
-                }]
-            });
-        });
-
-        it("general: no properties", () => {
-            let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ],
-                        objects: {
-                            general: {
+            it("general both totals on", () => {
+                let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ],
+                            objects: {
+                                general: {
+                                    autoSizeColumnWidth: true,
+                                    textSize: 8,
+                                    rowSubtotals: true,
+                                    columnSubtotals: true,
+                                }
                             }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                let objects = v.enumerateObjectInstances({ objectName: "general" });
+                expect(objects).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            rowSubtotals: true,
+                            columnSubtotals: true,
                         }
-                    },
-                    matrix: matrix
-                }]
+                    }]
+                });
             });
 
-            let objects = v.enumerateObjectInstances({ objectName: "general" });
-            expect(objects).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
+            it("general: both totals on but suppressed by no aggregation", () => {
+                let matrix = _.cloneDeep(matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals);
+                matrix.columns.levels[0].sources[0] = columnGroupSourceNonAggregatable;
+                matrix.rows.levels[0].sources[0] = rowGroupSourceNonAggregatable;
+
+                let objects: powerbi.DataViewObjects = {
+                    general: {
                         autoSizeColumnWidth: true,
                         textSize: 8,
                         rowSubtotals: true,
                         columnSubtotals: true,
                     }
-                }]
-            });
-        });
+                };
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ],
+                            objects: objects
+                        },
+                        matrix: matrix
+                    }]
+                });
 
-        it("general: autoSizeColumnWidth off", () => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            let objects = {
-                general: {
-                    autoSizeColumnWidth: false,
-                    textSize: 8,
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                }
-            };
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            v.onDataChanged({ dataViews: [dataView] });
-            expect(v.enumerateObjectInstances({ objectName: "general" })).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
+                let result = v.enumerateObjectInstances({ objectName: "general" });
+                expect(result).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                        }
+                    }]
+                });
+            });
+
+            it("general: non-aggregatable field is NOT the last row field", () => {
+                let matrix = _.cloneDeep(matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals);
+                matrix.rows.levels[0].sources[0].discourageAggregationAcrossGroups = true;
+
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                    }
+                };
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
+                v.onDataChanged({ dataViews: [dataView] });
+
+                let result = v.enumerateObjectInstances({ objectName: "general" });
+                expect(result).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            rowSubtotals: true,
+                            columnSubtotals: true,
+                        }
+                    }]
+                });
+            });
+
+            it("general: non-aggregatable field is NOT the last column field", () => {
+                let matrix = _.cloneDeep(matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals);
+                matrix.columns.levels[0].sources[0].discourageAggregationAcrossGroups = true;
+
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                    }
+                };
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
+                v.onDataChanged({ dataViews: [dataView] });
+
+                let result = v.enumerateObjectInstances({ objectName: "general" });
+                expect(result).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            rowSubtotals: true,
+                            columnSubtotals: true,
+                        }
+                    }]
+                });
+                matrix.columns.levels[0].sources[0].discourageAggregationAcrossGroups = false;
+            });
+
+            it("general: non-aggregatable field is the last row field", () => {
+                let matrix = _.cloneDeep(matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals);
+                matrix.rows.levels[1].sources[0].discourageAggregationAcrossGroups = true;
+
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                    }
+                };
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
+                v.onDataChanged({ dataViews: [dataView] });
+
+                let result = v.enumerateObjectInstances({ objectName: "general" });
+                expect(result).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            columnSubtotals: true,
+                        }
+                    }]
+                });
+            });
+
+            it("general: non-aggregatable field is the last column field", () => {
+                let matrix = _.cloneDeep(matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals);
+                matrix.columns.levels[2].sources[0].discourageAggregationAcrossGroups = true;
+
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        autoSizeColumnWidth: true,
+                        textSize: 8,
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                    }
+                };
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
+                v.onDataChanged({ dataViews: [dataView] });
+
+                let result = v.enumerateObjectInstances({ objectName: "general" });
+                expect(result).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            rowSubtotals: true,
+                        }
+                    }]
+                });
+                matrix.columns.levels[0].sources[0].discourageAggregationAcrossGroups = false;
+            });
+
+            it("general: no objects", () => {
+                let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasure;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                let objects = v.enumerateObjectInstances({ objectName: "general" });
+                expect(objects).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            rowSubtotals: true,
+                            columnSubtotals: true,
+                        }
+                    }]
+                });
+            });
+
+            it("general: no properties", () => {
+                let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ],
+                            objects: {
+                                general: {
+                                }
+                            }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                let objects = v.enumerateObjectInstances({ objectName: "general" });
+                expect(objects).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            rowSubtotals: true,
+                            columnSubtotals: true,
+                        }
+                    }]
+                });
+            });
+
+            it("general: autoSizeColumnWidth off", () => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                let objects = {
+                    general: {
                         autoSizeColumnWidth: false,
                         textSize: 8,
                         rowSubtotals: true,
                         columnSubtotals: true,
                     }
-                }]
+                };
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
+                v.onDataChanged({ dataViews: [dataView] });
+                expect(v.enumerateObjectInstances({ objectName: "general" })).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: false,
+                            textSize: 8,
+                            rowSubtotals: true,
+                            columnSubtotals: true,
+                        }
+                    }]
+                });
             });
-        });
 
-        it("general: autoSizeColumnWidth on", () => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            let objects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true
-                }
-            };
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            v.onDataChanged({ dataViews: [dataView] });
-
-            expect(v.enumerateObjectInstances({ objectName: "general" })).toEqual({
-                instances: [{
-                    selector: null,
-                    objectName: "general",
-                    properties: {
-                        autoSizeColumnWidth: true,
-                        textSize: 8,
+            it("general: autoSizeColumnWidth on", () => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                let objects = {
+                    general: {
                         rowSubtotals: true,
                         columnSubtotals: true,
+                        autoSizeColumnWidth: true
                     }
-                }]
-            });
-        });
-    });
+                };
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
+                v.onDataChanged({ dataViews: [dataView] });
 
-    describe("Matrix DOM validation", () => {
-        let v: powerbi.IVisual,
-            element: JQuery,
-            ContainerClassName = 'tablixCanvas';
-
-        beforeEach(() => {
-            element = powerbitests.helpers.testDom("1500", "1500");
-            element["visible"] = () => { return true; };
-            v = new Matrix();
-            v.init({
-                element: element,
-                host: mocks.createVisualHostServices(),
-                style: powerbi.visuals.visualStyles.create(),
-                viewport: {
-                    height: element.height(),
-                    width: element.width()
-                },
-                animation:
-                {
-                    transitionImmediate: true
-                },
-                interactivity: {
-                    selection: true
-                }
+                expect(v.enumerateObjectInstances({ objectName: "general" })).toEqual({
+                    instances: [{
+                        selector: null,
+                        objectName: "general",
+                        properties: {
+                            autoSizeColumnWidth: true,
+                            textSize: 8,
+                            rowSubtotals: true,
+                            columnSubtotals: true,
+                        }
+                    }]
+                });
             });
         });
 
-        function validateSortIcons(expectedValues: string[]): void {
-            tablixHelper.validateSortIconClassNames(expectedValues, ".tablixCanvas tr");
-        }
+        describe("Matrix DOM validation", () => {
+            let v: powerbi.IVisual,
+                element: JQuery,
+                ContainerClassName = 'tablixCanvas';
 
-        function validateMatrix(expectedValues: PrimitiveValue[][]): void {
-            tablixHelper.validateMatrix(<string[][]>expectedValues, ".tablixCanvas tr");
-        }
+            beforeEach(() => {
+                element = powerbitests.helpers.testDom("1500", "1500");
+                element["visible"] = () => { return true; };
+                v = new Matrix();
+                v.init({
+                    element: element,
+                    host: mocks.createVisualHostServices(),
+                    style: powerbi.visuals.visualStyles.create(),
+                    viewport: {
+                        height: element.height(),
+                        width: element.width()
+                    },
+                    animation:
+                    {
+                        transitionImmediate: true
+                    },
+                    interactivity: {
+                        selection: true
+                    }
+                });
+            });
 
-        function validateMatrixTooltip(selector: string, values: powerbi.DataViewTreeNodeValue, index: number): void {
-            let matrixItems = findElementByCssClass($("tr").eq(index + 1), selector);
-            for (let i = 0; i < Object.keys(values).length; i++) {
-                expect(matrixItems[i].textContent).toBe(formatter(values[i].value, measureSource3));
-                expect(matrixItems[i].title).toBe(formatter(values[i].value, measureSource3));
+            function validateSortIcons(expectedValues: string[]): void {
+                tablixHelper.validateSortIconClassNames(expectedValues, ".tablixCanvas tr");
             }
-        }
 
-        describe('text size', () => {
-            describe('default', () => {
-                it('font size set on container', (done) => {
-                    let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
-                    v.onDataChanged({
-                        dataViews: [{
-                            metadata: {
-                                columns:
-                                [
-                                    rowGroupSource4,
-                                    columnGroupSource4,
-                                    measureSource1
-                                ],
-                                objects: {
-                                    general: {
-                                        rowSubtotals: true,
-                                        columnSubtotals: true,
-                                    }
-                                }
-                            },
-                            matrix: matrix
-                        }]
-                    });
+            function validateMatrix(expectedValues: PrimitiveValue[][]): void {
+                tablixHelper.validateTablixTextAndTooltip(<string[][]>expectedValues, ".tablixCanvas tr");
+            }
 
-                    setTimeout(() => {
-                        let actualFontSize = findElementByCssClass(element, ContainerClassName).css('font-size');
-                        tablixHelper.validateFontSize(actualFontSize, 8);
-                        done();
-                    }, DefaultWaitForRender);
-                });
+            function validateMatrixTooltip(selector: string, values: powerbi.DataViewTreeNodeValue, index: number): void {
+                let matrixItems = findElementByCssClass($("tr").eq(index + 1), selector);
+                for (let i = 0; i < Object.keys(values).length; i++) {
+                    expect(matrixItems[i].textContent).toBe(formatter(values[i].value, measureSource3));
+                    expect(matrixItems[i].title).toBe(formatter(values[i].value, measureSource3));
+                }
+            }
 
-                it("3x8 matrix with default text size row height", (done) => {
-                    let matrix = matrixThreeRowGroups;
-                    v.onDataChanged({
-                        dataViews: [{
-                            metadata: {
-                                columns:
-                                [
-                                    rowGroupSource1,
-                                    rowGroupSource2,
-                                    rowGroupSource3
-                                ]
-                            },
-                            matrix: matrix
-                        }]
-                    });
-
-                    setTimeout(() => {
-                        let cells = findElementByCssClass(element, CssClassRowHeaderLeaf);
-
-                        expect(cells.length).toBe(9);
-                        tablixHelper.validateCellHeights(cells, 13);
-
-                        done();
-                    }, DefaultWaitForRender);
-                });
-            });
-
-            describe('specified', () => {
-                it("font size set on container", (done) => {
-                    let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
-                    v.onDataChanged({
-                        dataViews: [{
-                            metadata: {
-                                columns:
-                                [
-                                    rowGroupSource4,
-                                    columnGroupSource4,
-                                    measureSource1
-                                ],
-                                objects: {
-                                    general: {
-                                        rowSubtotals: true,
-                                        columnSubtotals: true,
-                                        textSize: 18,
-                                    }
-                                }
-                            },
-                            matrix: matrix
-                        }]
-                    });
-
-                    setTimeout(() => {
-                        let actualFontSize = findElementByCssClass(element, ContainerClassName).css('font-size');
-                        tablixHelper.validateFontSize(actualFontSize, 18);
-                        done();
-                    }, DefaultWaitForRender);
-                });
-
-                it("3x8 matrix with specified text size adjusted row height", (done) => {
-                    let matrix = matrixThreeRowGroups;
-                    v.onDataChanged({
-                        dataViews: [{
-                            metadata: {
-                                columns:
-                                [
-                                    rowGroupSource1,
-                                    rowGroupSource2,
-                                    rowGroupSource3
-                                ],
-                                objects: {
-                                    general: {
-                                        rowSubtotals: true,
-                                        columnSubtotals: true,
-                                        textSize: 14,
+            describe('text size', () => {
+                describe('default', () => {
+                    it('font size set on container', (done) => {
+                        let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
+                        v.onDataChanged({
+                            dataViews: [{
+                                metadata: {
+                                    columns:
+                                    [
+                                        rowGroupSource4,
+                                        columnGroupSource4,
+                                        measureSource1
+                                    ],
+                                    objects: {
+                                        general: {
+                                            rowSubtotals: true,
+                                            columnSubtotals: true,
+                                        }
                                     }
                                 },
-                            },
-                            matrix: matrix
-                        }]
-                    });
+                                matrix: matrix
+                            }]
+                        });
 
-                    setTimeout(() => {
-                        let cells = findElementByCssClass(element, CssClassRowHeaderLeaf);
-
-                        expect(cells.length).toBe(9);
-                        tablixHelper.validateCellHeights(cells, 25);
-
-                        done();
-                    }, DefaultWaitForRender);
-                });
-
-                it("6x9 matrix with text size does not crop columns by minimum column width", (done) => {
-                    v.onDataChanged({
-                        dataViews: [matrixThreeMeasuresThreeRowGroupsDataViewIncreasedFontSize]
-                    });
-
-                    let matrix = matrixThreeMeasuresThreeRowGroups;
-                    setTimeout(() => {
-                        // All columns will be visible since this is not dashboard
-                        let header_1 = matrix.rows.root.children[0];
-                        let header_1_1 = header_1.children[0];
-                        let header_1_1_1 = header_1_1.children[0];
-                        let header_1_1_2 = header_1_1.children[1];
-                        let header_1_2 = header_1.children[1];
-                        let header_1_2_1 = header_1_2.children[0];
-                        let header_1_2_2 = header_1_2.children[1];
-                        let header_2 = matrix.rows.root.children[1];
-                        let header_2_1 = header_2.children[0];
-                        let header_2_1_1 = header_2_1.children[0];
-                        let header_2_1_2 = header_2_1.children[1];
-                        let header_2_2 = header_2.children[1];
-                        let header_2_2_1 = header_2_2.children[0];
-                        let header_2_2_2 = header_2_2.children[1];
-                        let cellValue1 = formatter(header_1_1_1.values[0].value, measureSource1);
-                        let cellValue2 = formatter(header_1_1_1.values[1].value, measureSource2);
-                        let cellValue3 = formatter(header_1_1_1.values[2].value, measureSource3);
-                        let cellValue4 = formatter(header_1_1_2.values[0].value, measureSource1);
-                        let cellValue5 = formatter(header_1_1_2.values[1].value, measureSource2);
-                        let cellValue6 = formatter(header_1_1_2.values[2].value, measureSource3);
-                        let cellValue7 = formatter(header_1_2_1.values[0].value, measureSource1);
-                        let cellValue8 = formatter(header_1_2_1.values[1].value, measureSource2);
-                        let cellValue9 = formatter(header_1_2_1.values[2].value, measureSource3);
-                        let cellValue10 = formatter(header_1_2_2.values[0].value, measureSource1);
-                        let cellValue11 = formatter(header_1_2_2.values[1].value, measureSource2);
-                        let cellValue12 = formatter(header_1_2_2.values[2].value, measureSource3);
-                        let cellValue13 = formatter(header_2_1_1.values[0].value, measureSource1);
-                        let cellValue14 = formatter(header_2_1_1.values[1].value, measureSource2);
-                        let cellValue15 = formatter(header_2_1_1.values[2].value, measureSource3);
-                        let cellValue16 = formatter(header_2_1_2.values[0].value, measureSource1);
-                        let cellValue17 = formatter(header_2_1_2.values[1].value, measureSource2);
-                        let cellValue18 = formatter(header_2_1_2.values[2].value, measureSource3);
-                        let cellValue19 = formatter(header_2_2_1.values[0].value, measureSource1);
-                        let cellValue20 = formatter(header_2_2_1.values[1].value, measureSource2);
-                        let cellValue21 = formatter(header_2_2_1.values[2].value, measureSource3);
-                        let cellValue22 = formatter(header_2_2_2.values[0].value, measureSource1);
-                        let cellValue23 = formatter(header_2_2_2.values[1].value, measureSource2);
-                        let cellValue24 = formatter(header_2_2_2.values[2].value, measureSource3);
-
-                        let expectedCells: PrimitiveValue[][] = [
-                            [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, measureSource1.displayName, measureSource2.displayName, measureSource3.displayName, ""],
-                            [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value, cellValue1, cellValue2, cellValue3],
-                            [header_1_1_2.levelValues[0].value, cellValue4, cellValue5, cellValue6],
-                            [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value, cellValue7, cellValue8, cellValue9],
-                            [header_1_2_2.levelValues[0].value, cellValue10, cellValue11, cellValue12],
-                            [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value, cellValue13, cellValue14, cellValue15],
-                            [header_2_1_2.levelValues[0].value, cellValue16, cellValue17, cellValue18],
-                            [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value, cellValue19, cellValue20, cellValue21],
-                            [header_2_2_2.levelValues[0].value, cellValue22, cellValue23, cellValue24]
-                        ];
-
-                        validateMatrix(expectedCells);
-                        done();
-                    }, DefaultWaitForRender);
-                });
-            });
-        });
-
-        it("resize with autoSizeColumnwidth on", (done) => {
-            let selector = ".tablixCanvas tr";
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            let objects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true,
-                }
-            };
-
-            let newMeasureSource1: DataViewMetadataColumn = { displayName: "Measure1", queryName: "Measure1", type: dataTypeNumber, isMeasure: true, index: 7, objects: { general: { formatString: "#.00", columnWidth: 45 } } };
-            let columns = [
-                rowGroupSource1,
-                rowGroupSource2,
-                columnGroupSource1,
-                columnGroupSource2,
-                newMeasureSource1,
-                measureSource2
-            ];
-            let dataView = getMatrixColumnWidthDataView2(columns, matrix, objects);
-            setIsInteractive(v, true);
-            v.onDataChanged({ dataViews: [dataView] });
-            setTimeout(() => {
-                let rows = $(selector);
-                let rowCells = rows.eq(2).find('td');
-                expect(rowCells.length).toBe(16);
-                expect(rowCells.eq(2).children(0).width()).toBe(45);
-                expect(rowCells.eq(4).children(0).width()).toBe(45);
-                expect(rowCells.eq(6).children(0).width()).toBe(45);
-                expect(rowCells.eq(8).children(0).width()).toBe(45);
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("autoSizeColumnwidth on to off then resize", (done) => {
-            let selector = ".tablixCanvas tr";
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            let objects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true,
-                }
-            };
-            let dataView = getMatrixColumnWidthDataView(matrix, objects);
-            setIsInteractive(v, true);
-
-            v.onDataChanged({
-                dataViews: [dataView]
-            });
-            setTimeout(() => {
-                let matrixVisual = <Matrix>v;
-
-                expect(matrixVisual.persistingObjects).toBe(false);
-
-                let columns = [
-                    createColumnWithWidth(rowGroupSource1, 74),
-                    createColumnWithWidth(rowGroupSource2, 68),
-                    columnGroupSource1,
-                    columnGroupSource2,
-                    createColumnWithWidth(measureSource1, 25),
-                    createColumnWithWidth(measureSource2, 48),
-                ];
-
-                let dataView2 = getMatrixColumnWidthDataView2(columns, matrix, objects);
-                v.onDataChanged({
-                    dataViews: [dataView2]
-                });
-                setTimeout(() => {
-                    expect(matrixVisual.persistingObjects).toBe(false);
-                    let rows = $(selector);
-                    let rowCells = rows.eq(2).find('td');
-                    expect(rowCells.eq(0).children(0).width()).toBe(74);
-                    expect(rowCells.eq(1).children(0).width()).toBe(68);
-                    expect(rowCells.eq(2).children(0).width()).toBe(25);
-                    expect(rowCells.eq(3).children(0).width()).toBe(48);
-                    expect(rowCells.eq(4).children(0).width()).toBe(25);
-                    expect(rowCells.eq(5).children(0).width()).toBe(48);
-                    expect(rowCells.eq(6).children(0).width()).toBe(25);
-                    expect(rowCells.eq(7).children(0).width()).toBe(48);
-
-                    let columns = [
-                        createColumnWithWidth(rowGroupSource1, 74),
-                        createColumnWithWidth(rowGroupSource2, 68),
-                        columnGroupSource1,
-                        columnGroupSource2,
-                        createColumnWithWidth(measureSource1, 200),
-                        createColumnWithWidth(measureSource2, 48),
-                    ];
-                    let dataView3 = getMatrixColumnWidthDataView2(columns, matrix, objects);
-                    setIsInteractive(v, true);
-                    v.onDataChanged({ dataViews: [dataView3] });
-                    setTimeout(() => {
-                        v.onDataChanged({ dataViews: [dataView3] });
                         setTimeout(() => {
-
-                            let rows1 = $(selector);
-                            let rowCells1 = rows1.eq(2).find('td');
-                            expect(rowCells1.eq(0).children(0).width()).toBe(74);
-                            expect(rowCells1.eq(1).children(0).width()).toBe(68);
-                            expect(rowCells1.eq(2).children(0).width()).toBe(200);
-                            expect(rowCells1.eq(3).children(0).width()).toBe(48);
-                            expect(rowCells1.eq(4).children(0).width()).toBe(200);
-                            expect(rowCells1.eq(5).children(0).width()).toBe(48);
-                            expect(rowCells1.eq(6).children(0).width()).toBe(200);
-                            expect(rowCells1.eq(7).children(0).width()).toBe(48);
+                            let actualFontSize = findElementByCssClass(element, ContainerClassName).css('font-size');
+                            tablixHelper.validateFontSize(actualFontSize, 8);
                             done();
                         }, DefaultWaitForRender);
-                    }, DefaultWaitForRender);
-                }, DefaultWaitForRender);
-            }, DefaultWaitForRender);
-        });
+                    });
 
-        it("autoSizeColumnwidth off to on", (done) => {
-            let selector = ".tablixCanvas tr";
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            let objects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: false,
-                }
-            };
-            let newMeasureSource1: DataViewMetadataColumn = { displayName: "Measure2", queryName: "Measure2", type: dataTypeNumber, isMeasure: true, index: 7, objects: { general: { formatString: "#.00", columnWidth: 45 } } };
-            let columns = [
-                rowGroupSource1,
-                rowGroupSource2,
-                columnGroupSource1,
-                columnGroupSource2,
-                newMeasureSource1,
-                measureSource2
-            ];
-            let dataView = getMatrixColumnWidthDataView2(columns, matrix, objects);
-            v.onDataChanged({
-                dataViews: [dataView]
+                    it("3x8 matrix with default text size row height", (done) => {
+                        let matrix = matrixThreeRowGroups;
+                        v.onDataChanged({
+                            dataViews: [{
+                                metadata: {
+                                    columns:
+                                    [
+                                        rowGroupSource1,
+                                        rowGroupSource2,
+                                        rowGroupSource3
+                                    ]
+                                },
+                                matrix: matrix
+                            }]
+                        });
+
+                        setTimeout(() => {
+                            let cells = findElementByCssClass(element, CssClassRowHeaderLeaf);
+
+                            expect(cells.length).toBe(9);
+                            tablixHelper.validateCellHeights(cells, 13);
+
+                            done();
+                        }, DefaultWaitForRender);
+                    });
+                });
+
+                describe('specified', () => {
+                    it("font size set on container", (done) => {
+                        let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
+                        v.onDataChanged({
+                            dataViews: [{
+                                metadata: {
+                                    columns:
+                                    [
+                                        rowGroupSource4,
+                                        columnGroupSource4,
+                                        measureSource1
+                                    ],
+                                    objects: {
+                                        general: {
+                                            rowSubtotals: true,
+                                            columnSubtotals: true,
+                                            textSize: 18,
+                                        }
+                                    }
+                                },
+                                matrix: matrix
+                            }]
+                        });
+
+                        setTimeout(() => {
+                            let actualFontSize = findElementByCssClass(element, ContainerClassName).css('font-size');
+                            tablixHelper.validateFontSize(actualFontSize, 18);
+                            done();
+                        }, DefaultWaitForRender);
+                    });
+
+                    it("3x8 matrix with specified text size adjusted row height", (done) => {
+                        let matrix = matrixThreeRowGroups;
+                        v.onDataChanged({
+                            dataViews: [{
+                                metadata: {
+                                    columns:
+                                    [
+                                        rowGroupSource1,
+                                        rowGroupSource2,
+                                        rowGroupSource3
+                                    ],
+                                    objects: {
+                                        general: {
+                                            rowSubtotals: true,
+                                            columnSubtotals: true,
+                                            textSize: 14,
+                                        }
+                                    },
+                                },
+                                matrix: matrix
+                            }]
+                        });
+
+                        setTimeout(() => {
+                            let cells = findElementByCssClass(element, CssClassRowHeaderLeaf);
+
+                            expect(cells.length).toBe(9);
+                            tablixHelper.validateCellHeights(cells, 25);
+
+                            done();
+                        }, DefaultWaitForRender);
+                    });
+
+                    it("6x9 matrix with text size does not crop columns by minimum column width", (done) => {
+                        v.onDataChanged({
+                            dataViews: [matrixThreeMeasuresThreeRowGroupsDataViewIncreasedFontSize]
+                        });
+
+                        let matrix = matrixThreeMeasuresThreeRowGroups;
+                        setTimeout(() => {
+                            // All columns will be visible since this is not dashboard
+                            let header_1 = matrix.rows.root.children[0];
+                            let header_1_1 = header_1.children[0];
+                            let header_1_1_1 = header_1_1.children[0];
+                            let header_1_1_2 = header_1_1.children[1];
+                            let header_1_2 = header_1.children[1];
+                            let header_1_2_1 = header_1_2.children[0];
+                            let header_1_2_2 = header_1_2.children[1];
+                            let header_2 = matrix.rows.root.children[1];
+                            let header_2_1 = header_2.children[0];
+                            let header_2_1_1 = header_2_1.children[0];
+                            let header_2_1_2 = header_2_1.children[1];
+                            let header_2_2 = header_2.children[1];
+                            let header_2_2_1 = header_2_2.children[0];
+                            let header_2_2_2 = header_2_2.children[1];
+                            let cellValue1 = formatter(header_1_1_1.values[0].value, measureSource1);
+                            let cellValue2 = formatter(header_1_1_1.values[1].value, measureSource2);
+                            let cellValue3 = formatter(header_1_1_1.values[2].value, measureSource3);
+                            let cellValue4 = formatter(header_1_1_2.values[0].value, measureSource1);
+                            let cellValue5 = formatter(header_1_1_2.values[1].value, measureSource2);
+                            let cellValue6 = formatter(header_1_1_2.values[2].value, measureSource3);
+                            let cellValue7 = formatter(header_1_2_1.values[0].value, measureSource1);
+                            let cellValue8 = formatter(header_1_2_1.values[1].value, measureSource2);
+                            let cellValue9 = formatter(header_1_2_1.values[2].value, measureSource3);
+                            let cellValue10 = formatter(header_1_2_2.values[0].value, measureSource1);
+                            let cellValue11 = formatter(header_1_2_2.values[1].value, measureSource2);
+                            let cellValue12 = formatter(header_1_2_2.values[2].value, measureSource3);
+                            let cellValue13 = formatter(header_2_1_1.values[0].value, measureSource1);
+                            let cellValue14 = formatter(header_2_1_1.values[1].value, measureSource2);
+                            let cellValue15 = formatter(header_2_1_1.values[2].value, measureSource3);
+                            let cellValue16 = formatter(header_2_1_2.values[0].value, measureSource1);
+                            let cellValue17 = formatter(header_2_1_2.values[1].value, measureSource2);
+                            let cellValue18 = formatter(header_2_1_2.values[2].value, measureSource3);
+                            let cellValue19 = formatter(header_2_2_1.values[0].value, measureSource1);
+                            let cellValue20 = formatter(header_2_2_1.values[1].value, measureSource2);
+                            let cellValue21 = formatter(header_2_2_1.values[2].value, measureSource3);
+                            let cellValue22 = formatter(header_2_2_2.values[0].value, measureSource1);
+                            let cellValue23 = formatter(header_2_2_2.values[1].value, measureSource2);
+                            let cellValue24 = formatter(header_2_2_2.values[2].value, measureSource3);
+
+                            let expectedCells: PrimitiveValue[][] = [
+                                [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, measureSource1.displayName, measureSource2.displayName, measureSource3.displayName, ""],
+                                [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value, cellValue1, cellValue2, cellValue3],
+                                [header_1_1_2.levelValues[0].value, cellValue4, cellValue5, cellValue6],
+                                [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value, cellValue7, cellValue8, cellValue9],
+                                [header_1_2_2.levelValues[0].value, cellValue10, cellValue11, cellValue12],
+                                [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value, cellValue13, cellValue14, cellValue15],
+                                [header_2_1_2.levelValues[0].value, cellValue16, cellValue17, cellValue18],
+                                [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value, cellValue19, cellValue20, cellValue21],
+                                [header_2_2_2.levelValues[0].value, cellValue22, cellValue23, cellValue24]
+                            ];
+
+                            validateMatrix(expectedCells);
+                            done();
+                        }, DefaultWaitForRender);
+                    });
+                });
             });
-            setTimeout(() => {
-                let rows = $(selector);
-                let rowCells = rows.eq(2).find('td');
-                expect(rowCells.eq(4).width()).toBeCloseTo(63, -1);
-                expect(rowCells.eq(5).width()).toBeCloseTo(48, -1);
-                expect(rowCells.eq(6).width()).toBeCloseTo(64, -1);
 
+            it("resize with autoSizeColumnwidth on", (done) => {
+                let selector = ".tablixCanvas tr";
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
                 let objects = {
                     general: {
                         rowSubtotals: true,
@@ -4745,106 +4659,222 @@ module powerbitests {
                         autoSizeColumnWidth: true,
                     }
                 };
-                let dataView2 = getMatrixColumnWidthDataView(matrix, objects);
-                let matrixVisual = <Matrix>v;
-                matrixVisual.persistingObjects = false;
+
+                let newMeasureSource1: DataViewMetadataColumn = { displayName: "Measure1", queryName: "Measure1", type: dataTypeNumber, isMeasure: true, index: 7, objects: { general: { formatString: "#.00", columnWidth: 45 } } };
+                let columns = [
+                    rowGroupSource1,
+                    rowGroupSource2,
+                    columnGroupSource1,
+                    columnGroupSource2,
+                    newMeasureSource1,
+                    measureSource2
+                ];
+                let dataView = getMatrixColumnWidthDataView2(columns, matrix, objects);
+                setIsInteractive(v, true);
+                v.onDataChanged({ dataViews: [dataView] });
+                setTimeout(() => {
+                    let rows = $(selector);
+                    let rowCells = rows.eq(2).find('td');
+                    expect(rowCells.length).toBe(16);
+                    expect(rowCells.eq(2).children(0).width()).toBe(45);
+                    expect(rowCells.eq(4).children(0).width()).toBe(45);
+                    expect(rowCells.eq(6).children(0).width()).toBe(45);
+                    expect(rowCells.eq(8).children(0).width()).toBe(45);
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("autoSizeColumnwidth on to off then resize", (done) => {
+                let selector = ".tablixCanvas tr";
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                let objects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: true,
+                    }
+                };
+                let dataView = getMatrixColumnWidthDataView(matrix, objects);
+                setIsInteractive(v, true);
+
                 v.onDataChanged({
-                    dataViews: [dataView2]
+                    dataViews: [dataView]
+                });
+                setTimeout(() => {
+                    let matrixVisual = <Matrix>v;
+
+                    expect(matrixVisual.persistingObjects).toBe(false);
+
+                    let columns = [
+                        createColumnWithWidth(rowGroupSource1, 74),
+                        createColumnWithWidth(rowGroupSource2, 68),
+                        columnGroupSource1,
+                        columnGroupSource2,
+                        createColumnWithWidth(measureSource1, 25),
+                        createColumnWithWidth(measureSource2, 48),
+                    ];
+
+                    let dataView2 = getMatrixColumnWidthDataView2(columns, matrix, objects);
+                    v.onDataChanged({
+                        dataViews: [dataView2]
+                    });
+                    setTimeout(() => {
+                        expect(matrixVisual.persistingObjects).toBe(false);
+                        let rows = $(selector);
+                        let rowCells = rows.eq(2).find('td');
+                        expect(rowCells.eq(0).children(0).width()).toBe(74);
+                        expect(rowCells.eq(1).children(0).width()).toBe(68);
+                        expect(rowCells.eq(2).children(0).width()).toBe(25);
+                        expect(rowCells.eq(3).children(0).width()).toBe(48);
+                        expect(rowCells.eq(4).children(0).width()).toBe(25);
+                        expect(rowCells.eq(5).children(0).width()).toBe(48);
+                        expect(rowCells.eq(6).children(0).width()).toBe(25);
+                        expect(rowCells.eq(7).children(0).width()).toBe(48);
+
+                        let columns = [
+                            createColumnWithWidth(rowGroupSource1, 74),
+                            createColumnWithWidth(rowGroupSource2, 68),
+                            columnGroupSource1,
+                            columnGroupSource2,
+                            createColumnWithWidth(measureSource1, 200),
+                            createColumnWithWidth(measureSource2, 48),
+                        ];
+                        let dataView3 = getMatrixColumnWidthDataView2(columns, matrix, objects);
+                        setIsInteractive(v, true);
+                        v.onDataChanged({ dataViews: [dataView3] });
+                        setTimeout(() => {
+                            v.onDataChanged({ dataViews: [dataView3] });
+                            setTimeout(() => {
+
+                                let rows1 = $(selector);
+                                let rowCells1 = rows1.eq(2).find('td');
+                                expect(rowCells1.eq(0).children(0).width()).toBe(74);
+                                expect(rowCells1.eq(1).children(0).width()).toBe(68);
+                                expect(rowCells1.eq(2).children(0).width()).toBe(200);
+                                expect(rowCells1.eq(3).children(0).width()).toBe(48);
+                                expect(rowCells1.eq(4).children(0).width()).toBe(200);
+                                expect(rowCells1.eq(5).children(0).width()).toBe(48);
+                                expect(rowCells1.eq(6).children(0).width()).toBe(200);
+                                expect(rowCells1.eq(7).children(0).width()).toBe(48);
+                                done();
+                            }, DefaultWaitForRender);
+                        }, DefaultWaitForRender);
+                    }, DefaultWaitForRender);
+                }, DefaultWaitForRender);
+            });
+
+            it("autoSizeColumnwidth off to on", (done) => {
+                let selector = ".tablixCanvas tr";
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                let objects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: false,
+                    }
+                };
+                let newMeasureSource1: DataViewMetadataColumn = { displayName: "Measure2", queryName: "Measure2", type: dataTypeNumber, isMeasure: true, index: 7, objects: { general: { formatString: "#.00", columnWidth: 45 } } };
+                let columns = [
+                    rowGroupSource1,
+                    rowGroupSource2,
+                    columnGroupSource1,
+                    columnGroupSource2,
+                    newMeasureSource1,
+                    measureSource2
+                ];
+                let dataView = getMatrixColumnWidthDataView2(columns, matrix, objects);
+                v.onDataChanged({
+                    dataViews: [dataView]
                 });
                 setTimeout(() => {
                     let rows = $(selector);
                     let rowCells = rows.eq(2).find('td');
                     expect(rowCells.eq(4).width()).toBeCloseTo(63, -1);
-                    expect(rowCells.eq(5).width()).toBeCloseTo(65, -1);
+                    expect(rowCells.eq(5).width()).toBeCloseTo(48, -1);
                     expect(rowCells.eq(6).width()).toBeCloseTo(64, -1);
-                    done();
+
+                    let objects = {
+                        general: {
+                            rowSubtotals: true,
+                            columnSubtotals: true,
+                            autoSizeColumnWidth: true,
+                        }
+                    };
+                    let dataView2 = getMatrixColumnWidthDataView(matrix, objects);
+                    let matrixVisual = <Matrix>v;
+                    matrixVisual.persistingObjects = false;
+                    v.onDataChanged({
+                        dataViews: [dataView2]
+                    });
+                    setTimeout(() => {
+                        let rows = $(selector);
+                        let rowCells = rows.eq(2).find('td');
+                        expect(rowCells.eq(4).width()).toBeCloseTo(63, -1);
+                        expect(rowCells.eq(5).width()).toBeCloseTo(65, -1);
+                        expect(rowCells.eq(6).width()).toBeCloseTo(64, -1);
+                        done();
+                    }, DefaultWaitForRender);
                 }, DefaultWaitForRender);
-            }, DefaultWaitForRender);
-        });
+            });
 
-        it("multiple onDataChangedCalls to add matrix columns + resize", (done) => {
-            let selector = ".tablixCanvas tr";
-            let matrix0 = matrixOneMeasure;
-            let objects: powerbi.DataViewObjects = {
-                general: {
-                    rowSubtotals: true,
-                    columnSubtotals: true,
-                    autoSizeColumnWidth: true,
-                }
-            };
+            it("multiple onDataChangedCalls to add matrix columns + resize", (done) => {
+                let selector = ".tablixCanvas tr";
+                let matrix0 = matrixOneMeasure;
+                let objects: powerbi.DataViewObjects = {
+                    general: {
+                        rowSubtotals: true,
+                        columnSubtotals: true,
+                        autoSizeColumnWidth: true,
+                    }
+                };
 
-            let colWidthObjs: Controls.ColumnWidthCollection;
+                let colWidthObjs: Controls.ColumnWidthCollection;
 
-            let dataView0 = getMatrixColumnWidthDataView2([measureSource1], matrix0, objects);
-            // 1st onDataChanged call with one column in matrix
-            setIsInteractive(v, true);
-            v.onDataChanged({ dataViews: [dataView0] });
-            setTimeout(() => {
-                let matrixVisual = <Matrix>v;
-                let columnWidthManager = matrixVisual.getColumnWidthManager();
-                let rows0 = $(selector);
-                let rowCells0 = rows0.eq(0).find('td');
-                colWidthObjs = columnWidthManager.getColumnWidthObjects();
-                expect(Object.getOwnPropertyNames(colWidthObjs)).toHaveLength(1);
-                expect(colWidthObjs.hasOwnProperty("Measure1")).toBe(true);
-                expect(colWidthObjs["Measure1"].isFixed).toBe(false);
-                expect(colWidthObjs["Measure1"].width).toBeUndefined();
-                expect(rowCells0.eq(1).children(0).width()).toEqual(65);
-                let matrix1 = matrixTwoMeasures;
-                let dataView1 = getMatrixColumnWidthDataView2(
-                    [measureSource1, measureSource2],
-                    matrix1, objects);
-                v.onDataChanged({ dataViews: [dataView1] });
+                let dataView0 = getMatrixColumnWidthDataView2([measureSource1], matrix0, objects);
+                // 1st onDataChanged call with one column in matrix
+                setIsInteractive(v, true);
+                v.onDataChanged({ dataViews: [dataView0] });
                 setTimeout(() => {
-                    let rows1 = $(selector);
-                    let rowCells1 = rows1.eq(0).find('td');
-
+                    let matrixVisual = <Matrix>v;
+                    let columnWidthManager = matrixVisual.getColumnWidthManager();
+                    let rows0 = $(selector);
+                    let rowCells0 = rows0.eq(0).find('td');
                     colWidthObjs = columnWidthManager.getColumnWidthObjects();
-                    expect(Object.getOwnPropertyNames(colWidthObjs)).toHaveLength(2);
+                    expect(Object.getOwnPropertyNames(colWidthObjs)).toHaveLength(1);
                     expect(colWidthObjs.hasOwnProperty("Measure1")).toBe(true);
                     expect(colWidthObjs["Measure1"].isFixed).toBe(false);
                     expect(colWidthObjs["Measure1"].width).toBeUndefined();
-                    expect(colWidthObjs.hasOwnProperty("Measure2")).toBe(true);
-                    expect(colWidthObjs["Measure2"].isFixed).toBe(false);
-                    expect(colWidthObjs["Measure2"].width).toBeUndefined();
-                    expect(rowCells1.eq(1).children(0).width()).toEqual(65);
-                    expect(rowCells1.eq(2).children(0).width()).toEqual(65);
-
-                    // 3rd onDataChanged call with three columns in matrix
-                    let matrix2 = matrixThreeMeasures;
-                    let dataView2 = getMatrixColumnWidthDataView2(
-                        [measureSource1, measureSource2, measureSource3],
-                        matrix2, objects);
-                    v.onDataChanged({ dataViews: [dataView2] });
-
+                    expect(rowCells0.eq(1).children(0).width()).toEqual(65);
+                    let matrix1 = matrixTwoMeasures;
+                    let dataView1 = getMatrixColumnWidthDataView2(
+                        [measureSource1, measureSource2],
+                        matrix1, objects);
+                    v.onDataChanged({ dataViews: [dataView1] });
                     setTimeout(() => {
-                        let rows2 = $(selector);
-                        let rowCells2 = rows2.eq(0).find('td');
+                        let rows1 = $(selector);
+                        let rowCells1 = rows1.eq(0).find('td');
 
                         colWidthObjs = columnWidthManager.getColumnWidthObjects();
-                        expect(Object.getOwnPropertyNames(colWidthObjs)).toHaveLength(3);
+                        expect(Object.getOwnPropertyNames(colWidthObjs)).toHaveLength(2);
                         expect(colWidthObjs.hasOwnProperty("Measure1")).toBe(true);
                         expect(colWidthObjs["Measure1"].isFixed).toBe(false);
                         expect(colWidthObjs["Measure1"].width).toBeUndefined();
                         expect(colWidthObjs.hasOwnProperty("Measure2")).toBe(true);
                         expect(colWidthObjs["Measure2"].isFixed).toBe(false);
                         expect(colWidthObjs["Measure2"].width).toBeUndefined();
-                        expect(colWidthObjs.hasOwnProperty("Measure3")).toBe(true);
-                        expect(colWidthObjs["Measure3"].isFixed).toBe(false);
-                        expect(colWidthObjs["Measure3"].width).toBeUndefined();
+                        expect(rowCells1.eq(1).children(0).width()).toEqual(65);
+                        expect(rowCells1.eq(2).children(0).width()).toEqual(65);
 
-                        expect(rowCells2.eq(1).children(0).width()).toEqual(65);
-                        expect(rowCells2.eq(2).children(0).width()).toEqual(65);
-                        expect(rowCells2.eq(3).children(0).width()).toEqual(65);
+                        // 3rd onDataChanged call with three columns in matrix
+                        let matrix2 = matrixThreeMeasures;
+                        let dataView2 = getMatrixColumnWidthDataView2(
+                            [measureSource1, measureSource2, measureSource3],
+                            matrix2, objects);
+                        v.onDataChanged({ dataViews: [dataView2] });
 
-                        // Send column #2 as resized
-                        let newmeasuresource = createColumnWithWidth(measureSource2, 120);
-                        let columns = [measureSource1, newmeasuresource, measureSource3];
-                        let dataview3 = getMatrixColumnWidthDataView2(columns, matrix2, objects);
-                        v.onDataChanged({ dataViews: [dataview3] });
                         setTimeout(() => {
-                            let rows3 = $(selector);
-                            let rowcells3 = rows3.eq(1).find('td');
+                            let rows2 = $(selector);
+                            let rowCells2 = rows2.eq(0).find('td');
 
                             colWidthObjs = columnWidthManager.getColumnWidthObjects();
                             expect(Object.getOwnPropertyNames(colWidthObjs)).toHaveLength(3);
@@ -4852,2110 +4882,2600 @@ module powerbitests {
                             expect(colWidthObjs["Measure1"].isFixed).toBe(false);
                             expect(colWidthObjs["Measure1"].width).toBeUndefined();
                             expect(colWidthObjs.hasOwnProperty("Measure2")).toBe(true);
-                            expect(colWidthObjs["Measure2"].isFixed).toBe(true);
-                            expect(colWidthObjs["Measure2"].width).toBe(120);
+                            expect(colWidthObjs["Measure2"].isFixed).toBe(false);
+                            expect(colWidthObjs["Measure2"].width).toBeUndefined();
                             expect(colWidthObjs.hasOwnProperty("Measure3")).toBe(true);
                             expect(colWidthObjs["Measure3"].isFixed).toBe(false);
                             expect(colWidthObjs["Measure3"].width).toBeUndefined();
 
-                            expect(rowcells3.eq(1).children(0).width()).toEqual(65);
-                            expect(rowcells3.eq(2).children(0).width()).toEqual(120);
-                            expect(rowcells3.eq(3).children(0).width()).toEqual(65);
+                            expect(rowCells2.eq(1).children(0).width()).toEqual(65);
+                            expect(rowCells2.eq(2).children(0).width()).toEqual(65);
+                            expect(rowCells2.eq(3).children(0).width()).toEqual(65);
 
-                            done();
+                            // Send column #2 as resized
+                            let newmeasuresource = createColumnWithWidth(measureSource2, 120);
+                            let columns = [measureSource1, newmeasuresource, measureSource3];
+                            let dataview3 = getMatrixColumnWidthDataView2(columns, matrix2, objects);
+                            v.onDataChanged({ dataViews: [dataview3] });
+                            setTimeout(() => {
+                                let rows3 = $(selector);
+                                let rowcells3 = rows3.eq(1).find('td');
+
+                                colWidthObjs = columnWidthManager.getColumnWidthObjects();
+                                expect(Object.getOwnPropertyNames(colWidthObjs)).toHaveLength(3);
+                                expect(colWidthObjs.hasOwnProperty("Measure1")).toBe(true);
+                                expect(colWidthObjs["Measure1"].isFixed).toBe(false);
+                                expect(colWidthObjs["Measure1"].width).toBeUndefined();
+                                expect(colWidthObjs.hasOwnProperty("Measure2")).toBe(true);
+                                expect(colWidthObjs["Measure2"].isFixed).toBe(true);
+                                expect(colWidthObjs["Measure2"].width).toBe(120);
+                                expect(colWidthObjs.hasOwnProperty("Measure3")).toBe(true);
+                                expect(colWidthObjs["Measure3"].isFixed).toBe(false);
+                                expect(colWidthObjs["Measure3"].width).toBeUndefined();
+
+                                expect(rowcells3.eq(1).children(0).width()).toEqual(65);
+                                expect(rowcells3.eq(2).children(0).width()).toEqual(120);
+                                expect(rowcells3.eq(3).children(0).width()).toEqual(65);
+
+                                done();
+                            }, DefaultWaitForRender);
                         }, DefaultWaitForRender);
                     }, DefaultWaitForRender);
                 }, DefaultWaitForRender);
-            }, DefaultWaitForRender);
-        });
-
-        it("1x2 matrix (value and static column header)", (done) => {
-
-            let matrix = matrixOneMeasure;
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureDataView]
             });
 
-            setTimeout(() => {
-
-                let cellValue: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
-                let expectedCells: string[][] = [
-                    ["", measureSource1.displayName, ""],
-                    [EmptyCell, cellValue]
-                ];
-
-                validateMatrix(expectedCells);
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("1x2 matrix (value and column header value) update", (done) => {
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureDataView]
-            });
-
-            // Call onDataChanged again to trigger an update on the hierarchy navigator
-            let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureOneColumnGroupOneGroupInstanceDataView]
-            });
-
-            setTimeout(() => {
-
-                let headerValue = <string>(matrix.columns.root.children[0]).levelValues[0].value;
-                let cellValue: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
-
-                let expectedCells: string[][] = [
-                    ["", headerValue, ""],
-                    [EmptyCell, cellValue]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        // disabled
-        it("7x7 matrix (1 row and 2 columns composite with nulls)", (done) => {
-            v.onDataChanged({
-                dataViews: [matrixOneRowGroupCompositeTwoColumnGroupsCompositeOneGroupInstanceDataView]
-            });
-
-            setTimeout(() => {
-                let expectedCells: string[][] = [
-                    ["Cat, Prod", "Cat, ", ", Prod", ", ", ""],
-                    ["Lat, Long", "Blue", "Red", "Blue", "Red", "Blue", "Red"],
-                    [", ", "1.00", "2.00", "3.00", "4.00", "5.00", "6.00"],
-                    ["0.00, ", "1.10", "2.10", "3.10", "4.10", "5.10", "6.10"],
-                    [", 0.000", "1.20", "2.20", "3.20", "4.20", "5.20", "6.20"],
-                    ["0.00, 0.000", "1.30", "2.30", "3.30", "4.30", "5.30", "6.30"],
-                    ["Total", "1.40", "2.40", "3.40", "4.40", "5.40", "6.40"],
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("2x3 matrix (1 row and 2 columns no value + leading spaces) update", (done) => {
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureDataView]
-            });
-
-            // Call onDataChanged again to trigger an update on the hierarchy navigator
-            v.onDataChanged({
-                dataViews: [matrixOneRowGroupTwoColumnGroupsOneGroupInstanceLeadingSpaceDataView]
-            });
-
-            setTimeout(() => {
-                let expectedCells: string[][] = [
-                    ["    Col    Group1", "    G    C1", ""],
-                    ["    Row    Group1", "    G    C2"],
-                    ["    GR    ", ""]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x2 matrix (values and static column headers)", (done) => {
-
-            let matrix = matrixThreeMeasures;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [measureSource1, measureSource2, measureSource3] },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let cellValue1: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
-                let cellValue2: string = formatter(matrix.rows.root.children[0].values[1].value, measureSource2);
-                let cellValue3: string = formatter(matrix.rows.root.children[0].values[2].value, measureSource3);
-
-                let expectedCells: string[][] = [
-                    ["", measureSource1.displayName, measureSource2.displayName, measureSource3.displayName, ""],
-                    [EmptyCell, cellValue1, cellValue2, cellValue3]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x3 matrix (values, static and value column headers)", (done) => {
-
-            let matrix = matrixThreeMeasuresOneColumnGroupOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [columnGroupSource1, measureSource1, measureSource2, measureSource3] },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let headerValue = <string>(matrix.columns.root.children[0]).levelValues[0].value;
-
-                let cellValue1: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
-                let cellValue2: string = formatter(matrix.rows.root.children[0].values[1].value, measureSource2);
-                let cellValue3: string = formatter(matrix.rows.root.children[0].values[2].value, measureSource3);
-
-                let expectedCells: string[][] = [
-                    ["", headerValue, ""],
-                    ["", measureSource1.displayName, measureSource2.displayName, measureSource3.displayName],
-                    [EmptyCell, cellValue1, cellValue2, cellValue3]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("6x9 matrix (values, static column headers and row value headers)", (done) => {
-
-            v.onDataChanged({
-                dataViews: [matrixThreeMeasuresThreeRowGroupsDataView]
-            });
-
-            let matrix = matrixThreeMeasuresThreeRowGroups;
-            setTimeout(() => {
-
-                let header_1 = matrix.rows.root.children[0];
-                let header_1_1 = header_1.children[0];
-                let header_1_1_1 = header_1_1.children[0];
-                let header_1_1_2 = header_1_1.children[1];
-                let header_1_2 = header_1.children[1];
-                let header_1_2_1 = header_1_2.children[0];
-                let header_1_2_2 = header_1_2.children[1];
-                let header_2 = matrix.rows.root.children[1];
-                let header_2_1 = header_2.children[0];
-                let header_2_1_1 = header_2_1.children[0];
-                let header_2_1_2 = header_2_1.children[1];
-                let header_2_2 = header_2.children[1];
-                let header_2_2_1 = header_2_2.children[0];
-                let header_2_2_2 = header_2_2.children[1];
-                let cellValue1 = formatter(header_1_1_1.values[0].value, measureSource1);
-                let cellValue2 = formatter(header_1_1_1.values[1].value, measureSource2);
-                let cellValue3 = formatter(header_1_1_1.values[2].value, measureSource3);
-                let cellValue4 = formatter(header_1_1_2.values[0].value, measureSource1);
-                let cellValue5 = formatter(header_1_1_2.values[1].value, measureSource2);
-                let cellValue6 = formatter(header_1_1_2.values[2].value, measureSource3);
-                let cellValue7 = formatter(header_1_2_1.values[0].value, measureSource1);
-                let cellValue8 = formatter(header_1_2_1.values[1].value, measureSource2);
-                let cellValue9 = formatter(header_1_2_1.values[2].value, measureSource3);
-                let cellValue10 = formatter(header_1_2_2.values[0].value, measureSource1);
-                let cellValue11 = formatter(header_1_2_2.values[1].value, measureSource2);
-                let cellValue12 = formatter(header_1_2_2.values[2].value, measureSource3);
-                let cellValue13 = formatter(header_2_1_1.values[0].value, measureSource1);
-                let cellValue14 = formatter(header_2_1_1.values[1].value, measureSource2);
-                let cellValue15 = formatter(header_2_1_1.values[2].value, measureSource3);
-                let cellValue16 = formatter(header_2_1_2.values[0].value, measureSource1);
-                let cellValue17 = formatter(header_2_1_2.values[1].value, measureSource2);
-                let cellValue18 = formatter(header_2_1_2.values[2].value, measureSource3);
-                let cellValue19 = formatter(header_2_2_1.values[0].value, measureSource1);
-                let cellValue20 = formatter(header_2_2_1.values[1].value, measureSource2);
-                let cellValue21 = formatter(header_2_2_1.values[2].value, measureSource3);
-                let cellValue22 = formatter(header_2_2_2.values[0].value, measureSource1);
-                let cellValue23 = formatter(header_2_2_2.values[1].value, measureSource2);
-                let cellValue24 = formatter(header_2_2_2.values[2].value, measureSource3);
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, measureSource1.displayName, measureSource2.displayName, measureSource3.displayName, ''],
-                    [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value, cellValue1, cellValue2, cellValue3],
-                    [header_1_1_2.levelValues[0].value, cellValue4, cellValue5, cellValue6],
-                    [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value, cellValue7, cellValue8, cellValue9],
-                    [header_1_2_2.levelValues[0].value, cellValue10, cellValue11, cellValue12],
-                    [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value, cellValue13, cellValue14, cellValue15],
-                    [header_2_1_2.levelValues[0].value, cellValue16, cellValue17, cellValue18],
-                    [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value, cellValue19, cellValue20, cellValue21],
-                    [header_2_2_2.levelValues[0].value, cellValue22, cellValue23, cellValue24]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("2x2 matrix (value, static column header and row value header)", (done) => {
-
-            let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [rowGroupSource1, measureSource1] },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let header = matrix.rows.root.children[0];
-                let cellValue: string = formatter(header.values[0].value, measureSource1);
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, measureSource1.displayName, ""],
-                    [header.levelValues[0].value, cellValue]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("2x2 matrix (value, column value header and row value header, empty cell)", (done) => {
-
-            let matrix = matrixOneRowGroupOneColumnGroupOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [matrixOneRowGroupOneColumnGroupOneGroupInstanceDataView]
-            });
-
-            setTimeout(() => {
-
-                let columnHeader = matrix.columns.root.children[0];
-                let rowHeader = matrix.rows.root.children[0];
-
-                let expectedCells: string[][] = [
-                    [rowGroupSource1.displayName, columnHeader.levelValues[0].value.toString(), ""],
-                    [rowHeader.levelValues[0].value.toString(), ""]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x2 matrix (static column headers and row value headers)", (done) => {
-
-            let matrix = matrixThreeRowGroupsOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [matrixThreeRowGroupsOneGroupInstanceDataView]
-            });
-
-            setTimeout(() => {
-
-                let rowHeader_1 = matrix.rows.root.children[0];
-                let rowHeader_1_1 = rowHeader_1.children[0];
-                let rowHeader_1_1_1 = rowHeader_1_1.children[0];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, ""],
-                    [rowHeader_1.levelValues[0].value, rowHeader_1_1.levelValues[0].value, rowHeader_1_1_1.levelValues[0].value.toString()]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("2x6 matrix (static column headers and row value headers including empty ones)", (done) => {
-
-            let matrix = matrixTwoRowGroupsWithNullValues;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let header_1 = matrix.rows.root.children[0];
-                let header_1_2 = header_1.children[1];
-                let header_2 = matrix.rows.root.children[1];
-                let header_2_1 = header_2.children[0];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, ""],
-                    [header_1.levelValues[0].value, EmptyCell],
-                    [header_1_2.levelValues[0].value],
-                    [header_2.levelValues[0].value, header_2_1.levelValues[0].value],
-                    [EmptyCell],
-                    [EmptyCell, EmptyCell]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("5x2 matrix (column value headers including empty ones)", (done) => {
-
-            let matrix = <DataViewMatrix><any>matrixTwoColumnGroupsWithNullValues;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            columnGroupSource1,
-                            columnGroupSource2
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let header_1 = matrix.columns.root.children[0];
-                let header_1_2 = header_1.children[1];
-                let header_2 = matrix.columns.root.children[1];
-                let header_2_1 = header_2.children[0];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    ["", header_1.levelValues[0].value, header_2.levelValues[0].value, EmptyCell, ""],
-                    ["", EmptyCell, header_1_2.levelValues[0].value, header_2_1.levelValues[0].value, EmptyCell, EmptyCell]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x9 matrix (static column headers and row value headers)", (done) => {
-
-            let matrix = matrixThreeRowGroups;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2,
-                            rowGroupSource3
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let header_1 = matrix.rows.root.children[0];
-                let header_1_1 = header_1.children[0];
-                let header_1_1_1 = header_1_1.children[0];
-                let header_1_1_2 = header_1_1.children[1];
-                let header_1_2 = header_1.children[1];
-                let header_1_2_1 = header_1_2.children[0];
-                let header_1_2_2 = header_1_2.children[1];
-                let header_2 = matrix.rows.root.children[1];
-                let header_2_1 = header_2.children[0];
-                let header_2_1_1 = header_2_1.children[0];
-                let header_2_1_2 = header_2_1.children[1];
-                let header_2_2 = header_2.children[1];
-                let header_2_2_1 = header_2_2.children[0];
-                let header_2_2_2 = header_2_2.children[1];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, ""],
-                    [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value.toString()],
-                    [header_1_1_2.levelValues[0].value.toString()],
-                    [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value.toString()],
-                    [header_1_2_2.levelValues[0].value.toString()],
-                    [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value.toString()],
-                    [header_2_1_2.levelValues[0].value.toString()],
-                    [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value.toString()],
-                    [header_2_2_2.levelValues[0].value.toString()]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("1x1 matrix loadMoreData", () => {
-
-            let matrix: DataViewMatrix = {
-                rows: {
-                    root: {
-                        children: [{
-                            level: 0,
-                            levelValues: [{ levelSourceIndex: 0, value: "1" }],
-                        }]
-                    },
-                    levels: [{ sources: [rowGroupSource1] }]
-                },
-                columns: {
-                    root: {
-                        children: []
-                    },
-                    levels: []
-                },
-                valueSources: []
-            };
-
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            let segment2: DataViewMatrix = {
-                rows: {
-                    root: {
-                        children: [{
-                            level: 0,
-                            levelValues: [{ levelSourceIndex: 0, value: "2" }],
-                        }]
-                    },
-                    levels: [{ sources: [rowGroupSource1] }]
-                },
-                columns: {
-                    root: {
-                        children: []
-                    },
-                    levels: []
-                },
-                valueSources: []
-            };
-
-            // Simulate a load more merge
-            powerbi.data.segmentation.DataViewMerger.mergeTreeNodes(matrix.rows.root, segment2.rows.root, false);
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1
-                        ]
-                    },
-                    matrix: matrix
-                }],
-                operationKind: powerbi.VisualDataChangeOperationKind.Append
-            });
-
-            let header1 = matrix.rows.root.children[0];
-            let header2 = matrix.rows.root.children[1];
-
-            let expectedCells: PrimitiveValue[][] = [
-                [rowGroupSource1.displayName, ""],
-                [header1.levelValues[0].value],
-                [header2.levelValues[0].value]
-            ];
-
-            validateMatrix(expectedCells);
-        });
-
-        it("8x3 matrix (column value headers)", (done) => {
-
-            let matrix = matrixThreeColumnGroups;
-            v.onDataChanged({
-                dataViews: [matrixThreeColumnGroupsDataView]
-            });
-
-            setTimeout(() => {
-
-                let header_1 = matrix.columns.root.children[0];
-                let header_1_1 = header_1.children[0];
-                let header_1_1_1 = header_1_1.children[0].levelValues[0].value.toString();
-                let header_1_1_2 = header_1_1.children[1].levelValues[0].value.toString();
-                let header_1_2 = header_1.children[1];
-                let header_1_2_1 = header_1_2.children[0].levelValues[0].value.toString();
-                let header_1_2_2 = header_1_2.children[1].levelValues[0].value.toString();
-                let header_2 = matrix.columns.root.children[1];
-                let header_2_1 = header_2.children[0];
-                let header_2_1_1 = header_2_1.children[0].levelValues[0].value.toString();
-                let header_2_1_2 = header_2_1.children[1].levelValues[0].value.toString();
-                let header_2_2 = header_2.children[1];
-                let header_2_2_1 = header_2_2.children[0].levelValues[0].value.toString();
-                let header_2_2_2 = header_2_2.children[1].levelValues[0].value.toString();
-
-                let expectedCells: PrimitiveValue[][] = [
-                    ["", header_1.levelValues[0].value, header_2.levelValues[0].value, ""],
-                    ["", header_1_1.levelValues[0].value, header_1_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_2.levelValues[0].value],
-                    ["", header_1_1_1, header_1_1_2, header_1_2_1, header_1_2_2, header_2_1_1, header_2_1_2, header_2_2_1, header_2_2_2]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("6x5 matrix (column value headers and row value headers, multiple group instances, empty cells)", (done) => {
-
-            let matrix = matrixThreeRowGroupsThreeColumnGroups;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2,
-                            rowGroupSource3formatted,
-                            columnGroupSource1,
-                            columnGroupSource2,
-                            columnGroupSource3formatted
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let rowHeader_1 = matrix.rows.root.children[0];
-                let rowHeader_1_1 = rowHeader_1.children[0];
-                let rowHeaderValue_1_1_1 = formatter(rowHeader_1_1.children[0].levelValues[0].value, rowGroupSource3formatted);
-                let rowHeaderValue_1_1_2 = formatter(rowHeader_1_1.children[1].levelValues[0].value, rowGroupSource3formatted);
-                let rowHeader_1_2 = rowHeader_1.children[1];
-                let rowHeaderValue_1_2_1 = formatter(rowHeader_1_2.children[0].levelValues[0].value, rowGroupSource3formatted);
-                let colHeader_1 = matrix.columns.root.children[0];
-                let colHeader_1_1 = colHeader_1.children[0];
-                let colHeaderValue_1_1_1 = formatter(colHeader_1_1.children[0].levelValues[0].value, columnGroupSource3formatted);
-                let colHeaderValue_1_1_2 = formatter(colHeader_1_1.children[1].levelValues[0].value, columnGroupSource3formatted);
-                let colHeader_1_2 = colHeader_1.children[1];
-                let colHeaderValue_1_2_1 = formatter(colHeader_1_2.children[0].levelValues[0].value, columnGroupSource3formatted);
-
-                let expectedCells: PrimitiveValue[][] = [
-                    ["", "", columnGroupSource1.displayName, colHeader_1.levelValues[0].value, ""],
-                    ["", "", columnGroupSource2.displayName, colHeader_1_1.levelValues[0].value, colHeader_1_2.levelValues[0].value],
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, colHeaderValue_1_1_1, colHeaderValue_1_1_2, colHeaderValue_1_2_1],
-                    [rowHeader_1.levelValues[0].value, rowHeader_1_1.levelValues[0].value, rowHeaderValue_1_1_1, "", "", ""],
-                    [rowHeaderValue_1_1_2, "", "", ""],
-                    [rowHeader_1_2.levelValues[0].value, rowHeaderValue_1_2_1, "", "", ""]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x4 matrix (boolean and null group instances)", (done) => {
-            let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasure;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let colHeader1 = matrix.columns.root.children[0];
-                let colHeader2 = matrix.columns.root.children[1];
-                let rowHeader1 = matrix.rows.root.children[0];
-                let rowHeader2 = matrix.rows.root.children[1];
-                let rowHeader3 = matrix.rows.root.children[2];
-
-                let expectedCells: string[][] = [
-                    [rowGroupSource4.displayName, formatter(colHeader1.levelValues[0].value, columnGroupSource4), formatter(colHeader2.levelValues[0].value, columnGroupSource4), ""],
-                    [formatter(rowHeader1.levelValues[0].value, columnGroupSource4), formatter(rowHeader1.values[0].value, measureSource1), formatter(rowHeader1.values[1].value, measureSource1)],
-                    [formatter(rowHeader2.levelValues[0].value, columnGroupSource4), formatter(rowHeader2.values[0].value, measureSource1), formatter(rowHeader2.values[1].value, measureSource1)],
-                    [EmptyCell, formatter(rowHeader3.values[0].value, measureSource1), formatter(rowHeader3.values[1].value, measureSource1)]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("Matrix with row and column subtotals", (done) => {
-
-            let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ],
-                        objects: {
-                            general: {
-                                rowSubtotals: true,
-                                columnSubtotals: true
-                            }
-                        }
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let colHeader1 = matrix.columns.root.children[0];
-                let colHeader2 = matrix.columns.root.children[1];
-                let rowHeader1 = matrix.rows.root.children[0];
-                let rowHeader2 = matrix.rows.root.children[1];
-                let rowHeader3 = matrix.rows.root.children[2];
-                let rowHeader4 = matrix.rows.root.children[3];
-
-                let expectedCells: string[][] = [
-                    [rowGroupSource4.displayName, formatter(colHeader1.levelValues[0].value, columnGroupSource4), formatter(colHeader2.levelValues[0].value, columnGroupSource4), TableTotalLabel, ""],
-                    [formatter(rowHeader1.levelValues[0].value, rowGroupSource4), formatter(rowHeader1.values[0].value, measureSource1), formatter(rowHeader1.values[1].value, measureSource1), formatter(rowHeader1.values[2].value, measureSource1)],
-                    [formatter(rowHeader2.levelValues[0].value, rowGroupSource4), formatter(rowHeader2.values[0].value, measureSource1), formatter(rowHeader2.values[1].value, measureSource1), formatter(rowHeader2.values[2].value, measureSource1)],
-                    [EmptyCell, formatter(rowHeader3.values[0].value, measureSource1), formatter(rowHeader3.values[1].value, measureSource1), formatter(rowHeader3.values[2].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader4.values[0].value, measureSource1), formatter(rowHeader4.values[1].value, measureSource1), formatter(rowHeader4.values[2].value, measureSource1)]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("ensure matrix items tooltip", (done) => {
-            let matrix = matrixWithBigValues;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ],
-                        objects: {
-                            general: {
-                                rowSubtotals: true,
-                                columnSubtotals: true
-                            }
-                        }
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-                //test matrix items
-                for (let i = 0; i < matrixWithBigValues.rows.root.children.length; i++) {
-                    validateMatrixTooltip(CssClassBodyCell, matrixWithBigValues.rows.root.children[i].values, i);
-                }
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("header sort arrow up", (done) => {
-            let dataView = matrixOneMeasureOneRowGroupTwoGroupInstancesAscendingDataView;
-            v.onDataChanged({ dataViews: [dataView] });
-
-            setTimeout(() => {
-                let expectedCells: string[] =
-                    ['tablixSortIconContainer future powervisuals-glyph caret-down', 'tablixSortIconContainer sorted powervisuals-glyph caret-up', 'tablixSortIconContainer future powervisuals-glyph caret-down'];
-
-                validateSortIcons(expectedCells);
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("header sort arrow down", (done) => {
-            let dataView = matrixOneMeasureOneRowGroupTwoGroupInstancesDescendingDataView;
-            v.onDataChanged({ dataViews: [dataView] });
-
-            setTimeout(() => {
-                let expectedCells: string[] =
-                    ['tablixSortIconContainer future powervisuals-glyph caret-down', 'tablixSortIconContainer sorted powervisuals-glyph caret-down', 'tablixSortIconContainer future powervisuals-glyph caret-up'];
-
-                validateSortIcons(expectedCells);
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("Matrix with multiple row and column group hierarchy levels, one measure with subtotals", (done) => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsOneMeasureAndTotals;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2,
-                            columnGroupSource1,
-                            columnGroupSource2,
-                            measureSource1
-                        ],
-                        objects: {
-                            general: {
-                                rowSubtotals: true,
-                                columnSubtotals: true
-                            }
-                        }
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let colHeader1 = matrix.columns.root.children[0];
-                let colHeader2 = matrix.columns.root.children[1];
-                let colHeader1_1 = matrix.columns.root.children[0].children[0];
-                let colHeader1_2 = matrix.columns.root.children[0].children[1];
-                let colHeader2_1 = matrix.columns.root.children[1].children[0];
-                let colHeader2_2 = matrix.columns.root.children[1].children[1];
-
-                let rowHeader1 = matrix.rows.root.children[0];
-                let rowHeader2 = matrix.rows.root.children[1];
-                let rowHeader3 = matrix.rows.root.children[2];
-                let rowHeader4 = matrix.rows.root.children[3];
-                let rowHeadert = matrix.rows.root.children[4];
-
-                let rowHeader1_1 = matrix.rows.root.children[0].children[0];
-                let rowHeader1_2 = matrix.rows.root.children[0].children[1];
-                let rowHeader1_t = matrix.rows.root.children[0].children[2];
-                let rowHeader2_1 = matrix.rows.root.children[1].children[0];
-                let rowHeader2_2 = matrix.rows.root.children[1].children[1];
-                let rowHeader2_t = matrix.rows.root.children[1].children[2];
-                let rowHeader3_1 = matrix.rows.root.children[2].children[0];
-                let rowHeader3_t = matrix.rows.root.children[2].children[1];
-                let rowHeader4_1 = matrix.rows.root.children[3].children[0];
-                let rowHeader4_t = matrix.rows.root.children[3].children[1];
-
-                let expectedCells: string[][] = [
-                    ["", columnGroupSource1.displayName, colHeader1.levelValues[0].value.toString(), colHeader2.levelValues[0].value.toString(), TableTotalLabel, ""],
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, colHeader1_1.levelValues[0].value.toString(), colHeader1_2.levelValues[0].value.toString(), TableTotalLabel, colHeader2_1.levelValues[0].value.toString(), colHeader2_2.levelValues[0].value.toString(), TableTotalLabel],
-                    [rowHeader1.levelValues[0].value.toString(), rowHeader1_1.levelValues[0].value.toString(), formatter(rowHeader1_1.values[0].value, measureSource1), formatter(rowHeader1_1.values[1].value, measureSource1), formatter(rowHeader1_1.values[2].value, measureSource1), formatter(rowHeader1_1.values[3].value, measureSource1), formatter(rowHeader1_1.values[4].value, measureSource1), formatter(rowHeader1_1.values[5].value, measureSource1), formatter(rowHeader1_1.values[6].value, measureSource1)],
-                    [rowHeader1_2.levelValues[0].value.toString(), formatter(rowHeader1_2.values[0].value, measureSource1), formatter(rowHeader1_2.values[1].value, measureSource1), formatter(rowHeader1_2.values[2].value, measureSource1), formatter(rowHeader1_2.values[3].value, measureSource1), formatter(rowHeader1_2.values[4].value, measureSource1), formatter(rowHeader1_2.values[5].value, measureSource1), formatter(rowHeader1_2.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader1_t.values[0].value, measureSource1), formatter(rowHeader1_t.values[1].value, measureSource1), formatter(rowHeader1_t.values[2].value, measureSource1), formatter(rowHeader1_t.values[3].value, measureSource1), formatter(rowHeader1_t.values[4].value, measureSource1), formatter(rowHeader1_t.values[5].value, measureSource1), formatter(rowHeader1_t.values[6].value, measureSource1)],
-                    [rowHeader2.levelValues[0].value.toString(), rowHeader2_1.levelValues[0].value.toString(), formatter(rowHeader2_1.values[0].value, measureSource1), formatter(rowHeader2_1.values[1].value, measureSource1), formatter(rowHeader2_1.values[2].value, measureSource1), formatter(rowHeader2_1.values[3].value, measureSource1), formatter(rowHeader2_1.values[4].value, measureSource1), formatter(rowHeader2_1.values[5].value, measureSource1), formatter(rowHeader2_1.values[6].value, measureSource1)],
-                    [rowHeader2_2.levelValues[0].value.toString(), formatter(rowHeader2_2.values[0].value, measureSource1), formatter(rowHeader2_2.values[1].value, measureSource1), formatter(rowHeader2_2.values[2].value, measureSource1), formatter(rowHeader2_2.values[3].value, measureSource1), formatter(rowHeader2_2.values[4].value, measureSource1), formatter(rowHeader2_2.values[5].value, measureSource1), formatter(rowHeader2_2.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader2_t.values[0].value, measureSource1), formatter(rowHeader2_t.values[1].value, measureSource1), formatter(rowHeader2_t.values[2].value, measureSource1), formatter(rowHeader2_t.values[3].value, measureSource1), formatter(rowHeader2_t.values[4].value, measureSource1), formatter(rowHeader2_t.values[5].value, measureSource1), formatter(rowHeader2_t.values[6].value, measureSource1)],
-                    [rowHeader3.levelValues[0].value.toString(), rowHeader3_1.levelValues[0].value.toString(), formatter(rowHeader3_1.values[0].value, measureSource1), formatter(rowHeader3_1.values[1].value, measureSource1), formatter(rowHeader3_1.values[2].value, measureSource1), formatter(rowHeader3_1.values[3].value, measureSource1), formatter(rowHeader3_1.values[4].value, measureSource1), formatter(rowHeader3_1.values[5].value, measureSource1), formatter(rowHeader3_1.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader3_t.values[0].value, measureSource1), formatter(rowHeader3_t.values[1].value, measureSource1), formatter(rowHeader3_t.values[2].value, measureSource1), formatter(rowHeader3_t.values[3].value, measureSource1), formatter(rowHeader3_t.values[4].value, measureSource1), formatter(rowHeader3_t.values[5].value, measureSource1), formatter(rowHeader3_t.values[6].value, measureSource1)],
-                    [rowHeader4.levelValues[0].value.toString(), rowHeader4_1.levelValues[0].value.toString(), formatter(rowHeader4_1.values[0].value, measureSource1), formatter(rowHeader4_1.values[1].value, measureSource1), formatter(rowHeader4_1.values[2].value, measureSource1), formatter(rowHeader4_1.values[3].value, measureSource1), formatter(rowHeader4_1.values[4].value, measureSource1), formatter(rowHeader4_1.values[5].value, measureSource1), formatter(rowHeader4_1.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader4_t.values[0].value, measureSource1), formatter(rowHeader4_t.values[1].value, measureSource1), formatter(rowHeader4_t.values[2].value, measureSource1), formatter(rowHeader4_t.values[3].value, measureSource1), formatter(rowHeader4_t.values[4].value, measureSource1), formatter(rowHeader4_t.values[5].value, measureSource1), formatter(rowHeader4_t.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeadert.values[0].value, measureSource1), formatter(rowHeadert.values[1].value, measureSource1), formatter(rowHeadert.values[2].value, measureSource1), formatter(rowHeadert.values[3].value, measureSource1), formatter(rowHeadert.values[4].value, measureSource1), formatter(rowHeadert.values[5].value, measureSource1), formatter(rowHeadert.values[6].value, measureSource1)]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("Matrix with multiple row and column group hierarchy levels, two measures with subtotals", (done) => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2,
-                            columnGroupSource1,
-                            columnGroupSource2,
-                            measureSource1,
-                            measureSource2
-                        ],
-                        objects: {
-                            general: {
-                                rowSubtotals: true,
-                                columnSubtotals: true
-                            }
-                        }
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let colHeader1 = matrix.columns.root.children[0];
-                let colHeader2 = matrix.columns.root.children[1];
-                let colHeader1_1 = matrix.columns.root.children[0].children[0];
-                let colHeader1_2 = matrix.columns.root.children[0].children[1];
-                let colHeader2_1 = matrix.columns.root.children[1].children[0];
-                let colHeader2_2 = matrix.columns.root.children[1].children[1];
-
-                let rowHeader1 = matrix.rows.root.children[0];
-                let rowHeader2 = matrix.rows.root.children[1];
-                let rowHeader3 = matrix.rows.root.children[2];
-                let rowHeader4 = matrix.rows.root.children[3];
-                let rowHeadert = matrix.rows.root.children[4];
-
-                let rowHeader1_1 = matrix.rows.root.children[0].children[0];
-                let rowHeader1_2 = matrix.rows.root.children[0].children[1];
-                let rowHeader1_t = matrix.rows.root.children[0].children[2];
-                let rowHeader2_1 = matrix.rows.root.children[1].children[0];
-                let rowHeader2_2 = matrix.rows.root.children[1].children[1];
-                let rowHeader2_t = matrix.rows.root.children[1].children[2];
-                let rowHeader3_1 = matrix.rows.root.children[2].children[0];
-                let rowHeader3_t = matrix.rows.root.children[2].children[1];
-                let rowHeader4_1 = matrix.rows.root.children[3].children[0];
-                let rowHeader4_t = matrix.rows.root.children[3].children[1];
-
-                let expectedCells: string[][] = [
-                    ["", columnGroupSource1.displayName, colHeader1.levelValues[0].value.toString(), colHeader2.levelValues[0].value.toString(), TableTotalLabel, ""],
-                    ["", columnGroupSource2.displayName, colHeader1_1.levelValues[0].value.toString(), colHeader1_2.levelValues[0].value.toString(), TableTotalLabel, colHeader2_1.levelValues[0].value.toString(), colHeader2_2.levelValues[0].value.toString(), TableTotalLabel],
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName],
-                    [rowHeader1.levelValues[0].value.toString(), rowHeader1_1.levelValues[0].value.toString(), formatter(rowHeader1_1.values[0].value, measureSource1), formatter(rowHeader1_1.values[1].value, measureSource1), formatter(rowHeader1_1.values[2].value, measureSource1), formatter(rowHeader1_1.values[3].value, measureSource1), formatter(rowHeader1_1.values[4].value, measureSource1), formatter(rowHeader1_1.values[5].value, measureSource1), formatter(rowHeader1_1.values[6].value, measureSource1), formatter(rowHeader1_1.values[7].value, measureSource1), formatter(rowHeader1_1.values[8].value, measureSource1), formatter(rowHeader1_1.values[9].value, measureSource1), formatter(rowHeader1_1.values[10].value, measureSource1), formatter(rowHeader1_1.values[11].value, measureSource1), formatter(rowHeader1_1.values[12].value, measureSource1), formatter(rowHeader1_1.values[13].value, measureSource1)],
-                    [rowHeader1_2.levelValues[0].value.toString(), formatter(rowHeader1_2.values[0].value, measureSource1), formatter(rowHeader1_2.values[1].value, measureSource1), formatter(rowHeader1_2.values[2].value, measureSource1), formatter(rowHeader1_2.values[3].value, measureSource1), formatter(rowHeader1_2.values[4].value, measureSource1), formatter(rowHeader1_2.values[5].value, measureSource1), formatter(rowHeader1_2.values[6].value, measureSource1), formatter(rowHeader1_2.values[7].value, measureSource1), formatter(rowHeader1_2.values[8].value, measureSource1), formatter(rowHeader1_2.values[9].value, measureSource1), formatter(rowHeader1_2.values[10].value, measureSource1), formatter(rowHeader1_2.values[11].value, measureSource1), formatter(rowHeader1_2.values[12].value, measureSource1), formatter(rowHeader1_2.values[13].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader1_t.values[0].value, measureSource1), formatter(rowHeader1_t.values[1].value, measureSource1), formatter(rowHeader1_t.values[2].value, measureSource1), formatter(rowHeader1_t.values[3].value, measureSource1), formatter(rowHeader1_t.values[4].value, measureSource1), formatter(rowHeader1_t.values[5].value, measureSource1), formatter(rowHeader1_t.values[6].value, measureSource1), formatter(rowHeader1_t.values[7].value, measureSource1), formatter(rowHeader1_t.values[8].value, measureSource1), formatter(rowHeader1_t.values[9].value, measureSource1), formatter(rowHeader1_t.values[10].value, measureSource1), formatter(rowHeader1_t.values[11].value, measureSource1), formatter(rowHeader1_t.values[12].value, measureSource1), formatter(rowHeader1_t.values[13].value, measureSource1)],
-                    [rowHeader2.levelValues[0].value.toString(), rowHeader2_1.levelValues[0].value.toString(), formatter(rowHeader2_1.values[0].value, measureSource1), formatter(rowHeader2_1.values[1].value, measureSource1), formatter(rowHeader2_1.values[2].value, measureSource1), formatter(rowHeader2_1.values[3].value, measureSource1), formatter(rowHeader2_1.values[4].value, measureSource1), formatter(rowHeader2_1.values[5].value, measureSource1), formatter(rowHeader2_1.values[6].value, measureSource1), formatter(rowHeader2_1.values[7].value, measureSource1), formatter(rowHeader2_1.values[8].value, measureSource1), formatter(rowHeader2_1.values[9].value, measureSource1), formatter(rowHeader2_1.values[10].value, measureSource1), formatter(rowHeader2_1.values[11].value, measureSource1), formatter(rowHeader2_1.values[12].value, measureSource1), formatter(rowHeader2_1.values[13].value, measureSource1)],
-                    [rowHeader2_2.levelValues[0].value.toString(), formatter(rowHeader2_2.values[0].value, measureSource1), formatter(rowHeader2_2.values[1].value, measureSource1), formatter(rowHeader2_2.values[2].value, measureSource1), formatter(rowHeader2_2.values[3].value, measureSource1), formatter(rowHeader2_2.values[4].value, measureSource1), formatter(rowHeader2_2.values[5].value, measureSource1), formatter(rowHeader2_2.values[6].value, measureSource1), formatter(rowHeader2_2.values[7].value, measureSource1), formatter(rowHeader2_2.values[8].value, measureSource1), formatter(rowHeader2_2.values[9].value, measureSource1), formatter(rowHeader2_2.values[10].value, measureSource1), formatter(rowHeader2_2.values[11].value, measureSource1), formatter(rowHeader2_2.values[12].value, measureSource1), formatter(rowHeader2_2.values[13].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader2_t.values[0].value, measureSource1), formatter(rowHeader2_t.values[1].value, measureSource1), formatter(rowHeader2_t.values[2].value, measureSource1), formatter(rowHeader2_t.values[3].value, measureSource1), formatter(rowHeader2_t.values[4].value, measureSource1), formatter(rowHeader2_t.values[5].value, measureSource1), formatter(rowHeader2_t.values[6].value, measureSource1), formatter(rowHeader2_t.values[7].value, measureSource1), formatter(rowHeader2_t.values[8].value, measureSource1), formatter(rowHeader2_t.values[9].value, measureSource1), formatter(rowHeader2_t.values[10].value, measureSource1), formatter(rowHeader2_t.values[11].value, measureSource1), formatter(rowHeader2_t.values[12].value, measureSource1), formatter(rowHeader2_t.values[13].value, measureSource1)],
-                    [rowHeader3.levelValues[0].value.toString(), rowHeader3_1.levelValues[0].value.toString(), formatter(rowHeader3_1.values[0].value, measureSource1), formatter(rowHeader3_1.values[1].value, measureSource1), formatter(rowHeader3_1.values[2].value, measureSource1), formatter(rowHeader3_1.values[3].value, measureSource1), formatter(rowHeader3_1.values[4].value, measureSource1), formatter(rowHeader3_1.values[5].value, measureSource1), formatter(rowHeader3_1.values[6].value, measureSource1), formatter(rowHeader3_1.values[7].value, measureSource1), formatter(rowHeader3_1.values[8].value, measureSource1), formatter(rowHeader3_1.values[9].value, measureSource1), formatter(rowHeader3_1.values[10].value, measureSource1), formatter(rowHeader3_1.values[11].value, measureSource1), formatter(rowHeader3_1.values[12].value, measureSource1), formatter(rowHeader3_1.values[13].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader3_t.values[0].value, measureSource1), formatter(rowHeader3_t.values[1].value, measureSource1), formatter(rowHeader3_t.values[2].value, measureSource1), formatter(rowHeader3_t.values[3].value, measureSource1), formatter(rowHeader3_t.values[4].value, measureSource1), formatter(rowHeader3_t.values[5].value, measureSource1), formatter(rowHeader3_t.values[6].value, measureSource1), formatter(rowHeader3_t.values[7].value, measureSource1), formatter(rowHeader3_t.values[8].value, measureSource1), formatter(rowHeader3_t.values[9].value, measureSource1), formatter(rowHeader3_t.values[10].value, measureSource1), formatter(rowHeader3_t.values[11].value, measureSource1), formatter(rowHeader3_t.values[12].value, measureSource1), formatter(rowHeader3_t.values[13].value, measureSource1)],
-                    [rowHeader4.levelValues[0].value.toString(), rowHeader4_1.levelValues[0].value.toString(), formatter(rowHeader4_1.values[0].value, measureSource1), formatter(rowHeader4_1.values[1].value, measureSource1), formatter(rowHeader4_1.values[2].value, measureSource1), formatter(rowHeader4_1.values[3].value, measureSource1), formatter(rowHeader4_1.values[4].value, measureSource1), formatter(rowHeader4_1.values[5].value, measureSource1), formatter(rowHeader4_1.values[6].value, measureSource1), formatter(rowHeader4_1.values[7].value, measureSource1), formatter(rowHeader4_1.values[8].value, measureSource1), formatter(rowHeader4_1.values[9].value, measureSource1), formatter(rowHeader4_1.values[10].value, measureSource1), formatter(rowHeader4_1.values[11].value, measureSource1), formatter(rowHeader4_1.values[12].value, measureSource1), formatter(rowHeader4_1.values[13].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader4_t.values[0].value, measureSource1), formatter(rowHeader4_t.values[1].value, measureSource1), formatter(rowHeader4_t.values[2].value, measureSource1), formatter(rowHeader4_t.values[3].value, measureSource1), formatter(rowHeader4_t.values[4].value, measureSource1), formatter(rowHeader4_t.values[5].value, measureSource1), formatter(rowHeader4_t.values[6].value, measureSource1), formatter(rowHeader4_t.values[7].value, measureSource1), formatter(rowHeader4_t.values[8].value, measureSource1), formatter(rowHeader4_t.values[9].value, measureSource1), formatter(rowHeader4_t.values[10].value, measureSource1), formatter(rowHeader4_t.values[11].value, measureSource1), formatter(rowHeader4_t.values[12].value, measureSource1), formatter(rowHeader4_t.values[13].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeadert.values[0].value, measureSource1), formatter(rowHeadert.values[1].value, measureSource1), formatter(rowHeadert.values[2].value, measureSource1), formatter(rowHeadert.values[3].value, measureSource1), formatter(rowHeadert.values[4].value, measureSource1), formatter(rowHeadert.values[5].value, measureSource1), formatter(rowHeadert.values[6].value, measureSource1), formatter(rowHeadert.values[7].value, measureSource1), formatter(rowHeadert.values[8].value, measureSource1), formatter(rowHeadert.values[9].value, measureSource1), formatter(rowHeadert.values[10].value, measureSource1), formatter(rowHeadert.values[11].value, measureSource1), formatter(rowHeadert.values[12].value, measureSource1), formatter(rowHeadert.values[13].value, measureSource1)]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("Verify Interactivity mode - Dashboard", (done) => {
-
-            // Pick a matrix that exceeds the viewport
-            v.init({
-                element: element,
-                host: mocks.createVisualHostServices(),
-                style: powerbi.visuals.visualStyles.create(),
-                viewport: {
-                    height: 100,
-                    width: 100
-                },
-                interactivity: {
-                    overflow: "hidden"
-                }
-            });
-
-            v.onDataChanged({
-                dataViews: [matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresDataView]
-            });
-
-            setTimeout(() => {
-                let scrollbars = $(".tablixCanvas .scroll-bar-div");
-
-                // Scrollbars are not attached to DOM for Dashboard
-                expect(scrollbars.length).toBe(0);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("Verify Interactivity mode - Canvas", (done) => {
-            let viewPort: powerbi.IViewport = {
-                height: 100,
-                width: 100
-            };
-
-            // Pick a matrix that exceeds the viewport
-            v.init({
-                element: element,
-                host: mocks.createVisualHostServices(),
-                style: powerbi.visuals.visualStyles.create(),
-                viewport: viewPort,
-                interactivity: {
-                    selection: true
-                }
-            });
-
-            v.onDataChanged({
-                dataViews: [matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresDataView]
-            });
-
-            setTimeout(() => {
-                let scrollbars = $(".tablixCanvas .scroll-bar-div");
-                let verticalScrollBar = scrollbars.eq(0);
-                let horizontalScrollBar = scrollbars.eq(1);
-
-                // Scrollbars are attached to DOM for Canvas
-                expect(scrollbars.length).toBe(2);
-                expect(verticalScrollBar.css("width")).toBe("9px");
-                expect(verticalScrollBar.width()).toBe(9);
-                expect(horizontalScrollBar.css("height")).toBe("9px");
-                expect(horizontalScrollBar.height()).toBe(9);
-
-                viewPort = {
-                    height: element.height(),
-                    width: element.width()
-                };
-                v.onResizing(viewPort);
+            it("1x2 matrix (value and static column header)", (done) => {
+
+                let matrix = matrixOneMeasure;
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureDataView]
+                });
 
                 setTimeout(() => {
-                    scrollbars = $(".tablixCanvas .scroll-bar-div");
-                    expect(scrollbars.length).toBe(2);
-                    if (scrollbars.length === 2) {
-                        verticalScrollBar = scrollbars.eq(0);
-                        horizontalScrollBar = scrollbars.eq(1);
 
-                        // Scrollbars are attached to DOM for Canvas
-                        expect(scrollbars.length).toBe(2);
-                        expect(verticalScrollBar.css("width")).toBe("0px");
-                        expect(verticalScrollBar.width()).toBe(0);
-                        expect(horizontalScrollBar.css("height")).toBe("0px");
-                        expect(horizontalScrollBar.height()).toBe(0);
+                    let cellValue: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
+                    let expectedCells: string[][] = [
+                        ["", measureSource1.displayName, ""],
+                        [EmptyCell, cellValue]
+                    ];
+
+                    validateMatrix(expectedCells);
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("1x2 matrix (value and column header value) update", (done) => {
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureDataView]
+                });
+
+                // Call onDataChanged again to trigger an update on the hierarchy navigator
+                let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureOneColumnGroupOneGroupInstanceDataView]
+                });
+
+                setTimeout(() => {
+
+                    let headerValue = <string>(matrix.columns.root.children[0]).levelValues[0].value;
+                    let cellValue: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
+
+                    let expectedCells: string[][] = [
+                        ["", headerValue, ""],
+                        [EmptyCell, cellValue]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            // disabled
+            it("7x7 matrix (1 row and 2 columns composite with nulls)", (done) => {
+                v.onDataChanged({
+                    dataViews: [matrixOneRowGroupCompositeTwoColumnGroupsCompositeOneGroupInstanceDataView]
+                });
+
+                setTimeout(() => {
+                    let expectedCells: string[][] = [
+                        ["Cat, Prod", "Cat, ", ", Prod", ", ", ""],
+                        ["Lat, Long", "Blue", "Red", "Blue", "Red", "Blue", "Red"],
+                        [", ", "1.00", "2.00", "3.00", "4.00", "5.00", "6.00"],
+                        ["0.00, ", "1.10", "2.10", "3.10", "4.10", "5.10", "6.10"],
+                        [", 0.000", "1.20", "2.20", "3.20", "4.20", "5.20", "6.20"],
+                        ["0.00, 0.000", "1.30", "2.30", "3.30", "4.30", "5.30", "6.30"],
+                        ["Total", "1.40", "2.40", "3.40", "4.40", "5.40", "6.40"],
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("2x3 matrix (1 row and 2 columns no value + leading spaces) update", (done) => {
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureDataView]
+                });
+
+                // Call onDataChanged again to trigger an update on the hierarchy navigator
+                v.onDataChanged({
+                    dataViews: [matrixOneRowGroupTwoColumnGroupsOneGroupInstanceLeadingSpaceDataView]
+                });
+
+                setTimeout(() => {
+                    let expectedCells: string[][] = [
+                        ["    Col    Group1", "    G    C1", ""],
+                        ["    Row    Group1", "    G    C2"],
+                        ["    GR    ", ""]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x2 matrix (values and static column headers)", (done) => {
+
+                let matrix = matrixThreeMeasures;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [measureSource1, measureSource2, measureSource3] },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let cellValue1: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
+                    let cellValue2: string = formatter(matrix.rows.root.children[0].values[1].value, measureSource2);
+                    let cellValue3: string = formatter(matrix.rows.root.children[0].values[2].value, measureSource3);
+
+                    let expectedCells: string[][] = [
+                        ["", measureSource1.displayName, measureSource2.displayName, measureSource3.displayName, ""],
+                        [EmptyCell, cellValue1, cellValue2, cellValue3]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x3 matrix (values, static and value column headers)", (done) => {
+
+                let matrix = matrixThreeMeasuresOneColumnGroupOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [columnGroupSource1, measureSource1, measureSource2, measureSource3] },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let headerValue = <string>(matrix.columns.root.children[0]).levelValues[0].value;
+
+                    let cellValue1: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
+                    let cellValue2: string = formatter(matrix.rows.root.children[0].values[1].value, measureSource2);
+                    let cellValue3: string = formatter(matrix.rows.root.children[0].values[2].value, measureSource3);
+
+                    let expectedCells: string[][] = [
+                        ["", headerValue, ""],
+                        ["", measureSource1.displayName, measureSource2.displayName, measureSource3.displayName],
+                        [EmptyCell, cellValue1, cellValue2, cellValue3]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("6x9 matrix (values, static column headers and row value headers)", (done) => {
+
+                v.onDataChanged({
+                    dataViews: [matrixThreeMeasuresThreeRowGroupsDataView]
+                });
+
+                let matrix = matrixThreeMeasuresThreeRowGroups;
+                setTimeout(() => {
+
+                    let header_1 = matrix.rows.root.children[0];
+                    let header_1_1 = header_1.children[0];
+                    let header_1_1_1 = header_1_1.children[0];
+                    let header_1_1_2 = header_1_1.children[1];
+                    let header_1_2 = header_1.children[1];
+                    let header_1_2_1 = header_1_2.children[0];
+                    let header_1_2_2 = header_1_2.children[1];
+                    let header_2 = matrix.rows.root.children[1];
+                    let header_2_1 = header_2.children[0];
+                    let header_2_1_1 = header_2_1.children[0];
+                    let header_2_1_2 = header_2_1.children[1];
+                    let header_2_2 = header_2.children[1];
+                    let header_2_2_1 = header_2_2.children[0];
+                    let header_2_2_2 = header_2_2.children[1];
+                    let cellValue1 = formatter(header_1_1_1.values[0].value, measureSource1);
+                    let cellValue2 = formatter(header_1_1_1.values[1].value, measureSource2);
+                    let cellValue3 = formatter(header_1_1_1.values[2].value, measureSource3);
+                    let cellValue4 = formatter(header_1_1_2.values[0].value, measureSource1);
+                    let cellValue5 = formatter(header_1_1_2.values[1].value, measureSource2);
+                    let cellValue6 = formatter(header_1_1_2.values[2].value, measureSource3);
+                    let cellValue7 = formatter(header_1_2_1.values[0].value, measureSource1);
+                    let cellValue8 = formatter(header_1_2_1.values[1].value, measureSource2);
+                    let cellValue9 = formatter(header_1_2_1.values[2].value, measureSource3);
+                    let cellValue10 = formatter(header_1_2_2.values[0].value, measureSource1);
+                    let cellValue11 = formatter(header_1_2_2.values[1].value, measureSource2);
+                    let cellValue12 = formatter(header_1_2_2.values[2].value, measureSource3);
+                    let cellValue13 = formatter(header_2_1_1.values[0].value, measureSource1);
+                    let cellValue14 = formatter(header_2_1_1.values[1].value, measureSource2);
+                    let cellValue15 = formatter(header_2_1_1.values[2].value, measureSource3);
+                    let cellValue16 = formatter(header_2_1_2.values[0].value, measureSource1);
+                    let cellValue17 = formatter(header_2_1_2.values[1].value, measureSource2);
+                    let cellValue18 = formatter(header_2_1_2.values[2].value, measureSource3);
+                    let cellValue19 = formatter(header_2_2_1.values[0].value, measureSource1);
+                    let cellValue20 = formatter(header_2_2_1.values[1].value, measureSource2);
+                    let cellValue21 = formatter(header_2_2_1.values[2].value, measureSource3);
+                    let cellValue22 = formatter(header_2_2_2.values[0].value, measureSource1);
+                    let cellValue23 = formatter(header_2_2_2.values[1].value, measureSource2);
+                    let cellValue24 = formatter(header_2_2_2.values[2].value, measureSource3);
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, measureSource1.displayName, measureSource2.displayName, measureSource3.displayName, ''],
+                        [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value, cellValue1, cellValue2, cellValue3],
+                        [header_1_1_2.levelValues[0].value, cellValue4, cellValue5, cellValue6],
+                        [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value, cellValue7, cellValue8, cellValue9],
+                        [header_1_2_2.levelValues[0].value, cellValue10, cellValue11, cellValue12],
+                        [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value, cellValue13, cellValue14, cellValue15],
+                        [header_2_1_2.levelValues[0].value, cellValue16, cellValue17, cellValue18],
+                        [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value, cellValue19, cellValue20, cellValue21],
+                        [header_2_2_2.levelValues[0].value, cellValue22, cellValue23, cellValue24]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("2x2 matrix (value, static column header and row value header)", (done) => {
+
+                let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [rowGroupSource1, measureSource1] },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let header = matrix.rows.root.children[0];
+                    let cellValue: string = formatter(header.values[0].value, measureSource1);
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, measureSource1.displayName, ""],
+                        [header.levelValues[0].value, cellValue]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("2x2 matrix (value, column value header and row value header, empty cell)", (done) => {
+
+                let matrix = matrixOneRowGroupOneColumnGroupOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [matrixOneRowGroupOneColumnGroupOneGroupInstanceDataView]
+                });
+
+                setTimeout(() => {
+
+                    let columnHeader = matrix.columns.root.children[0];
+                    let rowHeader = matrix.rows.root.children[0];
+
+                    let expectedCells: string[][] = [
+                        [rowGroupSource1.displayName, columnHeader.levelValues[0].value.toString(), ""],
+                        [rowHeader.levelValues[0].value.toString(), ""]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x2 matrix (static column headers and row value headers)", (done) => {
+
+                let matrix = matrixThreeRowGroupsOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [matrixThreeRowGroupsOneGroupInstanceDataView]
+                });
+
+                setTimeout(() => {
+
+                    let rowHeader_1 = matrix.rows.root.children[0];
+                    let rowHeader_1_1 = rowHeader_1.children[0];
+                    let rowHeader_1_1_1 = rowHeader_1_1.children[0];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, ""],
+                        [rowHeader_1.levelValues[0].value, rowHeader_1_1.levelValues[0].value, rowHeader_1_1_1.levelValues[0].value.toString()]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("2x6 matrix (static column headers and row value headers including empty ones)", (done) => {
+
+                let matrix = matrixTwoRowGroupsWithNullValues;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let header_1 = matrix.rows.root.children[0];
+                    let header_1_2 = header_1.children[1];
+                    let header_2 = matrix.rows.root.children[1];
+                    let header_2_1 = header_2.children[0];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, ""],
+                        [header_1.levelValues[0].value, EmptyCell],
+                        [header_1_2.levelValues[0].value],
+                        [header_2.levelValues[0].value, header_2_1.levelValues[0].value],
+                        [EmptyCell],
+                        [EmptyCell, EmptyCell]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("5x2 matrix (column value headers including empty ones)", (done) => {
+
+                let matrix = <DataViewMatrix><any>matrixTwoColumnGroupsWithNullValues;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                columnGroupSource1,
+                                columnGroupSource2
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let header_1 = matrix.columns.root.children[0];
+                    let header_1_2 = header_1.children[1];
+                    let header_2 = matrix.columns.root.children[1];
+                    let header_2_1 = header_2.children[0];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        ["", header_1.levelValues[0].value, header_2.levelValues[0].value, EmptyCell, ""],
+                        ["", EmptyCell, header_1_2.levelValues[0].value, header_2_1.levelValues[0].value, EmptyCell, EmptyCell]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x9 matrix (static column headers and row value headers)", (done) => {
+
+                let matrix = matrixThreeRowGroups;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2,
+                                rowGroupSource3
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let header_1 = matrix.rows.root.children[0];
+                    let header_1_1 = header_1.children[0];
+                    let header_1_1_1 = header_1_1.children[0];
+                    let header_1_1_2 = header_1_1.children[1];
+                    let header_1_2 = header_1.children[1];
+                    let header_1_2_1 = header_1_2.children[0];
+                    let header_1_2_2 = header_1_2.children[1];
+                    let header_2 = matrix.rows.root.children[1];
+                    let header_2_1 = header_2.children[0];
+                    let header_2_1_1 = header_2_1.children[0];
+                    let header_2_1_2 = header_2_1.children[1];
+                    let header_2_2 = header_2.children[1];
+                    let header_2_2_1 = header_2_2.children[0];
+                    let header_2_2_2 = header_2_2.children[1];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, ""],
+                        [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value.toString()],
+                        [header_1_1_2.levelValues[0].value.toString()],
+                        [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value.toString()],
+                        [header_1_2_2.levelValues[0].value.toString()],
+                        [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value.toString()],
+                        [header_2_1_2.levelValues[0].value.toString()],
+                        [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value.toString()],
+                        [header_2_2_2.levelValues[0].value.toString()]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("1x1 matrix loadMoreData", () => {
+
+                let matrix: DataViewMatrix = {
+                    rows: {
+                        root: {
+                            children: [{
+                                level: 0,
+                                levelValues: [{ levelSourceIndex: 0, value: "1" }],
+                            }]
+                        },
+                        levels: [{ sources: [rowGroupSource1] }]
+                    },
+                    columns: {
+                        root: {
+                            children: []
+                        },
+                        levels: []
+                    },
+                    valueSources: []
+                };
+
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                let segment2: DataViewMatrix = {
+                    rows: {
+                        root: {
+                            children: [{
+                                level: 0,
+                                levelValues: [{ levelSourceIndex: 0, value: "2" }],
+                            }]
+                        },
+                        levels: [{ sources: [rowGroupSource1] }]
+                    },
+                    columns: {
+                        root: {
+                            children: []
+                        },
+                        levels: []
+                    },
+                    valueSources: []
+                };
+
+                // Simulate a load more merge
+                powerbi.data.segmentation.DataViewMerger.mergeTreeNodes(matrix.rows.root, segment2.rows.root, false);
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1
+                            ]
+                        },
+                        matrix: matrix
+                    }],
+                    operationKind: powerbi.VisualDataChangeOperationKind.Append
+                });
+
+                let header1 = matrix.rows.root.children[0];
+                let header2 = matrix.rows.root.children[1];
+
+                let expectedCells: PrimitiveValue[][] = [
+                    [rowGroupSource1.displayName, ""],
+                    [header1.levelValues[0].value],
+                    [header2.levelValues[0].value]
+                ];
+
+                validateMatrix(expectedCells);
+            });
+
+            it("8x3 matrix (column value headers)", (done) => {
+
+                let matrix = matrixThreeColumnGroups;
+                v.onDataChanged({
+                    dataViews: [matrixThreeColumnGroupsDataView]
+                });
+
+                setTimeout(() => {
+
+                    let header_1 = matrix.columns.root.children[0];
+                    let header_1_1 = header_1.children[0];
+                    let header_1_1_1 = header_1_1.children[0].levelValues[0].value.toString();
+                    let header_1_1_2 = header_1_1.children[1].levelValues[0].value.toString();
+                    let header_1_2 = header_1.children[1];
+                    let header_1_2_1 = header_1_2.children[0].levelValues[0].value.toString();
+                    let header_1_2_2 = header_1_2.children[1].levelValues[0].value.toString();
+                    let header_2 = matrix.columns.root.children[1];
+                    let header_2_1 = header_2.children[0];
+                    let header_2_1_1 = header_2_1.children[0].levelValues[0].value.toString();
+                    let header_2_1_2 = header_2_1.children[1].levelValues[0].value.toString();
+                    let header_2_2 = header_2.children[1];
+                    let header_2_2_1 = header_2_2.children[0].levelValues[0].value.toString();
+                    let header_2_2_2 = header_2_2.children[1].levelValues[0].value.toString();
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        ["", header_1.levelValues[0].value, header_2.levelValues[0].value, ""],
+                        ["", header_1_1.levelValues[0].value, header_1_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_2.levelValues[0].value],
+                        ["", header_1_1_1, header_1_1_2, header_1_2_1, header_1_2_2, header_2_1_1, header_2_1_2, header_2_2_1, header_2_2_2]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("6x5 matrix (column value headers and row value headers, multiple group instances, empty cells)", (done) => {
+
+                let matrix = matrixThreeRowGroupsThreeColumnGroups;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2,
+                                rowGroupSource3formatted,
+                                columnGroupSource1,
+                                columnGroupSource2,
+                                columnGroupSource3formatted
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let rowHeader_1 = matrix.rows.root.children[0];
+                    let rowHeader_1_1 = rowHeader_1.children[0];
+                    let rowHeaderValue_1_1_1 = formatter(rowHeader_1_1.children[0].levelValues[0].value, rowGroupSource3formatted);
+                    let rowHeaderValue_1_1_2 = formatter(rowHeader_1_1.children[1].levelValues[0].value, rowGroupSource3formatted);
+                    let rowHeader_1_2 = rowHeader_1.children[1];
+                    let rowHeaderValue_1_2_1 = formatter(rowHeader_1_2.children[0].levelValues[0].value, rowGroupSource3formatted);
+                    let colHeader_1 = matrix.columns.root.children[0];
+                    let colHeader_1_1 = colHeader_1.children[0];
+                    let colHeaderValue_1_1_1 = formatter(colHeader_1_1.children[0].levelValues[0].value, columnGroupSource3formatted);
+                    let colHeaderValue_1_1_2 = formatter(colHeader_1_1.children[1].levelValues[0].value, columnGroupSource3formatted);
+                    let colHeader_1_2 = colHeader_1.children[1];
+                    let colHeaderValue_1_2_1 = formatter(colHeader_1_2.children[0].levelValues[0].value, columnGroupSource3formatted);
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        ["", "", columnGroupSource1.displayName, colHeader_1.levelValues[0].value, ""],
+                        ["", "", columnGroupSource2.displayName, colHeader_1_1.levelValues[0].value, colHeader_1_2.levelValues[0].value],
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, colHeaderValue_1_1_1, colHeaderValue_1_1_2, colHeaderValue_1_2_1],
+                        [rowHeader_1.levelValues[0].value, rowHeader_1_1.levelValues[0].value, rowHeaderValue_1_1_1, "", "", ""],
+                        [rowHeaderValue_1_1_2, "", "", ""],
+                        [rowHeader_1_2.levelValues[0].value, rowHeaderValue_1_2_1, "", "", ""]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x4 matrix (boolean and null group instances)", (done) => {
+                let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasure;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let colHeader1 = matrix.columns.root.children[0];
+                    let colHeader2 = matrix.columns.root.children[1];
+                    let rowHeader1 = matrix.rows.root.children[0];
+                    let rowHeader2 = matrix.rows.root.children[1];
+                    let rowHeader3 = matrix.rows.root.children[2];
+
+                    let expectedCells: string[][] = [
+                        [rowGroupSource4.displayName, formatter(colHeader1.levelValues[0].value, columnGroupSource4), formatter(colHeader2.levelValues[0].value, columnGroupSource4), ""],
+                        [formatter(rowHeader1.levelValues[0].value, columnGroupSource4), formatter(rowHeader1.values[0].value, measureSource1), formatter(rowHeader1.values[1].value, measureSource1)],
+                        [formatter(rowHeader2.levelValues[0].value, columnGroupSource4), formatter(rowHeader2.values[0].value, measureSource1), formatter(rowHeader2.values[1].value, measureSource1)],
+                        [EmptyCell, formatter(rowHeader3.values[0].value, measureSource1), formatter(rowHeader3.values[1].value, measureSource1)]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("Matrix with row and column subtotals", (done) => {
+
+                let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ],
+                            objects: {
+                                general: {
+                                    rowSubtotals: true,
+                                    columnSubtotals: true
+                                }
+                            }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let colHeader1 = matrix.columns.root.children[0];
+                    let colHeader2 = matrix.columns.root.children[1];
+                    let rowHeader1 = matrix.rows.root.children[0];
+                    let rowHeader2 = matrix.rows.root.children[1];
+                    let rowHeader3 = matrix.rows.root.children[2];
+                    let rowHeader4 = matrix.rows.root.children[3];
+
+                    let expectedCells: string[][] = [
+                        [rowGroupSource4.displayName, formatter(colHeader1.levelValues[0].value, columnGroupSource4), formatter(colHeader2.levelValues[0].value, columnGroupSource4), TableTotalLabel, ""],
+                        [formatter(rowHeader1.levelValues[0].value, rowGroupSource4), formatter(rowHeader1.values[0].value, measureSource1), formatter(rowHeader1.values[1].value, measureSource1), formatter(rowHeader1.values[2].value, measureSource1)],
+                        [formatter(rowHeader2.levelValues[0].value, rowGroupSource4), formatter(rowHeader2.values[0].value, measureSource1), formatter(rowHeader2.values[1].value, measureSource1), formatter(rowHeader2.values[2].value, measureSource1)],
+                        [EmptyCell, formatter(rowHeader3.values[0].value, measureSource1), formatter(rowHeader3.values[1].value, measureSource1), formatter(rowHeader3.values[2].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader4.values[0].value, measureSource1), formatter(rowHeader4.values[1].value, measureSource1), formatter(rowHeader4.values[2].value, measureSource1)]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("ensure matrix items tooltip", (done) => {
+                let matrix = matrixWithBigValues;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ],
+                            objects: {
+                                general: {
+                                    rowSubtotals: true,
+                                    columnSubtotals: true
+                                }
+                            }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+                    //test matrix items
+                    for (let i = 0; i < matrixWithBigValues.rows.root.children.length; i++) {
+                        validateMatrixTooltip(CssClassBodyCell, matrixWithBigValues.rows.root.children[i].values, i);
                     }
 
                     done();
                 }, DefaultWaitForRender);
-            }, DefaultWaitForRender);
-        });
-
-        function formatter(value: any, source?: DataViewMetadataColumn): string {
-            return valueFormatter.formatVariantMeasureValue(value, source, TablixObjects.PropColumnFormatString);
-        }
-    });
-
-    describe("Dashboard matrix DOM validation", () => {
-        let v: powerbi.IVisual,
-            element: JQuery,
-            ContainerClassName = 'tablixDashboard';
-
-        beforeEach(() => {
-            element = powerbitests.helpers.testDom("700", "700");
-            element["visible"] = () => { return true; };
-            v = new powerbi.visuals.Matrix();
-            v.init({
-                element: element,
-                host: mocks.createVisualHostServices(),
-                style: powerbi.visuals.visualStyles.create(),
-                viewport: {
-                    height: element.height(),
-                    width: element.width()
-                },
-                animation:
-                {
-                    transitionImmediate: true
-                },
-                interactivity: {
-                    selection: null
-                }
-            });
-        });
-
-        function validateMatrix(expectedValues: PrimitiveValue[][]): void {
-            tablixHelper.validateMatrix(<string[][]>expectedValues, ".tablixDashboard tr");
-        }
-
-        describe('text size', () => {
-            describe('default', () => {
-                it('font size set on container', (done) => {
-                    let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
-                    v.onDataChanged({
-                        dataViews: [{
-                            metadata: {
-                                columns:
-                                [
-                                    rowGroupSource4,
-                                    columnGroupSource4,
-                                    measureSource1
-                                ],
-                                objects: {
-                                    general: {
-                                        rowSubtotals: true,
-                                        columnSubtotals: true,
-                                    }
-                                }
-                            },
-                            matrix: matrix
-                        }]
-                    });
-
-                    setTimeout(() => {
-                        let actualFontSize = findElementByCssClass(element, ContainerClassName).css('font-size');
-                        tablixHelper.validateFontSize(actualFontSize, 8);
-                        done();
-                    }, DefaultWaitForRender);
-                });
-
-                it("3x8 matrix with default text size row height", (done) => {
-                    let matrix = matrixThreeRowGroups;
-                    v.onDataChanged({
-                        dataViews: [{
-                            metadata: {
-                                columns:
-                                [
-                                    rowGroupSource1,
-                                    rowGroupSource2,
-                                    rowGroupSource3
-                                ]
-                            },
-                            matrix: matrix
-                        }]
-                    });
-
-                    setTimeout(() => {
-                        let cells = findElementByCssClass(element, CssClassRowHeaderLeaf);
-
-                        expect(cells.length).toBe(9);
-                        tablixHelper.validateCellHeights(cells, 14);
-
-                        done();
-                    }, DefaultWaitForRender);
-                });
             });
 
-            describe('specified', () => {
-                it("font size set on container", (done) => {
-                    let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
-                    v.onDataChanged({
-                        dataViews: [{
-                            metadata: {
-                                columns:
-                                [
-                                    rowGroupSource4,
-                                    columnGroupSource4,
-                                    measureSource1
-                                ],
-                                objects: {
-                                    general: {
-                                        rowSubtotals: true,
-                                        columnSubtotals: true,
-                                        textSize: 18,
-                                    }
-                                }
-                            },
-                            matrix: matrix
-                        }]
-                    });
+            it("header sort arrow up", (done) => {
+                let dataView = matrixOneMeasureOneRowGroupTwoGroupInstancesAscendingDataView;
+                v.onDataChanged({ dataViews: [dataView] });
 
-                    setTimeout(() => {
-                        let actualFontSize = findElementByCssClass(element, ContainerClassName).css('font-size');
-                        tablixHelper.validateFontSize(actualFontSize, 18);
-                        done();
-                    }, DefaultWaitForRender);
+                setTimeout(() => {
+                    let expectedCells: string[] =
+                        ['tablixSortIconContainer future powervisuals-glyph caret-down', 'tablixSortIconContainer sorted powervisuals-glyph caret-up', 'tablixSortIconContainer future powervisuals-glyph caret-down'];
+
+                    validateSortIcons(expectedCells);
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("header sort arrow down", (done) => {
+                let dataView = matrixOneMeasureOneRowGroupTwoGroupInstancesDescendingDataView;
+                v.onDataChanged({ dataViews: [dataView] });
+
+                setTimeout(() => {
+                    let expectedCells: string[] =
+                        ['tablixSortIconContainer future powervisuals-glyph caret-down', 'tablixSortIconContainer sorted powervisuals-glyph caret-down', 'tablixSortIconContainer future powervisuals-glyph caret-up'];
+
+                    validateSortIcons(expectedCells);
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("Matrix with multiple row and column group hierarchy levels, one measure with subtotals", (done) => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsOneMeasureAndTotals;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2,
+                                columnGroupSource1,
+                                columnGroupSource2,
+                                measureSource1
+                            ],
+                            objects: {
+                                general: {
+                                    rowSubtotals: true,
+                                    columnSubtotals: true
+                                }
+                            }
+                        },
+                        matrix: matrix
+                    }]
                 });
 
-                it("3x8 matrix with specified text size adjusted row height", (done) => {
-                    let matrix = matrixThreeRowGroups;
-                    v.onDataChanged({
-                        dataViews: [{
-                            metadata: {
-                                columns:
-                                [
-                                    rowGroupSource1,
-                                    rowGroupSource2,
-                                    rowGroupSource3
-                                ],
-                                objects: {
-                                    general: {
-                                        rowSubtotals: true,
-                                        columnSubtotals: true,
-                                        textSize: 14,
+                setTimeout(() => {
+
+                    let colHeader1 = matrix.columns.root.children[0];
+                    let colHeader2 = matrix.columns.root.children[1];
+                    let colHeader1_1 = matrix.columns.root.children[0].children[0];
+                    let colHeader1_2 = matrix.columns.root.children[0].children[1];
+                    let colHeader2_1 = matrix.columns.root.children[1].children[0];
+                    let colHeader2_2 = matrix.columns.root.children[1].children[1];
+
+                    let rowHeader1 = matrix.rows.root.children[0];
+                    let rowHeader2 = matrix.rows.root.children[1];
+                    let rowHeader3 = matrix.rows.root.children[2];
+                    let rowHeader4 = matrix.rows.root.children[3];
+                    let rowHeadert = matrix.rows.root.children[4];
+
+                    let rowHeader1_1 = matrix.rows.root.children[0].children[0];
+                    let rowHeader1_2 = matrix.rows.root.children[0].children[1];
+                    let rowHeader1_t = matrix.rows.root.children[0].children[2];
+                    let rowHeader2_1 = matrix.rows.root.children[1].children[0];
+                    let rowHeader2_2 = matrix.rows.root.children[1].children[1];
+                    let rowHeader2_t = matrix.rows.root.children[1].children[2];
+                    let rowHeader3_1 = matrix.rows.root.children[2].children[0];
+                    let rowHeader3_t = matrix.rows.root.children[2].children[1];
+                    let rowHeader4_1 = matrix.rows.root.children[3].children[0];
+                    let rowHeader4_t = matrix.rows.root.children[3].children[1];
+
+                    let expectedCells: string[][] = [
+                        ["", columnGroupSource1.displayName, colHeader1.levelValues[0].value.toString(), colHeader2.levelValues[0].value.toString(), TableTotalLabel, ""],
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, colHeader1_1.levelValues[0].value.toString(), colHeader1_2.levelValues[0].value.toString(), TableTotalLabel, colHeader2_1.levelValues[0].value.toString(), colHeader2_2.levelValues[0].value.toString(), TableTotalLabel],
+                        [rowHeader1.levelValues[0].value.toString(), rowHeader1_1.levelValues[0].value.toString(), formatter(rowHeader1_1.values[0].value, measureSource1), formatter(rowHeader1_1.values[1].value, measureSource1), formatter(rowHeader1_1.values[2].value, measureSource1), formatter(rowHeader1_1.values[3].value, measureSource1), formatter(rowHeader1_1.values[4].value, measureSource1), formatter(rowHeader1_1.values[5].value, measureSource1), formatter(rowHeader1_1.values[6].value, measureSource1)],
+                        [rowHeader1_2.levelValues[0].value.toString(), formatter(rowHeader1_2.values[0].value, measureSource1), formatter(rowHeader1_2.values[1].value, measureSource1), formatter(rowHeader1_2.values[2].value, measureSource1), formatter(rowHeader1_2.values[3].value, measureSource1), formatter(rowHeader1_2.values[4].value, measureSource1), formatter(rowHeader1_2.values[5].value, measureSource1), formatter(rowHeader1_2.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader1_t.values[0].value, measureSource1), formatter(rowHeader1_t.values[1].value, measureSource1), formatter(rowHeader1_t.values[2].value, measureSource1), formatter(rowHeader1_t.values[3].value, measureSource1), formatter(rowHeader1_t.values[4].value, measureSource1), formatter(rowHeader1_t.values[5].value, measureSource1), formatter(rowHeader1_t.values[6].value, measureSource1)],
+                        [rowHeader2.levelValues[0].value.toString(), rowHeader2_1.levelValues[0].value.toString(), formatter(rowHeader2_1.values[0].value, measureSource1), formatter(rowHeader2_1.values[1].value, measureSource1), formatter(rowHeader2_1.values[2].value, measureSource1), formatter(rowHeader2_1.values[3].value, measureSource1), formatter(rowHeader2_1.values[4].value, measureSource1), formatter(rowHeader2_1.values[5].value, measureSource1), formatter(rowHeader2_1.values[6].value, measureSource1)],
+                        [rowHeader2_2.levelValues[0].value.toString(), formatter(rowHeader2_2.values[0].value, measureSource1), formatter(rowHeader2_2.values[1].value, measureSource1), formatter(rowHeader2_2.values[2].value, measureSource1), formatter(rowHeader2_2.values[3].value, measureSource1), formatter(rowHeader2_2.values[4].value, measureSource1), formatter(rowHeader2_2.values[5].value, measureSource1), formatter(rowHeader2_2.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader2_t.values[0].value, measureSource1), formatter(rowHeader2_t.values[1].value, measureSource1), formatter(rowHeader2_t.values[2].value, measureSource1), formatter(rowHeader2_t.values[3].value, measureSource1), formatter(rowHeader2_t.values[4].value, measureSource1), formatter(rowHeader2_t.values[5].value, measureSource1), formatter(rowHeader2_t.values[6].value, measureSource1)],
+                        [rowHeader3.levelValues[0].value.toString(), rowHeader3_1.levelValues[0].value.toString(), formatter(rowHeader3_1.values[0].value, measureSource1), formatter(rowHeader3_1.values[1].value, measureSource1), formatter(rowHeader3_1.values[2].value, measureSource1), formatter(rowHeader3_1.values[3].value, measureSource1), formatter(rowHeader3_1.values[4].value, measureSource1), formatter(rowHeader3_1.values[5].value, measureSource1), formatter(rowHeader3_1.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader3_t.values[0].value, measureSource1), formatter(rowHeader3_t.values[1].value, measureSource1), formatter(rowHeader3_t.values[2].value, measureSource1), formatter(rowHeader3_t.values[3].value, measureSource1), formatter(rowHeader3_t.values[4].value, measureSource1), formatter(rowHeader3_t.values[5].value, measureSource1), formatter(rowHeader3_t.values[6].value, measureSource1)],
+                        [rowHeader4.levelValues[0].value.toString(), rowHeader4_1.levelValues[0].value.toString(), formatter(rowHeader4_1.values[0].value, measureSource1), formatter(rowHeader4_1.values[1].value, measureSource1), formatter(rowHeader4_1.values[2].value, measureSource1), formatter(rowHeader4_1.values[3].value, measureSource1), formatter(rowHeader4_1.values[4].value, measureSource1), formatter(rowHeader4_1.values[5].value, measureSource1), formatter(rowHeader4_1.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader4_t.values[0].value, measureSource1), formatter(rowHeader4_t.values[1].value, measureSource1), formatter(rowHeader4_t.values[2].value, measureSource1), formatter(rowHeader4_t.values[3].value, measureSource1), formatter(rowHeader4_t.values[4].value, measureSource1), formatter(rowHeader4_t.values[5].value, measureSource1), formatter(rowHeader4_t.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeadert.values[0].value, measureSource1), formatter(rowHeadert.values[1].value, measureSource1), formatter(rowHeadert.values[2].value, measureSource1), formatter(rowHeadert.values[3].value, measureSource1), formatter(rowHeadert.values[4].value, measureSource1), formatter(rowHeadert.values[5].value, measureSource1), formatter(rowHeadert.values[6].value, measureSource1)]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("Matrix with multiple row and column group hierarchy levels, two measures with subtotals", (done) => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2,
+                                columnGroupSource1,
+                                columnGroupSource2,
+                                measureSource1,
+                                measureSource2
+                            ],
+                            objects: {
+                                general: {
+                                    rowSubtotals: true,
+                                    columnSubtotals: true
+                                }
+                            }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let colHeader1 = matrix.columns.root.children[0];
+                    let colHeader2 = matrix.columns.root.children[1];
+                    let colHeader1_1 = matrix.columns.root.children[0].children[0];
+                    let colHeader1_2 = matrix.columns.root.children[0].children[1];
+                    let colHeader2_1 = matrix.columns.root.children[1].children[0];
+                    let colHeader2_2 = matrix.columns.root.children[1].children[1];
+
+                    let rowHeader1 = matrix.rows.root.children[0];
+                    let rowHeader2 = matrix.rows.root.children[1];
+                    let rowHeader3 = matrix.rows.root.children[2];
+                    let rowHeader4 = matrix.rows.root.children[3];
+                    let rowHeadert = matrix.rows.root.children[4];
+
+                    let rowHeader1_1 = matrix.rows.root.children[0].children[0];
+                    let rowHeader1_2 = matrix.rows.root.children[0].children[1];
+                    let rowHeader1_t = matrix.rows.root.children[0].children[2];
+                    let rowHeader2_1 = matrix.rows.root.children[1].children[0];
+                    let rowHeader2_2 = matrix.rows.root.children[1].children[1];
+                    let rowHeader2_t = matrix.rows.root.children[1].children[2];
+                    let rowHeader3_1 = matrix.rows.root.children[2].children[0];
+                    let rowHeader3_t = matrix.rows.root.children[2].children[1];
+                    let rowHeader4_1 = matrix.rows.root.children[3].children[0];
+                    let rowHeader4_t = matrix.rows.root.children[3].children[1];
+
+                    let expectedCells: string[][] = [
+                        ["", columnGroupSource1.displayName, colHeader1.levelValues[0].value.toString(), colHeader2.levelValues[0].value.toString(), TableTotalLabel, ""],
+                        ["", columnGroupSource2.displayName, colHeader1_1.levelValues[0].value.toString(), colHeader1_2.levelValues[0].value.toString(), TableTotalLabel, colHeader2_1.levelValues[0].value.toString(), colHeader2_2.levelValues[0].value.toString(), TableTotalLabel],
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName],
+                        [rowHeader1.levelValues[0].value.toString(), rowHeader1_1.levelValues[0].value.toString(), formatter(rowHeader1_1.values[0].value, measureSource1), formatter(rowHeader1_1.values[1].value, measureSource1), formatter(rowHeader1_1.values[2].value, measureSource1), formatter(rowHeader1_1.values[3].value, measureSource1), formatter(rowHeader1_1.values[4].value, measureSource1), formatter(rowHeader1_1.values[5].value, measureSource1), formatter(rowHeader1_1.values[6].value, measureSource1), formatter(rowHeader1_1.values[7].value, measureSource1), formatter(rowHeader1_1.values[8].value, measureSource1), formatter(rowHeader1_1.values[9].value, measureSource1), formatter(rowHeader1_1.values[10].value, measureSource1), formatter(rowHeader1_1.values[11].value, measureSource1), formatter(rowHeader1_1.values[12].value, measureSource1), formatter(rowHeader1_1.values[13].value, measureSource1)],
+                        [rowHeader1_2.levelValues[0].value.toString(), formatter(rowHeader1_2.values[0].value, measureSource1), formatter(rowHeader1_2.values[1].value, measureSource1), formatter(rowHeader1_2.values[2].value, measureSource1), formatter(rowHeader1_2.values[3].value, measureSource1), formatter(rowHeader1_2.values[4].value, measureSource1), formatter(rowHeader1_2.values[5].value, measureSource1), formatter(rowHeader1_2.values[6].value, measureSource1), formatter(rowHeader1_2.values[7].value, measureSource1), formatter(rowHeader1_2.values[8].value, measureSource1), formatter(rowHeader1_2.values[9].value, measureSource1), formatter(rowHeader1_2.values[10].value, measureSource1), formatter(rowHeader1_2.values[11].value, measureSource1), formatter(rowHeader1_2.values[12].value, measureSource1), formatter(rowHeader1_2.values[13].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader1_t.values[0].value, measureSource1), formatter(rowHeader1_t.values[1].value, measureSource1), formatter(rowHeader1_t.values[2].value, measureSource1), formatter(rowHeader1_t.values[3].value, measureSource1), formatter(rowHeader1_t.values[4].value, measureSource1), formatter(rowHeader1_t.values[5].value, measureSource1), formatter(rowHeader1_t.values[6].value, measureSource1), formatter(rowHeader1_t.values[7].value, measureSource1), formatter(rowHeader1_t.values[8].value, measureSource1), formatter(rowHeader1_t.values[9].value, measureSource1), formatter(rowHeader1_t.values[10].value, measureSource1), formatter(rowHeader1_t.values[11].value, measureSource1), formatter(rowHeader1_t.values[12].value, measureSource1), formatter(rowHeader1_t.values[13].value, measureSource1)],
+                        [rowHeader2.levelValues[0].value.toString(), rowHeader2_1.levelValues[0].value.toString(), formatter(rowHeader2_1.values[0].value, measureSource1), formatter(rowHeader2_1.values[1].value, measureSource1), formatter(rowHeader2_1.values[2].value, measureSource1), formatter(rowHeader2_1.values[3].value, measureSource1), formatter(rowHeader2_1.values[4].value, measureSource1), formatter(rowHeader2_1.values[5].value, measureSource1), formatter(rowHeader2_1.values[6].value, measureSource1), formatter(rowHeader2_1.values[7].value, measureSource1), formatter(rowHeader2_1.values[8].value, measureSource1), formatter(rowHeader2_1.values[9].value, measureSource1), formatter(rowHeader2_1.values[10].value, measureSource1), formatter(rowHeader2_1.values[11].value, measureSource1), formatter(rowHeader2_1.values[12].value, measureSource1), formatter(rowHeader2_1.values[13].value, measureSource1)],
+                        [rowHeader2_2.levelValues[0].value.toString(), formatter(rowHeader2_2.values[0].value, measureSource1), formatter(rowHeader2_2.values[1].value, measureSource1), formatter(rowHeader2_2.values[2].value, measureSource1), formatter(rowHeader2_2.values[3].value, measureSource1), formatter(rowHeader2_2.values[4].value, measureSource1), formatter(rowHeader2_2.values[5].value, measureSource1), formatter(rowHeader2_2.values[6].value, measureSource1), formatter(rowHeader2_2.values[7].value, measureSource1), formatter(rowHeader2_2.values[8].value, measureSource1), formatter(rowHeader2_2.values[9].value, measureSource1), formatter(rowHeader2_2.values[10].value, measureSource1), formatter(rowHeader2_2.values[11].value, measureSource1), formatter(rowHeader2_2.values[12].value, measureSource1), formatter(rowHeader2_2.values[13].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader2_t.values[0].value, measureSource1), formatter(rowHeader2_t.values[1].value, measureSource1), formatter(rowHeader2_t.values[2].value, measureSource1), formatter(rowHeader2_t.values[3].value, measureSource1), formatter(rowHeader2_t.values[4].value, measureSource1), formatter(rowHeader2_t.values[5].value, measureSource1), formatter(rowHeader2_t.values[6].value, measureSource1), formatter(rowHeader2_t.values[7].value, measureSource1), formatter(rowHeader2_t.values[8].value, measureSource1), formatter(rowHeader2_t.values[9].value, measureSource1), formatter(rowHeader2_t.values[10].value, measureSource1), formatter(rowHeader2_t.values[11].value, measureSource1), formatter(rowHeader2_t.values[12].value, measureSource1), formatter(rowHeader2_t.values[13].value, measureSource1)],
+                        [rowHeader3.levelValues[0].value.toString(), rowHeader3_1.levelValues[0].value.toString(), formatter(rowHeader3_1.values[0].value, measureSource1), formatter(rowHeader3_1.values[1].value, measureSource1), formatter(rowHeader3_1.values[2].value, measureSource1), formatter(rowHeader3_1.values[3].value, measureSource1), formatter(rowHeader3_1.values[4].value, measureSource1), formatter(rowHeader3_1.values[5].value, measureSource1), formatter(rowHeader3_1.values[6].value, measureSource1), formatter(rowHeader3_1.values[7].value, measureSource1), formatter(rowHeader3_1.values[8].value, measureSource1), formatter(rowHeader3_1.values[9].value, measureSource1), formatter(rowHeader3_1.values[10].value, measureSource1), formatter(rowHeader3_1.values[11].value, measureSource1), formatter(rowHeader3_1.values[12].value, measureSource1), formatter(rowHeader3_1.values[13].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader3_t.values[0].value, measureSource1), formatter(rowHeader3_t.values[1].value, measureSource1), formatter(rowHeader3_t.values[2].value, measureSource1), formatter(rowHeader3_t.values[3].value, measureSource1), formatter(rowHeader3_t.values[4].value, measureSource1), formatter(rowHeader3_t.values[5].value, measureSource1), formatter(rowHeader3_t.values[6].value, measureSource1), formatter(rowHeader3_t.values[7].value, measureSource1), formatter(rowHeader3_t.values[8].value, measureSource1), formatter(rowHeader3_t.values[9].value, measureSource1), formatter(rowHeader3_t.values[10].value, measureSource1), formatter(rowHeader3_t.values[11].value, measureSource1), formatter(rowHeader3_t.values[12].value, measureSource1), formatter(rowHeader3_t.values[13].value, measureSource1)],
+                        [rowHeader4.levelValues[0].value.toString(), rowHeader4_1.levelValues[0].value.toString(), formatter(rowHeader4_1.values[0].value, measureSource1), formatter(rowHeader4_1.values[1].value, measureSource1), formatter(rowHeader4_1.values[2].value, measureSource1), formatter(rowHeader4_1.values[3].value, measureSource1), formatter(rowHeader4_1.values[4].value, measureSource1), formatter(rowHeader4_1.values[5].value, measureSource1), formatter(rowHeader4_1.values[6].value, measureSource1), formatter(rowHeader4_1.values[7].value, measureSource1), formatter(rowHeader4_1.values[8].value, measureSource1), formatter(rowHeader4_1.values[9].value, measureSource1), formatter(rowHeader4_1.values[10].value, measureSource1), formatter(rowHeader4_1.values[11].value, measureSource1), formatter(rowHeader4_1.values[12].value, measureSource1), formatter(rowHeader4_1.values[13].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader4_t.values[0].value, measureSource1), formatter(rowHeader4_t.values[1].value, measureSource1), formatter(rowHeader4_t.values[2].value, measureSource1), formatter(rowHeader4_t.values[3].value, measureSource1), formatter(rowHeader4_t.values[4].value, measureSource1), formatter(rowHeader4_t.values[5].value, measureSource1), formatter(rowHeader4_t.values[6].value, measureSource1), formatter(rowHeader4_t.values[7].value, measureSource1), formatter(rowHeader4_t.values[8].value, measureSource1), formatter(rowHeader4_t.values[9].value, measureSource1), formatter(rowHeader4_t.values[10].value, measureSource1), formatter(rowHeader4_t.values[11].value, measureSource1), formatter(rowHeader4_t.values[12].value, measureSource1), formatter(rowHeader4_t.values[13].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeadert.values[0].value, measureSource1), formatter(rowHeadert.values[1].value, measureSource1), formatter(rowHeadert.values[2].value, measureSource1), formatter(rowHeadert.values[3].value, measureSource1), formatter(rowHeadert.values[4].value, measureSource1), formatter(rowHeadert.values[5].value, measureSource1), formatter(rowHeadert.values[6].value, measureSource1), formatter(rowHeadert.values[7].value, measureSource1), formatter(rowHeadert.values[8].value, measureSource1), formatter(rowHeadert.values[9].value, measureSource1), formatter(rowHeadert.values[10].value, measureSource1), formatter(rowHeadert.values[11].value, measureSource1), formatter(rowHeadert.values[12].value, measureSource1), formatter(rowHeadert.values[13].value, measureSource1)]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("Verify Interactivity mode - Dashboard", (done) => {
+
+                // Pick a matrix that exceeds the viewport
+                v.init({
+                    element: element,
+                    host: mocks.createVisualHostServices(),
+                    style: powerbi.visuals.visualStyles.create(),
+                    viewport: {
+                        height: 100,
+                        width: 100
+                    },
+                    interactivity: {
+                        overflow: "hidden"
+                    }
+                });
+
+                v.onDataChanged({
+                    dataViews: [matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresDataView]
+                });
+
+                setTimeout(() => {
+                    let scrollbars = $(".tablixCanvas .scroll-bar-div");
+
+                    // Scrollbars are not attached to DOM for Dashboard
+                    expect(scrollbars.length).toBe(0);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("Verify Interactivity mode - Canvas", (done) => {
+                let viewPort: powerbi.IViewport = {
+                    height: 100,
+                    width: 100
+                };
+
+                // Pick a matrix that exceeds the viewport
+                v.init({
+                    element: element,
+                    host: mocks.createVisualHostServices(),
+                    style: powerbi.visuals.visualStyles.create(),
+                    viewport: viewPort,
+                    interactivity: {
+                        selection: true
+                    }
+                });
+
+                v.onDataChanged({
+                    dataViews: [matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresDataView]
+                });
+
+                setTimeout(() => {
+                    let scrollbars = $(".tablixCanvas .scroll-bar-div");
+                    let verticalScrollBar = scrollbars.eq(0);
+                    let horizontalScrollBar = scrollbars.eq(1);
+
+                    // Scrollbars are attached to DOM for Canvas
+                    expect(scrollbars.length).toBe(2);
+                    expect(verticalScrollBar.css("width")).toBe("9px");
+                    expect(verticalScrollBar.width()).toBe(9);
+                    expect(horizontalScrollBar.css("height")).toBe("9px");
+                    expect(horizontalScrollBar.height()).toBe(9);
+
+                    viewPort = {
+                        height: element.height(),
+                        width: element.width()
+                    };
+                    v.onResizing(viewPort);
+
+                    setTimeout(() => {
+                        scrollbars = $(".tablixCanvas .scroll-bar-div");
+                        expect(scrollbars.length).toBe(2);
+                        if (scrollbars.length === 2) {
+                            verticalScrollBar = scrollbars.eq(0);
+                            horizontalScrollBar = scrollbars.eq(1);
+
+                            // Scrollbars are attached to DOM for Canvas
+                            expect(scrollbars.length).toBe(2);
+                            expect(verticalScrollBar.css("width")).toBe("0px");
+                            expect(verticalScrollBar.width()).toBe(0);
+                            expect(horizontalScrollBar.css("height")).toBe("0px");
+                            expect(horizontalScrollBar.height()).toBe(0);
+                        }
+
+                        done();
+                    }, DefaultWaitForRender);
+                }, DefaultWaitForRender);
+            });
+
+            function formatter(value: any, source?: DataViewMetadataColumn): string {
+                return valueFormatter.formatVariantMeasureValue(value, source, TablixObjects.PropColumnFormatString);
+            }
+        });
+
+        describe("Dashboard matrix DOM validation", () => {
+            let v: powerbi.IVisual,
+                element: JQuery,
+                ContainerClassName = 'tablixDashboard';
+
+            beforeEach(() => {
+                element = powerbitests.helpers.testDom("700", "700");
+                element["visible"] = () => { return true; };
+                v = new powerbi.visuals.Matrix();
+                v.init({
+                    element: element,
+                    host: mocks.createVisualHostServices(),
+                    style: powerbi.visuals.visualStyles.create(),
+                    viewport: {
+                        height: element.height(),
+                        width: element.width()
+                    },
+                    animation:
+                    {
+                        transitionImmediate: true
+                    },
+                    interactivity: {
+                        selection: null
+                    }
+                });
+            });
+
+            function validateMatrix(expectedValues: PrimitiveValue[][]): void {
+                tablixHelper.validateTablixTextAndTooltip(<string[][]>expectedValues, ".tablixDashboard tr");
+            }
+
+            describe('text size', () => {
+                describe('default', () => {
+                    it('font size set on container', (done) => {
+                        let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
+                        v.onDataChanged({
+                            dataViews: [{
+                                metadata: {
+                                    columns:
+                                    [
+                                        rowGroupSource4,
+                                        columnGroupSource4,
+                                        measureSource1
+                                    ],
+                                    objects: {
+                                        general: {
+                                            rowSubtotals: true,
+                                            columnSubtotals: true,
+                                        }
                                     }
                                 },
-                            },
-                            matrix: matrix
-                        }]
+                                matrix: matrix
+                            }]
+                        });
+
+                        setTimeout(() => {
+                            let actualFontSize = findElementByCssClass(element, ContainerClassName).css('font-size');
+                            tablixHelper.validateFontSize(actualFontSize, 8);
+                            done();
+                        }, DefaultWaitForRender);
                     });
 
-                    setTimeout(() => {
-                        let cells = findElementByCssClass(element, CssClassRowHeaderLeaf);
+                    it("3x8 matrix with default text size row height", (done) => {
+                        let matrix = matrixThreeRowGroups;
+                        v.onDataChanged({
+                            dataViews: [{
+                                metadata: {
+                                    columns:
+                                    [
+                                        rowGroupSource1,
+                                        rowGroupSource2,
+                                        rowGroupSource3
+                                    ]
+                                },
+                                matrix: matrix
+                            }]
+                        });
 
-                        expect(cells.length).toBe(9);
-                        tablixHelper.validateCellHeights(cells, 21);
+                        setTimeout(() => {
+                            let cells = findElementByCssClass(element, CssClassRowHeaderLeaf);
 
-                        done();
-                    }, DefaultWaitForRender);
+                            expect(cells.length).toBe(9);
+                            tablixHelper.validateCellHeights(cells, 14);
+
+                            done();
+                        }, DefaultWaitForRender);
+                    });
                 });
 
-                it("6x9 matrix with text size scaling factor adjusts minimum column width", (done) => {
-                    v.onDataChanged({
-                        dataViews: [matrixThreeMeasuresThreeRowGroupsDataViewIncreasedFontSize]
+                describe('specified', () => {
+                    it("font size set on container", (done) => {
+                        let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
+                        v.onDataChanged({
+                            dataViews: [{
+                                metadata: {
+                                    columns:
+                                    [
+                                        rowGroupSource4,
+                                        columnGroupSource4,
+                                        measureSource1
+                                    ],
+                                    objects: {
+                                        general: {
+                                            rowSubtotals: true,
+                                            columnSubtotals: true,
+                                            textSize: 18,
+                                        }
+                                    }
+                                },
+                                matrix: matrix
+                            }]
+                        });
+
+                        setTimeout(() => {
+                            let actualFontSize = findElementByCssClass(element, ContainerClassName).css('font-size');
+                            tablixHelper.validateFontSize(actualFontSize, 18);
+                            done();
+                        }, DefaultWaitForRender);
                     });
 
-                    let matrix = matrixThreeMeasuresThreeRowGroups;
-                    setTimeout(() => {
-                        // Dashboard crops out columns which do not fit (minimum width based on text size)
-                        let header_1 = matrix.rows.root.children[0];
-                        let header_1_1 = header_1.children[0];
-                        let header_1_1_1 = header_1_1.children[0];
-                        let header_1_1_2 = header_1_1.children[1];
-                        let header_1_2 = header_1.children[1];
-                        let header_1_2_1 = header_1_2.children[0];
-                        let header_1_2_2 = header_1_2.children[1];
-                        let header_2 = matrix.rows.root.children[1];
-                        let header_2_1 = header_2.children[0];
-                        let header_2_1_1 = header_2_1.children[0];
-                        let header_2_1_2 = header_2_1.children[1];
-                        let header_2_2 = header_2.children[1];
-                        let header_2_2_1 = header_2_2.children[0];
-                        let header_2_2_2 = header_2_2.children[1];
+                    it("3x8 matrix with specified text size adjusted row height", (done) => {
+                        let matrix = matrixThreeRowGroups;
+                        v.onDataChanged({
+                            dataViews: [{
+                                metadata: {
+                                    columns:
+                                    [
+                                        rowGroupSource1,
+                                        rowGroupSource2,
+                                        rowGroupSource3
+                                    ],
+                                    objects: {
+                                        general: {
+                                            rowSubtotals: true,
+                                            columnSubtotals: true,
+                                            textSize: 14,
+                                        }
+                                    },
+                                },
+                                matrix: matrix
+                            }]
+                        });
 
-                        let expectedCells: PrimitiveValue[][] = [
-                            [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName],
-                            [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value],
-                            [header_1_1_2.levelValues[0].value],
-                            [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value],
-                            [header_1_2_2.levelValues[0].value],
-                            [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value],
-                            [header_2_1_2.levelValues[0].value],
-                            [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value],
-                            [header_2_2_2.levelValues[0].value],
-                        ];
+                        setTimeout(() => {
+                            let cells = findElementByCssClass(element, CssClassRowHeaderLeaf);
 
-                        validateMatrix(expectedCells);
+                            expect(cells.length).toBe(9);
+                            tablixHelper.validateCellHeights(cells, 21);
+
+                            done();
+                        }, DefaultWaitForRender);
+                    });
+
+                    it("6x9 matrix with text size scaling factor adjusts minimum column width", (done) => {
+                        v.onDataChanged({
+                            dataViews: [matrixThreeMeasuresThreeRowGroupsDataViewIncreasedFontSize]
+                        });
+
+                        let matrix = matrixThreeMeasuresThreeRowGroups;
+                        setTimeout(() => {
+                            // Dashboard crops out columns which do not fit (minimum width based on text size)
+                            let header_1 = matrix.rows.root.children[0];
+                            let header_1_1 = header_1.children[0];
+                            let header_1_1_1 = header_1_1.children[0];
+                            let header_1_1_2 = header_1_1.children[1];
+                            let header_1_2 = header_1.children[1];
+                            let header_1_2_1 = header_1_2.children[0];
+                            let header_1_2_2 = header_1_2.children[1];
+                            let header_2 = matrix.rows.root.children[1];
+                            let header_2_1 = header_2.children[0];
+                            let header_2_1_1 = header_2_1.children[0];
+                            let header_2_1_2 = header_2_1.children[1];
+                            let header_2_2 = header_2.children[1];
+                            let header_2_2_1 = header_2_2.children[0];
+                            let header_2_2_2 = header_2_2.children[1];
+
+                            let expectedCells: PrimitiveValue[][] = [
+                                [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName],
+                                [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value],
+                                [header_1_1_2.levelValues[0].value],
+                                [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value],
+                                [header_1_2_2.levelValues[0].value],
+                                [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value],
+                                [header_2_1_2.levelValues[0].value],
+                                [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value],
+                                [header_2_2_2.levelValues[0].value],
+                            ];
+
+                            validateMatrix(expectedCells);
+
+                            done();
+                        }, DefaultWaitForRender);
+                    });
+                });
+            });
+
+            it("1x2 matrix (value and static column header)", (done) => {
+
+                let matrix = matrixOneMeasure;
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureDataView]
+                });
+
+                setTimeout(() => {
+
+                    let cellValue: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
+                    let expectedCells: string[][] = [
+                        ["", measureSource1.displayName],
+                        [EmptyCell, cellValue]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("1x2 matrix (value and column header value)", (done) => {
+
+                let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [matrixOneMeasureOneColumnGroupOneGroupInstanceDataView]
+                });
+
+                setTimeout(() => {
+
+                    let headerValue = (matrix.columns.root.children[0]).levelValues[0].value;
+                    let cellValue: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        ["", headerValue],
+                        [EmptyCell, cellValue]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x2 matrix (values and static column headers)", (done) => {
+
+                let matrix = matrixThreeMeasures;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [measureSource1, measureSource2, measureSource3] },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let cellValue1: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
+                    let cellValue2: string = formatter(matrix.rows.root.children[0].values[1].value, measureSource2);
+                    let cellValue3: string = formatter(matrix.rows.root.children[0].values[2].value, measureSource3);
+
+                    let expectedCells: string[][] = [
+                        ["", measureSource1.displayName, measureSource2.displayName, measureSource3.displayName],
+                        [EmptyCell, cellValue1, cellValue2, cellValue3]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x3 matrix (values, static and value column headers)", (done) => {
+
+                let matrix = matrixThreeMeasuresOneColumnGroupOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [columnGroupSource1, measureSource1, measureSource2, measureSource3] },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let headerValue = (matrix.columns.root.children[0]).levelValues[0].value;
+
+                    let cellValue1: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
+                    let cellValue2: string = formatter(matrix.rows.root.children[0].values[1].value, measureSource2);
+                    let cellValue3: string = formatter(matrix.rows.root.children[0].values[2].value, measureSource3);
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        ["", headerValue],
+                        ["", measureSource1.displayName, measureSource2.displayName, measureSource3.displayName],
+                        [EmptyCell, cellValue1, cellValue2, cellValue3]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("6x9 matrix (values, static column headers and row value headers)", (done) => {
+
+                v.onDataChanged({
+                    dataViews: [matrixThreeMeasuresThreeRowGroupsDataView]
+                });
+
+                let matrix = matrixThreeMeasuresThreeRowGroups;
+                setTimeout(() => {
+
+                    let header_1 = matrix.rows.root.children[0];
+                    let header_1_1 = header_1.children[0];
+                    let header_1_1_1 = header_1_1.children[0];
+                    let header_1_1_2 = header_1_1.children[1];
+                    let header_1_2 = header_1.children[1];
+                    let header_1_2_1 = header_1_2.children[0];
+                    let header_1_2_2 = header_1_2.children[1];
+                    let header_2 = matrix.rows.root.children[1];
+                    let header_2_1 = header_2.children[0];
+                    let header_2_1_1 = header_2_1.children[0];
+                    let header_2_1_2 = header_2_1.children[1];
+                    let header_2_2 = header_2.children[1];
+                    let header_2_2_1 = header_2_2.children[0];
+                    let header_2_2_2 = header_2_2.children[1];
+                    let cellValue1 = formatter(header_1_1_1.values[0].value, measureSource1);
+                    let cellValue2 = formatter(header_1_1_1.values[1].value, measureSource2);
+                    let cellValue3 = formatter(header_1_1_1.values[2].value, measureSource3);
+                    let cellValue4 = formatter(header_1_1_2.values[0].value, measureSource1);
+                    let cellValue5 = formatter(header_1_1_2.values[1].value, measureSource2);
+                    let cellValue6 = formatter(header_1_1_2.values[2].value, measureSource3);
+                    let cellValue7 = formatter(header_1_2_1.values[0].value, measureSource1);
+                    let cellValue8 = formatter(header_1_2_1.values[1].value, measureSource2);
+                    let cellValue9 = formatter(header_1_2_1.values[2].value, measureSource3);
+                    let cellValue10 = formatter(header_1_2_2.values[0].value, measureSource1);
+                    let cellValue11 = formatter(header_1_2_2.values[1].value, measureSource2);
+                    let cellValue12 = formatter(header_1_2_2.values[2].value, measureSource3);
+                    let cellValue13 = formatter(header_2_1_1.values[0].value, measureSource1);
+                    let cellValue14 = formatter(header_2_1_1.values[1].value, measureSource2);
+                    let cellValue15 = formatter(header_2_1_1.values[2].value, measureSource3);
+                    let cellValue16 = formatter(header_2_1_2.values[0].value, measureSource1);
+                    let cellValue17 = formatter(header_2_1_2.values[1].value, measureSource2);
+                    let cellValue18 = formatter(header_2_1_2.values[2].value, measureSource3);
+                    let cellValue19 = formatter(header_2_2_1.values[0].value, measureSource1);
+                    let cellValue20 = formatter(header_2_2_1.values[1].value, measureSource2);
+                    let cellValue21 = formatter(header_2_2_1.values[2].value, measureSource3);
+                    let cellValue22 = formatter(header_2_2_2.values[0].value, measureSource1);
+                    let cellValue23 = formatter(header_2_2_2.values[1].value, measureSource2);
+                    let cellValue24 = formatter(header_2_2_2.values[2].value, measureSource3);
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, measureSource1.displayName, measureSource2.displayName, measureSource3.displayName],
+                        [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value, cellValue1, cellValue2, cellValue3],
+                        [header_1_1_2.levelValues[0].value, cellValue4, cellValue5, cellValue6],
+                        [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value, cellValue7, cellValue8, cellValue9],
+                        [header_1_2_2.levelValues[0].value, cellValue10, cellValue11, cellValue12],
+                        [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value, cellValue13, cellValue14, cellValue15],
+                        [header_2_1_2.levelValues[0].value, cellValue16, cellValue17, cellValue18],
+                        [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value, cellValue19, cellValue20, cellValue21],
+                        [header_2_2_2.levelValues[0].value, cellValue22, cellValue23, cellValue24]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("2x2 matrix (value, static column header and row value header)", (done) => {
+
+                let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: { columns: [rowGroupSource1, measureSource1] },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let header = matrix.rows.root.children[0];
+                    let cellValue: string = formatter(header.values[0].value, measureSource1);
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, measureSource1.displayName],
+                        [header.levelValues[0].value, cellValue]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("2x2 matrix (value, column value header and row value header, empty cell)", (done) => {
+
+                let matrix = matrixOneRowGroupOneColumnGroupOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [matrixOneRowGroupOneColumnGroupOneGroupInstanceDataView]
+                });
+
+                setTimeout(() => {
+
+                    let columnHeader = matrix.columns.root.children[0];
+                    let rowHeader = matrix.rows.root.children[0];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, columnHeader.levelValues[0].value.toString()],
+                        [rowHeader.levelValues[0].value.toString(), ""]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x2 matrix (static column headers and row value headers)", (done) => {
+
+                let matrix = matrixThreeRowGroupsOneGroupInstance;
+                v.onDataChanged({
+                    dataViews: [matrixThreeRowGroupsOneGroupInstanceDataView]
+                });
+
+                setTimeout(() => {
+
+                    let rowHeader_1 = matrix.rows.root.children[0];
+                    let rowHeader_1_1 = rowHeader_1.children[0];
+                    let rowHeader_1_1_1 = rowHeader_1_1.children[0];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName],
+                        [rowHeader_1.levelValues[0].value, rowHeader_1_1.levelValues[0].value, rowHeader_1_1_1.levelValues[0].value.toString()]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("2x6 matrix (static column headers and row value headers including empty ones)", (done) => {
+
+                let matrix = matrixTwoRowGroupsWithNullValues;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let header_1 = matrix.rows.root.children[0];
+                    let header_1_2 = header_1.children[1];
+                    let header_2 = matrix.rows.root.children[1];
+                    let header_2_1 = header_2.children[0];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName],
+                        [header_1.levelValues[0].value, EmptyCell],
+                        [header_1_2.levelValues[0].value],
+                        [header_2.levelValues[0].value, header_2_1.levelValues[0].value],
+                        [EmptyCell],
+                        [EmptyCell, EmptyCell]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("5x2 matrix (column value headers including empty ones)", (done) => {
+                let matrix = <DataViewMatrix><any>matrixTwoColumnGroupsWithNullValues;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                columnGroupSource1,
+                                columnGroupSource2
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let header_1 = matrix.columns.root.children[0];
+                    let header_1_2 = header_1.children[1];
+                    let header_2 = matrix.columns.root.children[1];
+                    let header_2_1 = header_2.children[0];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        ["", header_1.levelValues[0].value, header_2.levelValues[0].value, EmptyCell],
+                        ["", EmptyCell, header_1_2.levelValues[0].value, header_2_1.levelValues[0].value, EmptyCell, EmptyCell]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x9 matrix (static column headers and row value headers)", (done) => {
+
+                let matrix = matrixThreeRowGroups;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2,
+                                rowGroupSource3
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let header_1 = matrix.rows.root.children[0];
+                    let header_1_1 = header_1.children[0];
+                    let header_1_1_1 = header_1_1.children[0];
+                    let header_1_1_2 = header_1_1.children[1];
+                    let header_1_2 = header_1.children[1];
+                    let header_1_2_1 = header_1_2.children[0];
+                    let header_1_2_2 = header_1_2.children[1];
+                    let header_2 = matrix.rows.root.children[1];
+                    let header_2_1 = header_2.children[0];
+                    let header_2_1_1 = header_2_1.children[0];
+                    let header_2_1_2 = header_2_1.children[1];
+                    let header_2_2 = header_2.children[1];
+                    let header_2_2_1 = header_2_2.children[0];
+                    let header_2_2_2 = header_2_2.children[1];
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName],
+                        [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value.toString()],
+                        [header_1_1_2.levelValues[0].value.toString()],
+                        [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value.toString()],
+                        [header_1_2_2.levelValues[0].value.toString()],
+                        [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value.toString()],
+                        [header_2_1_2.levelValues[0].value.toString()],
+                        [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value.toString()],
+                        [header_2_2_2.levelValues[0].value.toString()]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("8x3 matrix (column value headers)", (done) => {
+
+                let matrix = matrixThreeColumnGroups;
+                v.onDataChanged({
+                    dataViews: [matrixThreeColumnGroupsDataView]
+                });
+
+                setTimeout(() => {
+
+                    let header_1 = matrix.columns.root.children[0];
+                    let header_1_1 = header_1.children[0];
+                    let header_1_1_1 = (header_1_1.children[0]).levelValues[0].value.toString();
+                    let header_1_1_2 = (header_1_1.children[1]).levelValues[0].value.toString();
+                    let header_1_2 = header_1.children[1];
+                    let header_1_2_1 = (header_1_2.children[0]).levelValues[0].value.toString();
+                    let header_1_2_2 = (header_1_2.children[1]).levelValues[0].value.toString();
+                    let header_2 = matrix.columns.root.children[1];
+                    let header_2_1 = header_2.children[0];
+                    let header_2_1_1 = (header_2_1.children[0]).levelValues[0].value.toString();
+                    let header_2_1_2 = (header_2_1.children[1]).levelValues[0].value.toString();
+                    let header_2_2 = header_2.children[1];
+                    let header_2_2_1 = (header_2_2.children[0]).levelValues[0].value.toString();
+                    let header_2_2_2 = (header_2_2.children[1]).levelValues[0].value.toString();
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        ["", header_1.levelValues[0].value, header_2.levelValues[0].value],
+                        ["", header_1_1.levelValues[0].value, header_1_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_2.levelValues[0].value],
+                        ["", header_1_1_1, header_1_1_2, header_1_2_1, header_1_2_2, header_2_1_1, header_2_1_2, header_2_2_1, header_2_2_2]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("6x5 matrix (column value headers and row value headers, multiple group instances, empty cells)", (done) => {
+                let matrix = matrixThreeRowGroupsThreeColumnGroups;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2,
+                                rowGroupSource3formatted,
+                                columnGroupSource1,
+                                columnGroupSource2,
+                                columnGroupSource3formatted
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let rowHeader_1 = matrix.rows.root.children[0];
+                    let rowHeader_1_1 = rowHeader_1.children[0];
+                    let rowHeaderValue_1_1_1 = formatter(rowHeader_1_1.children[0].levelValues[0].value, rowGroupSource3formatted);
+                    let rowHeaderValue_1_1_2 = formatter(rowHeader_1_1.children[1].levelValues[0].value, rowGroupSource3formatted);
+                    let rowHeader_1_2 = rowHeader_1.children[1];
+                    let rowHeaderValue_1_2_1 = formatter(rowHeader_1_2.children[0].levelValues[0].value, rowGroupSource3formatted);
+                    let colHeader_1 = matrix.columns.root.children[0];
+                    let colHeader_1_1 = colHeader_1.children[0];
+                    let colHeaderValue_1_1_1 = formatter(colHeader_1_1.children[0].levelValues[0].value, columnGroupSource3formatted);
+                    let colHeaderValue_1_1_2 = formatter(colHeader_1_1.children[1].levelValues[0].value, columnGroupSource3formatted);
+                    let colHeader_1_2 = colHeader_1.children[1];
+                    let colHeaderValue_1_2_1 = formatter(colHeader_1_2.children[0].levelValues[0].value, columnGroupSource3formatted);
+
+                    let expectedCells: PrimitiveValue[][] = [
+                        ["", "", columnGroupSource1.displayName, colHeader_1.levelValues[0].value],
+                        ["", "", columnGroupSource2.displayName, colHeader_1_1.levelValues[0].value, colHeader_1_2.levelValues[0].value],
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, colHeaderValue_1_1_1, colHeaderValue_1_1_2, colHeaderValue_1_2_1],
+                        [rowHeader_1.levelValues[0].value, rowHeader_1_1.levelValues[0].value, rowHeaderValue_1_1_1, "", "", ""],
+                        [rowHeaderValue_1_1_2, "", "", ""],
+                        [rowHeader_1_2.levelValues[0].value, rowHeaderValue_1_2_1, "", "", ""]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("3x4 matrix (boolean and null group instances)", (done) => {
+                let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasure;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ]
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let colHeader1 = matrix.columns.root.children[0];
+                    let colHeader2 = matrix.columns.root.children[1];
+                    let rowHeader1 = matrix.rows.root.children[0];
+                    let rowHeader2 = matrix.rows.root.children[1];
+                    let rowHeader3 = matrix.rows.root.children[2];
+
+                    let expectedCells: string[][] = [
+                        [rowGroupSource4.displayName, formatter(colHeader1.levelValues[0].value, columnGroupSource4), formatter(colHeader2.levelValues[0].value, columnGroupSource4)],
+                        [formatter(rowHeader1.levelValues[0].value, rowGroupSource4), formatter(rowHeader1.values[0].value, measureSource1), formatter(rowHeader1.values[1].value, measureSource1)],
+                        [formatter(rowHeader2.levelValues[0].value, rowGroupSource4), formatter(rowHeader2.values[0].value, measureSource1), formatter(rowHeader2.values[1].value, measureSource1)],
+                        [EmptyCell, formatter(rowHeader3.values[0].value, measureSource1), formatter(rowHeader3.values[1].value, measureSource1)]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("Matrix with row and column subtotals", (done) => {
+                let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource4,
+                                columnGroupSource4,
+                                measureSource1
+                            ],
+                            objects: {
+                                general: {
+                                    rowSubtotals: true,
+                                    columnSubtotals: true
+                                }
+                            }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let colHeader1 = matrix.columns.root.children[0];
+                    let colHeader2 = matrix.columns.root.children[1];
+                    let rowHeader1 = matrix.rows.root.children[0];
+                    let rowHeader2 = matrix.rows.root.children[1];
+                    let rowHeader3 = matrix.rows.root.children[2];
+                    let rowHeader4 = matrix.rows.root.children[3];
+
+                    let expectedCells: string[][] = [
+                        [rowGroupSource4.displayName, formatter(colHeader1.levelValues[0].value, columnGroupSource4), formatter(colHeader2.levelValues[0].value, columnGroupSource4), TableTotalLabel],
+                        [formatter(rowHeader1.levelValues[0].value, rowGroupSource4), formatter(rowHeader1.values[0].value, measureSource1), formatter(rowHeader1.values[1].value, measureSource1), formatter(rowHeader1.values[2].value, measureSource1)],
+                        [formatter(rowHeader2.levelValues[0].value, rowGroupSource4), formatter(rowHeader2.values[0].value, measureSource1), formatter(rowHeader2.values[1].value, measureSource1), formatter(rowHeader2.values[2].value, measureSource1)],
+                        [EmptyCell, formatter(rowHeader3.values[0].value, measureSource1), formatter(rowHeader3.values[1].value, measureSource1), formatter(rowHeader3.values[2].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader4.values[0].value, measureSource1), formatter(rowHeader4.values[1].value, measureSource1), formatter(rowHeader4.values[2].value, measureSource1)]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("Matrix with multiple row and column group hierarchy levels, one measure with subtotals", (done) => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsOneMeasureAndTotals;
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2,
+                                columnGroupSource1,
+                                columnGroupSource2,
+                                measureSource1
+                            ],
+                            objects: {
+                                general: {
+                                    rowSubtotals: true,
+                                    columnSubtotals: true
+                                }
+                            }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let colHeader1 = matrix.columns.root.children[0];
+                    let colHeader2 = matrix.columns.root.children[1];
+                    let colHeader1_1 = matrix.columns.root.children[0].children[0];
+                    let colHeader1_2 = matrix.columns.root.children[0].children[1];
+                    let colHeader2_1 = matrix.columns.root.children[1].children[0];
+                    let colHeader2_2 = matrix.columns.root.children[1].children[1];
+
+                    let rowHeader1 = matrix.rows.root.children[0];
+                    let rowHeader2 = matrix.rows.root.children[1];
+                    let rowHeader3 = matrix.rows.root.children[2];
+                    let rowHeader4 = matrix.rows.root.children[3];
+                    let rowHeadert = matrix.rows.root.children[4];
+
+                    let rowHeader1_1 = matrix.rows.root.children[0].children[0];
+                    let rowHeader1_2 = matrix.rows.root.children[0].children[1];
+                    let rowHeader1_t = matrix.rows.root.children[0].children[2];
+                    let rowHeader2_1 = matrix.rows.root.children[1].children[0];
+                    let rowHeader2_2 = matrix.rows.root.children[1].children[1];
+                    let rowHeader2_t = matrix.rows.root.children[1].children[2];
+                    let rowHeader3_1 = matrix.rows.root.children[2].children[0];
+                    let rowHeader3_t = matrix.rows.root.children[2].children[1];
+                    let rowHeader4_1 = matrix.rows.root.children[3].children[0];
+                    let rowHeader4_t = matrix.rows.root.children[3].children[1];
+
+                    let expectedCells: string[][] = [
+                        ["", columnGroupSource1.displayName, colHeader1.levelValues[0].value.toString(), colHeader2.levelValues[0].value.toString(), TableTotalLabel],
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, colHeader1_1.levelValues[0].value.toString(), colHeader1_2.levelValues[0].value.toString(), TableTotalLabel, colHeader2_1.levelValues[0].value.toString(), colHeader2_2.levelValues[0].value.toString(), TableTotalLabel],
+                        [rowHeader1.levelValues[0].value.toString(), rowHeader1_1.levelValues[0].value.toString(), formatter(rowHeader1_1.values[0].value, measureSource1), formatter(rowHeader1_1.values[1].value, measureSource1), formatter(rowHeader1_1.values[2].value, measureSource1), formatter(rowHeader1_1.values[3].value, measureSource1), formatter(rowHeader1_1.values[4].value, measureSource1), formatter(rowHeader1_1.values[5].value, measureSource1), formatter(rowHeader1_1.values[6].value, measureSource1)],
+                        [rowHeader1_2.levelValues[0].value.toString(), formatter(rowHeader1_2.values[0].value, measureSource1), formatter(rowHeader1_2.values[1].value, measureSource1), formatter(rowHeader1_2.values[2].value, measureSource1), formatter(rowHeader1_2.values[3].value, measureSource1), formatter(rowHeader1_2.values[4].value, measureSource1), formatter(rowHeader1_2.values[5].value, measureSource1), formatter(rowHeader1_2.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader1_t.values[0].value, measureSource1), formatter(rowHeader1_t.values[1].value, measureSource1), formatter(rowHeader1_t.values[2].value, measureSource1), formatter(rowHeader1_t.values[3].value, measureSource1), formatter(rowHeader1_t.values[4].value, measureSource1), formatter(rowHeader1_t.values[5].value, measureSource1), formatter(rowHeader1_t.values[6].value, measureSource1)],
+                        [rowHeader2.levelValues[0].value.toString(), rowHeader2_1.levelValues[0].value.toString(), formatter(rowHeader2_1.values[0].value, measureSource1), formatter(rowHeader2_1.values[1].value, measureSource1), formatter(rowHeader2_1.values[2].value, measureSource1), formatter(rowHeader2_1.values[3].value, measureSource1), formatter(rowHeader2_1.values[4].value, measureSource1), formatter(rowHeader2_1.values[5].value, measureSource1), formatter(rowHeader2_1.values[6].value, measureSource1)],
+                        [rowHeader2_2.levelValues[0].value.toString(), formatter(rowHeader2_2.values[0].value, measureSource1), formatter(rowHeader2_2.values[1].value, measureSource1), formatter(rowHeader2_2.values[2].value, measureSource1), formatter(rowHeader2_2.values[3].value, measureSource1), formatter(rowHeader2_2.values[4].value, measureSource1), formatter(rowHeader2_2.values[5].value, measureSource1), formatter(rowHeader2_2.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader2_t.values[0].value, measureSource1), formatter(rowHeader2_t.values[1].value, measureSource1), formatter(rowHeader2_t.values[2].value, measureSource1), formatter(rowHeader2_t.values[3].value, measureSource1), formatter(rowHeader2_t.values[4].value, measureSource1), formatter(rowHeader2_t.values[5].value, measureSource1), formatter(rowHeader2_t.values[6].value, measureSource1)],
+                        [rowHeader3.levelValues[0].value.toString(), rowHeader3_1.levelValues[0].value.toString(), formatter(rowHeader3_1.values[0].value, measureSource1), formatter(rowHeader3_1.values[1].value, measureSource1), formatter(rowHeader3_1.values[2].value, measureSource1), formatter(rowHeader3_1.values[3].value, measureSource1), formatter(rowHeader3_1.values[4].value, measureSource1), formatter(rowHeader3_1.values[5].value, measureSource1), formatter(rowHeader3_1.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader3_t.values[0].value, measureSource1), formatter(rowHeader3_t.values[1].value, measureSource1), formatter(rowHeader3_t.values[2].value, measureSource1), formatter(rowHeader3_t.values[3].value, measureSource1), formatter(rowHeader3_t.values[4].value, measureSource1), formatter(rowHeader3_t.values[5].value, measureSource1), formatter(rowHeader3_t.values[6].value, measureSource1)],
+                        [rowHeader4.levelValues[0].value.toString(), rowHeader4_1.levelValues[0].value.toString(), formatter(rowHeader4_1.values[0].value, measureSource1), formatter(rowHeader4_1.values[1].value, measureSource1), formatter(rowHeader4_1.values[2].value, measureSource1), formatter(rowHeader4_1.values[3].value, measureSource1), formatter(rowHeader4_1.values[4].value, measureSource1), formatter(rowHeader4_1.values[5].value, measureSource1), formatter(rowHeader4_1.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader4_t.values[0].value, measureSource1), formatter(rowHeader4_t.values[1].value, measureSource1), formatter(rowHeader4_t.values[2].value, measureSource1), formatter(rowHeader4_t.values[3].value, measureSource1), formatter(rowHeader4_t.values[4].value, measureSource1), formatter(rowHeader4_t.values[5].value, measureSource1), formatter(rowHeader4_t.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeadert.values[0].value, measureSource1), formatter(rowHeadert.values[1].value, measureSource1), formatter(rowHeadert.values[2].value, measureSource1), formatter(rowHeadert.values[3].value, measureSource1), formatter(rowHeadert.values[4].value, measureSource1), formatter(rowHeadert.values[5].value, measureSource1), formatter(rowHeadert.values[6].value, measureSource1)]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            it("Matrix with multiple row and column group hierarchy levels, two measures with subtotals", (done) => {
+                let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
+
+                /**
+                 * Scaling factor will be 1.05 because phantomjs renders as 11px font which is 8.25pt
+                 * i.e. 8.25 / 8 ~= 1.05
+                 * In actual practice, default 8pt text size ~= 10.6667px font
+                 * which will result in a scale factor ~= 1.0 as expected
+                 */
+                v.onDataChanged({
+                    dataViews: [{
+                        metadata: {
+                            columns:
+                            [
+                                rowGroupSource1,
+                                rowGroupSource2,
+                                columnGroupSource1,
+                                columnGroupSource2,
+                                measureSource1,
+                                measureSource2
+                            ],
+                            objects: {
+                                general: {
+                                    rowSubtotals: true,
+                                    columnSubtotals: true
+                                }
+                            }
+                        },
+                        matrix: matrix
+                    }]
+                });
+
+                setTimeout(() => {
+
+                    let colHeader1 = matrix.columns.root.children[0];
+                    let colHeader1_1 = matrix.columns.root.children[0].children[0];
+                    let colHeader1_2 = matrix.columns.root.children[0].children[1];
+                    let colHeader2 = matrix.columns.root.children[1];
+                    let colHeader2_1 = matrix.columns.root.children[1].children[0];
+
+                    let rowHeader1 = matrix.rows.root.children[0];
+                    let rowHeader2 = matrix.rows.root.children[1];
+                    let rowHeader3 = matrix.rows.root.children[2];
+                    let rowHeader4 = matrix.rows.root.children[3];
+                    let rowHeadert = matrix.rows.root.children[4];
+
+                    let rowHeader1_1 = matrix.rows.root.children[0].children[0];
+                    let rowHeader1_2 = matrix.rows.root.children[0].children[1];
+                    let rowHeader1_t = matrix.rows.root.children[0].children[2];
+                    let rowHeader2_1 = matrix.rows.root.children[1].children[0];
+                    let rowHeader2_2 = matrix.rows.root.children[1].children[1];
+                    let rowHeader2_t = matrix.rows.root.children[1].children[2];
+                    let rowHeader3_1 = matrix.rows.root.children[2].children[0];
+                    let rowHeader3_t = matrix.rows.root.children[2].children[1];
+                    let rowHeader4_1 = matrix.rows.root.children[3].children[0];
+                    let rowHeader4_t = matrix.rows.root.children[3].children[1];
+
+                    let expectedCells: string[][] = [
+                        ["", columnGroupSource1.displayName, colHeader1.levelValues[0].value.toString(), colHeader2.levelValues[0].value.toString()],
+                        ["", columnGroupSource2.displayName, colHeader1_1.levelValues[0].value.toString(), colHeader1_2.levelValues[0].value.toString(), TableTotalLabel, colHeader2_1.levelValues[0].value.toString()],
+                        [rowGroupSource1.displayName, rowGroupSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName],
+                        [rowHeader1.levelValues[0].value.toString(), rowHeader1_1.levelValues[0].value.toString(), formatter(rowHeader1_1.values[0].value, measureSource1), formatter(rowHeader1_1.values[1].value, measureSource1), formatter(rowHeader1_1.values[2].value, measureSource1), formatter(rowHeader1_1.values[3].value, measureSource1), formatter(rowHeader1_1.values[4].value, measureSource1), formatter(rowHeader1_1.values[5].value, measureSource1), formatter(rowHeader1_1.values[6].value, measureSource1)],
+                        [rowHeader1_2.levelValues[0].value.toString(), formatter(rowHeader1_2.values[0].value, measureSource1), formatter(rowHeader1_2.values[1].value, measureSource1), formatter(rowHeader1_2.values[2].value, measureSource1), formatter(rowHeader1_2.values[3].value, measureSource1), formatter(rowHeader1_2.values[4].value, measureSource1), formatter(rowHeader1_2.values[5].value, measureSource1), formatter(rowHeader1_2.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader1_t.values[0].value, measureSource1), formatter(rowHeader1_t.values[1].value, measureSource1), formatter(rowHeader1_t.values[2].value, measureSource1), formatter(rowHeader1_t.values[3].value, measureSource1), formatter(rowHeader1_t.values[4].value, measureSource1), formatter(rowHeader1_t.values[5].value, measureSource1), formatter(rowHeader1_t.values[6].value, measureSource1)],
+                        [rowHeader2.levelValues[0].value.toString(), rowHeader2_1.levelValues[0].value.toString(), formatter(rowHeader2_1.values[0].value, measureSource1), formatter(rowHeader2_1.values[1].value, measureSource1), formatter(rowHeader2_1.values[2].value, measureSource1), formatter(rowHeader2_1.values[3].value, measureSource1), formatter(rowHeader2_1.values[4].value, measureSource1), formatter(rowHeader2_1.values[5].value, measureSource1), formatter(rowHeader2_1.values[6].value, measureSource1)],
+                        [rowHeader2_2.levelValues[0].value.toString(), formatter(rowHeader2_2.values[0].value, measureSource1), formatter(rowHeader2_2.values[1].value, measureSource1), formatter(rowHeader2_2.values[2].value, measureSource1), formatter(rowHeader2_2.values[3].value, measureSource1), formatter(rowHeader2_2.values[4].value, measureSource1), formatter(rowHeader2_2.values[5].value, measureSource1), formatter(rowHeader2_2.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader2_t.values[0].value, measureSource1), formatter(rowHeader2_t.values[1].value, measureSource1), formatter(rowHeader2_t.values[2].value, measureSource1), formatter(rowHeader2_t.values[3].value, measureSource1), formatter(rowHeader2_t.values[4].value, measureSource1), formatter(rowHeader2_t.values[5].value, measureSource1), formatter(rowHeader2_t.values[6].value, measureSource1)],
+                        [rowHeader3.levelValues[0].value.toString(), rowHeader3_1.levelValues[0].value.toString(), formatter(rowHeader3_1.values[0].value, measureSource1), formatter(rowHeader3_1.values[1].value, measureSource1), formatter(rowHeader3_1.values[2].value, measureSource1), formatter(rowHeader3_1.values[3].value, measureSource1), formatter(rowHeader3_1.values[4].value, measureSource1), formatter(rowHeader3_1.values[5].value, measureSource1), formatter(rowHeader3_1.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader3_t.values[0].value, measureSource1), formatter(rowHeader3_t.values[1].value, measureSource1), formatter(rowHeader3_t.values[2].value, measureSource1), formatter(rowHeader3_t.values[3].value, measureSource1), formatter(rowHeader3_t.values[4].value, measureSource1), formatter(rowHeader3_t.values[5].value, measureSource1), formatter(rowHeader3_t.values[6].value, measureSource1)],
+                        [rowHeader4.levelValues[0].value.toString(), rowHeader4_1.levelValues[0].value.toString(), formatter(rowHeader4_1.values[0].value, measureSource1), formatter(rowHeader4_1.values[1].value, measureSource1), formatter(rowHeader4_1.values[2].value, measureSource1), formatter(rowHeader4_1.values[3].value, measureSource1), formatter(rowHeader4_1.values[4].value, measureSource1), formatter(rowHeader4_1.values[5].value, measureSource1), formatter(rowHeader4_1.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeader4_t.values[0].value, measureSource1), formatter(rowHeader4_t.values[1].value, measureSource1), formatter(rowHeader4_t.values[2].value, measureSource1), formatter(rowHeader4_t.values[3].value, measureSource1), formatter(rowHeader4_t.values[4].value, measureSource1), formatter(rowHeader4_t.values[5].value, measureSource1), formatter(rowHeader4_t.values[6].value, measureSource1)],
+                        [TableTotalLabel, formatter(rowHeadert.values[0].value, measureSource1), formatter(rowHeadert.values[1].value, measureSource1), formatter(rowHeadert.values[2].value, measureSource1), formatter(rowHeadert.values[3].value, measureSource1), formatter(rowHeadert.values[4].value, measureSource1), formatter(rowHeadert.values[5].value, measureSource1), formatter(rowHeadert.values[6].value, measureSource1)]
+                    ];
+
+                    validateMatrix(expectedCells);
+
+                    done();
+                }, DefaultWaitForRender);
+            });
+
+            function formatter(value: any, source?: DataViewMetadataColumn): string {
+                return valueFormatter.formatVariantMeasureValue(value, source, TablixObjects.PropColumnFormatString);
+            }
+        });
+
+        describe("Matrix sort validation", () => {
+            let element: JQuery;
+
+            beforeEach((done) => {
+                element = powerbitests.helpers.testDom("1800", "1800");
+                element["visible"] = () => { return true; };
+                done();
+            });
+
+            it("matrix with single measure", (done) => {
+                // Clicking on the measure will result in a sort event
+                let data: powerbi.DataView = matrixOneMeasureDataView;
+                let expectedColumnHeaders = [{ row: 0, col: 1, expectedText: "Measure1" }];
+                let clicks = [{ row: 0, col: 1 }, { row: 1, col: 1 }];
+                let expectedSorts = [];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with one measure and one column group", (done) => {
+                // Clicking on a column group (even if there is only a single instance) will not result in a sort event
+                let data: powerbi.DataView = matrixOneMeasureOneColumnGroupOneGroupInstanceDataView;
+                let expectedColumnHeaders = [{ row: 0, col: 1, expectedText: "Group A" }];
+                let clicks = [{ row: 0, col: 1 }, { row: 1, col: 1 }, { row: 0, col: 1 }];
+                let expectedSorts = [];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with three measures", (done) => {
+                // Clicking on any measure will result in a sort event
+                let data: powerbi.DataView = matrixThreeMeasuresDataView;
+                let expectedColumnHeaders = [{ row: 0, col: 1, expectedText: "Measure1" }, { row: 0, col: 2, expectedText: "Measure2" }, { row: 0, col: 3, expectedText: "Measure3" }];
+                let clicks = [{ row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }];
+                let expectedSorts = [];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with three measures under one column group", (done) => {
+                // Clicking on any column group or any measure underneath it will not result in a sort event
+                let data: powerbi.DataView = matrixThreeMeasuresOneColumnGroupOneGroupInstanceDataView;
+                let expectedColumnHeaders = [{ row: 0, col: 1, expectedText: "Group A" }, { row: 1, col: 1, expectedText: "Measure1" }, { row: 1, col: 2, expectedText: "Measure2" }, { row: 1, col: 3, expectedText: "Measure3" }];
+                let clicks = [{ row: 0, col: 1 }, { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }];
+                let expectedSorts = [];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with three measures and three row groups", (done) => {
+                // Clicking on any row group or any measure will result in a sort event
+                let data: powerbi.DataView = matrixThreeMeasuresThreeRowGroupsDataView;
+                let expectedColumnHeaders = [
+                    { row: 0, col: 0, expectedText: "RowGroup1" },
+                    { row: 0, col: 1, expectedText: "RowGroup2" },
+                    { row: 0, col: 2, expectedText: "RowGroup3" },
+                    { row: 0, col: 3, expectedText: "Measure1" },
+                    { row: 0, col: 4, expectedText: "Measure2" },
+                    { row: 0, col: 5, expectedText: "Measure3" }];
+                let clicks = [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }, { row: 0, col: 4 }, { row: 0, col: 5 }];
+                let expectedSorts = [
+                    [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }],
+                    [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }],
+                    [{ queryName: "RowGroup3", sortDirection: powerbi.SortDirection.Descending }],
+                    [{ queryName: "Measure1", sortDirection: powerbi.SortDirection.Descending }],
+                    [{ queryName: "Measure2", sortDirection: powerbi.SortDirection.Descending }],
+                    [{ queryName: "Measure3", sortDirection: powerbi.SortDirection.Descending }],
+                ];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with one row group and one column group", (done) => {
+                // Clicking on the row group will result in a sort event; clicking on the column group will not
+                let data: powerbi.DataView = matrixOneRowGroupOneColumnGroupOneGroupInstanceDataView;
+                let expectedColumnHeaders = [
+                    { row: 0, col: 0, expectedText: "RowGroup1" },
+                    { row: 0, col: 1, expectedText: "10" }];
+                let clicks = [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 1, col: 0 }];
+                let expectedSorts = [
+                    [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }]
+                ];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with one row group and one column group", (done) => {
+                // Clicking on any row group will result in a sort event
+                let data: powerbi.DataView = matrixThreeRowGroupsOneGroupInstanceDataView;
+                let expectedColumnHeaders = [
+                    { row: 0, col: 0, expectedText: "RowGroup1" },
+                    { row: 0, col: 1, expectedText: "RowGroup2" },
+                    { row: 0, col: 2, expectedText: "RowGroup3" }];
+                let clicks = [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }];
+                let expectedSorts = [
+                    [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup3", sortDirection: powerbi.SortDirection.Descending }]
+                ];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with three column groups", (done) => {
+                // Clicking on any column group will not result in a sort event
+                let data: powerbi.DataView = matrixThreeColumnGroupsDataView;
+                let expectedColumnHeaders = [
+                    { row: 0, col: 1, expectedText: "Africa" }, { row: 0, col: 2, expectedText: "Asia" },
+                    { row: 1, col: 1, expectedText: "Algeria" }, { row: 1, col: 2, expectedText: "Angola" }, { row: 1, col: 3, expectedText: "China" }, { row: 1, col: 4, expectedText: "India" },
+                    { row: 2, col: 1, expectedText: "2008" }, { row: 2, col: 2, expectedText: "2012" }, { row: 2, col: 3, expectedText: "2008" }, { row: 2, col: 4, expectedText: "2012" }, { row: 2, col: 5, expectedText: "2008" }, { row: 2, col: 6, expectedText: "2012" }, { row: 2, col: 7, expectedText: "2008" }, { row: 2, col: 8, expectedText: "2012" }
+                ];
+                let clicks = [
+                    { row: 0, col: 1 }, { row: 0, col: 2 },
+                    { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 },
+                    { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 }, { row: 2, col: 6 }, { row: 2, col: 7 }, { row: 2, col: 8 }
+                ];
+                let expectedSorts = [];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with two row groups, two column groups and two measures", (done) => {
+                // Clicking on any row group will result in a sort event, clicking on any column group or measure column will not result in a sort event
+                let data: powerbi.DataView = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresDataView;
+                let expectedColumnHeaders = [
+                    { row: 0, col: 1, expectedText: "ColGroup1" }, { row: 0, col: 2, expectedText: "1992" }, { row: 0, col: 3, expectedText: "1996" },
+                    { row: 1, col: 1, expectedText: "ColGroup2" }, { row: 1, col: 2, expectedText: "Bronze" }, { row: 1, col: 3, expectedText: "Gold" }, { row: 1, col: 4, expectedText: "Silver" }, { row: 1, col: 5, expectedText: "Bronze" }, { row: 1, col: 6, expectedText: "Gold" }, { row: 1, col: 7, expectedText: "Silver" },
+                    { row: 2, col: 0, expectedText: "RowGroup1" }, { row: 2, col: 1, expectedText: "RowGroup2" }, { row: 2, col: 2, expectedText: "Measure1" }, { row: 2, col: 3, expectedText: "Measure2" }, { row: 2, col: 4, expectedText: "Measure1" }, { row: 2, col: 5, expectedText: "Measure2" }, { row: 2, col: 6, expectedText: "Measure1" }, { row: 2, col: 7, expectedText: "Measure2" }, { row: 2, col: 8, expectedText: "Measure1" }, { row: 2, col: 9, expectedText: "Measure2" }, { row: 2, col: 10, expectedText: "Measure1" }, { row: 2, col: 11, expectedText: "Measure2" }, { row: 2, col: 12, expectedText: "Measure1" }
+                ];
+                let clicks = [
+                    { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 },
+                    { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 }, { row: 1, col: 5 }, { row: 1, col: 6 }, { row: 1, col: 7 },
+                    { row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 }, { row: 2, col: 6 }, { row: 2, col: 7 }, { row: 2, col: 8 }, { row: 2, col: 9 }, { row: 2, col: 10 }, { row: 2, col: 11 }, { row: 2, col: 12 }
+                ];
+                let expectedSorts = [
+                    [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }]
+                ];
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with two row groups, two column groups and one measure with totals", (done) => {
+                // Clicking on any row group will result in a sort event, clicking on any column group or measure column will not result in a sort event; clicking on the column grand total will result in a sort (by measure)
+                let data: powerbi.DataView = matrixTwoRowGroupsTwoColumnGroupsOneMeasureAndTotalsDataView;
+                let expectedColumnHeaders = [
+                    { row: 0, col: 1, expectedText: "ColGroup1" }, { row: 0, col: 2, expectedText: "1992" }, { row: 0, col: 3, expectedText: "1996" }, { row: 0, col: 4, expectedText: Matrix.TotalLabel },
+                    { row: 1, col: 0, expectedText: "RowGroup1" }, { row: 1, col: 1, expectedText: "RowGroup2" }, { row: 1, col: 2, expectedText: "Silver" }, { row: 1, col: 3, expectedText: "Gold" }, { row: 1, col: 4, expectedText: Matrix.TotalLabel }, { row: 1, col: 5, expectedText: "Silver" }, { row: 1, col: 6, expectedText: "Gold" }, { row: 1, col: 7, expectedText: Matrix.TotalLabel }
+                ];
+                let clicks = [
+                    { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }, { row: 0, col: 4 },
+                    { row: 1, col: 0 }, { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 }, { row: 1, col: 5 }, { row: 1, col: 6 }, { row: 1, col: 7 }
+                ];
+                let expectedSorts = [
+                    [{ queryName: "Measure1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }]
+                ];
+
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with two row groups, two column groups and two measures with totals", (done) => {
+                // Clicking on any row group will result in a sort event, clicking on any column group or measure column will not result in a sort event; clicking on the column grand total will result in a sort (by measure)
+                let data: powerbi.DataView = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotalsDataView;
+                let expectedColumnHeaders = [
+                    { row: 0, col: 1, expectedText: "ColGroup1" }, { row: 0, col: 2, expectedText: "1992" }, { row: 0, col: 3, expectedText: "1996" }, { row: 0, col: 4, expectedText: Matrix.TotalLabel },
+                    { row: 1, col: 1, expectedText: "ColGroup2" }, { row: 1, col: 2, expectedText: "Silver" }, { row: 1, col: 3, expectedText: "Gold" }, { row: 1, col: 4, expectedText: Matrix.TotalLabel }, { row: 1, col: 5, expectedText: "Silver" }, { row: 1, col: 6, expectedText: "Gold" }, { row: 1, col: 7, expectedText: Matrix.TotalLabel },
+                    { row: 2, col: 0, expectedText: "RowGroup1" }, { row: 2, col: 1, expectedText: "RowGroup2" }, { row: 2, col: 2, expectedText: "Measure1" }, { row: 2, col: 3, expectedText: "Measure2" }, { row: 2, col: 4, expectedText: "Measure1" }, { row: 2, col: 5, expectedText: "Measure2" }, { row: 2, col: 6, expectedText: "Measure1" }, { row: 2, col: 7, expectedText: "Measure2" }, { row: 2, col: 8, expectedText: "Measure1" }, { row: 2, col: 9, expectedText: "Measure2" }, { row: 2, col: 10, expectedText: "Measure1" }, { row: 2, col: 11, expectedText: "Measure2" }, { row: 2, col: 12, expectedText: "Measure1" }, { row: 2, col: 13, expectedText: "Measure2" }, { row: 2, col: 14, expectedText: "Measure1" }, { row: 2, col: 15, expectedText: "Measure2" }
+                ];
+                let clicks = [
+                    { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }, { row: 0, col: 4 },
+                    { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 }, { row: 1, col: 5 }, { row: 1, col: 6 }, { row: 1, col: 7 },
+                    { row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 }, { row: 2, col: 6 }, { row: 2, col: 7 }, { row: 2, col: 8 }, { row: 2, col: 9 }, { row: 2, col: 10 }, { row: 2, col: 11 }, { row: 2, col: 12 }, { row: 2, col: 13 }, { row: 2, col: 14 }, { row: 2, col: 15 }
+                ];
+                let expectedSorts = [
+                    [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "Measure1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "Measure2", sortDirection: powerbi.SortDirection.Descending }]
+                ];
+
+                tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
+            });
+
+            it("matrix with columnGroup url", (done) => {
+                let data: powerbi.DataView = matrixOneMeasureOneColumnGroupWithUrlOneGroupInstanceDataView;
+
+                let renderTablixPromise = tablixHelper.renderNewTablix(
+                    element,
+                    {
+                        visualType: "matrix",
+                        data: data
+                    });
+
+                renderTablixPromise.then(
+                    () => {
+                        let tableBody = $(".tablixContainer > div.tablixCanvas > div:nth-child(1) > table.unselectable > tbody");
+                        expect(tableBody).toBeInDOM();
+
+                        let cellInfo = tablixHelper.getTableCell(tableBody, { row: 0, col: 1 });
+                        let aTag = $("> div > a", cellInfo.clickTarget);
+                        expect(aTag.length).toBe(1);
+                        expect(aTag.text()).toBe("http://www.validurl.com");
+                        expect(aTag.attr("href")).toBe("http://www.validurl.com");
+                        expect(aTag.attr("title")).toBe("http://www.validurl.com");
+                        done();
+                    });
+            });
+
+            it("matrix with rowGroup url", (done) => {
+                let data: powerbi.DataView = matrixOneMeasureOneRowGroupUrlOneGroupInstanceDataView;
+
+                let renderTablixPromise = tablixHelper.renderNewTablix(
+                    element,
+                    {
+                        visualType: "matrix",
+                        data: data
+                    });
+
+                renderTablixPromise.then(
+                    () => {
+                        let tableBody = $(".tablixContainer > div.tablixCanvas > div:nth-child(1) > table.unselectable > tbody");
+                        expect(tableBody).toBeInDOM();
+
+                        let cellInfo = tablixHelper.getTableCell(tableBody, { row: 1, col: 0 });
+                        let aTag = $("> div > a", cellInfo.clickTarget);
+                        expect(aTag.length).toBe(1);
+                        expect(aTag.text()).toBe("http://www.validurl.com");
+                        expect(aTag.attr("href")).toBe("http://www.validurl.com");
+                        expect(aTag.attr("title")).toBe("http://www.validurl.com");
+                        done();
+                    });
+            });
+
+            it("matrix with rowGroup Kpi", (done) => {
+                let data: powerbi.DataView = matrixOneMeasureOneRowGroupKpiStatusOneGroupInstanceDataView;
+
+                let renderTablixPromise = tablixHelper.renderNewTablix(
+                    element,
+                    {
+                        visualType: "matrix",
+                        data: data
+                    });
+
+                renderTablixPromise.then(
+                    () => {
+                        let tableBody = $(".tablixContainer > div.tablixCanvas > div:nth-child(1) > table.unselectable > tbody");
+                        expect(tableBody).toBeInDOM();
+
+                        let cellHeader = tablixHelper.getTableCell(tableBody, { row: 0, col: 1 });
+                        let headerDiv = $("> div", cellHeader.clickTarget);
+                        let cellInfo = tablixHelper.getTableCell(tableBody, { row: 1, col: 1 });
+                        let kpiDiv = $("div.powervisuals-glyph.circle.kpi-green", cellInfo.clickTarget);
+
+                        expect(headerDiv.text()).toBe('ColGroupKpiStatus');
+                        expect(kpiDiv.length).toBe(1);
+                        expect(kpiDiv.text()).toEqual('');
 
                         done();
-                    }, DefaultWaitForRender);
+                    });
+            });
+        });
+
+        describe("Matrix Style Presets", () => {
+            let theme: powerbi.IVisualStyle = {
+                colorPalette: {
+                    background: { value: "#FFF" },
+                    foreground: { value: "#333" },
+                    tableAccent: { value: "#00B8AA" },
+                    dataColors: undefined,
+                    negative: undefined,
+                    neutral: undefined,
+                    positive: undefined,
+                    selection: undefined,
+                    separator: undefined,
+                },
+                isHighContrast: false,
+                labelText: undefined,
+                maxMarginFactor: 0,
+                subTitleText: undefined,
+                titleText: undefined,
+            };
+
+            let matrixStylePresets = powerbi.visuals.stylePresets.matrixStylePresets();
+
+            let expectedDefinitions: _.Dictionary<MatrixStylePresetElements> = {
+                None: {
+                    grid: {
+                        outlineColor: "#CCC",
+                        outlineWeight: 1,
+                        gridVertical: false,
+                        gridVerticalColor: "#E8E8E8",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: false,
+                        gridHorizontalColor: "#E8E8E8",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 0,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#666",
+                        backColor: undefined,
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#333",
+                        backColorPrimary: undefined,
+                        fontColorSecondary: "#333",
+                        backColorSecondary: undefined,
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#333",
+                        backColor: undefined,
+                        applyToHeaders: false,
+                    },
+                },
+                Minimal: {
+                    grid: {
+                        outlineColor: "#00B8AA",
+                        outlineWeight: 1,
+                        gridVertical: false,
+                        gridVerticalColor: "#E7E7E7",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: true,
+                        gridHorizontalColor: "#E7E7E7",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 3,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#333",
+                        backColor: "#FFF",
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#333",
+                        backColorPrimary: "#FFF",
+                        fontColorSecondary: "#333",
+                        backColorSecondary: "#FFF",
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#333",
+                        backColor: "#FFF",
+                        applyToHeaders: false,
+                    },
+                },
+                BoldHeader: {
+                    grid: {
+                        outlineColor: "#00B8AA",
+                        outlineWeight: 1,
+                        gridVertical: false,
+                        gridVerticalColor: "#E7E7E7",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: true,
+                        gridHorizontalColor: "#E7E7E7",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 3,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#333",
+                        backColorPrimary: "#FFF",
+                        fontColorSecondary: "#333",
+                        backColorSecondary: "#FFF",
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#333",
+                        backColor: "#FFF",
+                        applyToHeaders: false,
+                    },
+                },
+                AlternatingRows: {
+                    grid: {
+                        outlineColor: "#00B8AA",
+                        outlineWeight: 1,
+                        gridVertical: false,
+                        gridVerticalColor: "#E7E7E7",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: true,
+                        gridHorizontalColor: "#E7E7E7",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 3,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#333",
+                        backColorPrimary: "#FFF",
+                        fontColorSecondary: "#333",
+                        backColorSecondary: "#EFEFEF",
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                        applyToHeaders: false,
+                    },
+                },
+                ContrastAlternatingRows: {
+                    grid: {
+                        outlineColor: "#00B8AA",
+                        outlineWeight: 1,
+                        gridVertical: false,
+                        gridVerticalColor: "#E7E7E7",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: true,
+                        gridHorizontalColor: "#E7E7E7",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 3,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#FFF",
+                        backColorPrimary: "#666666",
+                        fontColorSecondary: "#333",
+                        backColorSecondary: "#CCCCCC",
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                        applyToHeaders: false,
+                    },
+                },
+                FlashyRows: {
+                    grid: {
+                        outlineColor: "#333",
+                        outlineWeight: 1,
+                        gridVertical: false,
+                        gridVerticalColor: "#FFF",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: false,
+                        gridHorizontalColor: "#FFF",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 3,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#333",
+                        backColor: "#FFF",
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#333",
+                        backColorPrimary: "#99E3DD",
+                        fontColorSecondary: "#333",
+                        backColorSecondary: "#33C6BB",
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#333",
+                        backColor: "#FFF",
+                        applyToHeaders: false,
+                    },
+                },
+                BoldHeaderFlashyRows: {
+                    grid: {
+                        outlineColor: "#FFF",
+                        outlineWeight: 1,
+                        gridVertical: false,
+                        gridVerticalColor: "#FFF",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: false,
+                        gridHorizontalColor: "#FFF",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 3,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#333",
+                        backColorPrimary: "#99E3DD",
+                        fontColorSecondary: "#333",
+                        backColorSecondary: "#33C6BB",
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                        applyToHeaders: false,
+                    },
+                },
+                Sparse: {
+                    grid: {
+                        outlineColor: "#00B8AA",
+                        outlineWeight: 1,
+                        gridVertical: false,
+                        gridVerticalColor: "#D6D6D6",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: false,
+                        gridHorizontalColor: "#D6D6D6",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 6,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#333",
+                        backColorPrimary: "#FFF",
+                        fontColorSecondary: "#333",
+                        backColorSecondary: "#FFF",
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                        applyToHeaders: false,
+                    },
+                },
+                Condensed: {
+                    grid: {
+                        outlineColor: "#00B8AA",
+                        outlineWeight: 1,
+                        gridVertical: true,
+                        gridVerticalColor: "#D6D6D6",
+                        gridVerticalWeight: 1,
+                        gridHorizontal: true,
+                        gridHorizontalColor: "#D6D6D6",
+                        gridHorizontalWeight: 1,
+                        rowPadding: 0,
+                    },
+
+                    columnHeaders: {
+                        outline: "BottomOnly",
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                    },
+
+                    values: {
+                        outline: "None",
+                        fontColorPrimary: "#333",
+                        backColorPrimary: "#FFF",
+                        fontColorSecondary: "#333",
+                        backColorSecondary: "#FFF",
+                    },
+
+                    subTotals: {
+                        fontColor: undefined,
+                        backColor: undefined,
+                    },
+
+                    total: {
+                        fontColor: "#FFF",
+                        backColor: "#333",
+                        applyToHeaders: false,
+                    },
+                },
+            };
+
+            it("has default 'None'", () => {
+                expect(matrixStylePresets.defaultPresetName).toBe("None");
+            });
+
+            it("contains 9 items", () => {
+                expect(matrixStylePresets.presets).toBeDefined();
+                expect(Object.getOwnPropertyNames(matrixStylePresets.presets)).toHaveLength(9);
+            });
+
+            for (let stylePresetName in expectedDefinitions) {
+
+                describe(stylePresetName, () => {
+                    let stylePreset: powerbi.VisualStylePreset = matrixStylePresets.presets[stylePresetName];
+
+                    it("exists", () => {
+                        expect(stylePreset).toBeDefined();
+                    });
+
+                    it("has proper name", () => {
+                        expect(stylePreset.name).toBe(stylePresetName);
+                    });
+
+                    it("matches design", () => {
+                        assertStylePresetObjects(stylePreset.evaluate(theme), expectedDefinitions[stylePresetName]);
+                    });
                 });
-            });
+            }
         });
 
-        it("1x2 matrix (value and static column header)", (done) => {
-
-            let matrix = matrixOneMeasure;
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureDataView]
-            });
-
-            setTimeout(() => {
-
-                let cellValue: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
-                let expectedCells: string[][] = [
-                    ["", measureSource1.displayName],
-                    [EmptyCell, cellValue]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("1x2 matrix (value and column header value)", (done) => {
-
-            let matrix = matrixOneMeasureOneColumnGroupOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [matrixOneMeasureOneColumnGroupOneGroupInstanceDataView]
-            });
-
-            setTimeout(() => {
-
-                let headerValue = (matrix.columns.root.children[0]).levelValues[0].value;
-                let cellValue: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
-
-                let expectedCells: PrimitiveValue[][] = [
-                    ["", headerValue],
-                    [EmptyCell, cellValue]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x2 matrix (values and static column headers)", (done) => {
-
-            let matrix = matrixThreeMeasures;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [measureSource1, measureSource2, measureSource3] },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let cellValue1: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
-                let cellValue2: string = formatter(matrix.rows.root.children[0].values[1].value, measureSource2);
-                let cellValue3: string = formatter(matrix.rows.root.children[0].values[2].value, measureSource3);
-
-                let expectedCells: string[][] = [
-                    ["", measureSource1.displayName, measureSource2.displayName, measureSource3.displayName],
-                    [EmptyCell, cellValue1, cellValue2, cellValue3]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x3 matrix (values, static and value column headers)", (done) => {
-
-            let matrix = matrixThreeMeasuresOneColumnGroupOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [columnGroupSource1, measureSource1, measureSource2, measureSource3] },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let headerValue = (matrix.columns.root.children[0]).levelValues[0].value;
-
-                let cellValue1: string = formatter(matrix.rows.root.children[0].values[0].value, measureSource1);
-                let cellValue2: string = formatter(matrix.rows.root.children[0].values[1].value, measureSource2);
-                let cellValue3: string = formatter(matrix.rows.root.children[0].values[2].value, measureSource3);
-
-                let expectedCells: PrimitiveValue[][] = [
-                    ["", headerValue],
-                    ["", measureSource1.displayName, measureSource2.displayName, measureSource3.displayName],
-                    [EmptyCell, cellValue1, cellValue2, cellValue3]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("6x9 matrix (values, static column headers and row value headers)", (done) => {
-
-            v.onDataChanged({
-                dataViews: [matrixThreeMeasuresThreeRowGroupsDataView]
-            });
-
-            let matrix = matrixThreeMeasuresThreeRowGroups;
-            setTimeout(() => {
-
-                let header_1 = matrix.rows.root.children[0];
-                let header_1_1 = header_1.children[0];
-                let header_1_1_1 = header_1_1.children[0];
-                let header_1_1_2 = header_1_1.children[1];
-                let header_1_2 = header_1.children[1];
-                let header_1_2_1 = header_1_2.children[0];
-                let header_1_2_2 = header_1_2.children[1];
-                let header_2 = matrix.rows.root.children[1];
-                let header_2_1 = header_2.children[0];
-                let header_2_1_1 = header_2_1.children[0];
-                let header_2_1_2 = header_2_1.children[1];
-                let header_2_2 = header_2.children[1];
-                let header_2_2_1 = header_2_2.children[0];
-                let header_2_2_2 = header_2_2.children[1];
-                let cellValue1 = formatter(header_1_1_1.values[0].value, measureSource1);
-                let cellValue2 = formatter(header_1_1_1.values[1].value, measureSource2);
-                let cellValue3 = formatter(header_1_1_1.values[2].value, measureSource3);
-                let cellValue4 = formatter(header_1_1_2.values[0].value, measureSource1);
-                let cellValue5 = formatter(header_1_1_2.values[1].value, measureSource2);
-                let cellValue6 = formatter(header_1_1_2.values[2].value, measureSource3);
-                let cellValue7 = formatter(header_1_2_1.values[0].value, measureSource1);
-                let cellValue8 = formatter(header_1_2_1.values[1].value, measureSource2);
-                let cellValue9 = formatter(header_1_2_1.values[2].value, measureSource3);
-                let cellValue10 = formatter(header_1_2_2.values[0].value, measureSource1);
-                let cellValue11 = formatter(header_1_2_2.values[1].value, measureSource2);
-                let cellValue12 = formatter(header_1_2_2.values[2].value, measureSource3);
-                let cellValue13 = formatter(header_2_1_1.values[0].value, measureSource1);
-                let cellValue14 = formatter(header_2_1_1.values[1].value, measureSource2);
-                let cellValue15 = formatter(header_2_1_1.values[2].value, measureSource3);
-                let cellValue16 = formatter(header_2_1_2.values[0].value, measureSource1);
-                let cellValue17 = formatter(header_2_1_2.values[1].value, measureSource2);
-                let cellValue18 = formatter(header_2_1_2.values[2].value, measureSource3);
-                let cellValue19 = formatter(header_2_2_1.values[0].value, measureSource1);
-                let cellValue20 = formatter(header_2_2_1.values[1].value, measureSource2);
-                let cellValue21 = formatter(header_2_2_1.values[2].value, measureSource3);
-                let cellValue22 = formatter(header_2_2_2.values[0].value, measureSource1);
-                let cellValue23 = formatter(header_2_2_2.values[1].value, measureSource2);
-                let cellValue24 = formatter(header_2_2_2.values[2].value, measureSource3);
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, measureSource1.displayName, measureSource2.displayName, measureSource3.displayName],
-                    [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value, cellValue1, cellValue2, cellValue3],
-                    [header_1_1_2.levelValues[0].value, cellValue4, cellValue5, cellValue6],
-                    [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value, cellValue7, cellValue8, cellValue9],
-                    [header_1_2_2.levelValues[0].value, cellValue10, cellValue11, cellValue12],
-                    [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value, cellValue13, cellValue14, cellValue15],
-                    [header_2_1_2.levelValues[0].value, cellValue16, cellValue17, cellValue18],
-                    [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value, cellValue19, cellValue20, cellValue21],
-                    [header_2_2_2.levelValues[0].value, cellValue22, cellValue23, cellValue24]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("2x2 matrix (value, static column header and row value header)", (done) => {
-
-            let matrix = matrixOneMeasureOneRowGroupOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: { columns: [rowGroupSource1, measureSource1] },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let header = matrix.rows.root.children[0];
-                let cellValue: string = formatter(header.values[0].value, measureSource1);
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, measureSource1.displayName],
-                    [header.levelValues[0].value, cellValue]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("2x2 matrix (value, column value header and row value header, empty cell)", (done) => {
-
-            let matrix = matrixOneRowGroupOneColumnGroupOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [matrixOneRowGroupOneColumnGroupOneGroupInstanceDataView]
-            });
-
-            setTimeout(() => {
-
-                let columnHeader = matrix.columns.root.children[0];
-                let rowHeader = matrix.rows.root.children[0];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, columnHeader.levelValues[0].value.toString()],
-                    [rowHeader.levelValues[0].value.toString(), ""]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x2 matrix (static column headers and row value headers)", (done) => {
-
-            let matrix = matrixThreeRowGroupsOneGroupInstance;
-            v.onDataChanged({
-                dataViews: [matrixThreeRowGroupsOneGroupInstanceDataView]
-            });
-
-            setTimeout(() => {
-
-                let rowHeader_1 = matrix.rows.root.children[0];
-                let rowHeader_1_1 = rowHeader_1.children[0];
-                let rowHeader_1_1_1 = rowHeader_1_1.children[0];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName],
-                    [rowHeader_1.levelValues[0].value, rowHeader_1_1.levelValues[0].value, rowHeader_1_1_1.levelValues[0].value.toString()]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("2x6 matrix (static column headers and row value headers including empty ones)", (done) => {
-
-            let matrix = matrixTwoRowGroupsWithNullValues;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let header_1 = matrix.rows.root.children[0];
-                let header_1_2 = header_1.children[1];
-                let header_2 = matrix.rows.root.children[1];
-                let header_2_1 = header_2.children[0];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName],
-                    [header_1.levelValues[0].value, EmptyCell],
-                    [header_1_2.levelValues[0].value],
-                    [header_2.levelValues[0].value, header_2_1.levelValues[0].value],
-                    [EmptyCell],
-                    [EmptyCell, EmptyCell]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("5x2 matrix (column value headers including empty ones)", (done) => {
-            let matrix = <DataViewMatrix><any>matrixTwoColumnGroupsWithNullValues;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            columnGroupSource1,
-                            columnGroupSource2
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let header_1 = matrix.columns.root.children[0];
-                let header_1_2 = header_1.children[1];
-                let header_2 = matrix.columns.root.children[1];
-                let header_2_1 = header_2.children[0];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    ["", header_1.levelValues[0].value, header_2.levelValues[0].value, EmptyCell],
-                    ["", EmptyCell, header_1_2.levelValues[0].value, header_2_1.levelValues[0].value, EmptyCell, EmptyCell]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x9 matrix (static column headers and row value headers)", (done) => {
-
-            let matrix = matrixThreeRowGroups;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2,
-                            rowGroupSource3
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let header_1 = matrix.rows.root.children[0];
-                let header_1_1 = header_1.children[0];
-                let header_1_1_1 = header_1_1.children[0];
-                let header_1_1_2 = header_1_1.children[1];
-                let header_1_2 = header_1.children[1];
-                let header_1_2_1 = header_1_2.children[0];
-                let header_1_2_2 = header_1_2.children[1];
-                let header_2 = matrix.rows.root.children[1];
-                let header_2_1 = header_2.children[0];
-                let header_2_1_1 = header_2_1.children[0];
-                let header_2_1_2 = header_2_1.children[1];
-                let header_2_2 = header_2.children[1];
-                let header_2_2_1 = header_2_2.children[0];
-                let header_2_2_2 = header_2_2.children[1];
-
-                let expectedCells: PrimitiveValue[][] = [
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName],
-                    [header_1.levelValues[0].value, header_1_1.levelValues[0].value, header_1_1_1.levelValues[0].value.toString()],
-                    [header_1_1_2.levelValues[0].value.toString()],
-                    [header_1_2.levelValues[0].value, header_1_2_1.levelValues[0].value.toString()],
-                    [header_1_2_2.levelValues[0].value.toString()],
-                    [header_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_1_1.levelValues[0].value.toString()],
-                    [header_2_1_2.levelValues[0].value.toString()],
-                    [header_2_2.levelValues[0].value, header_2_2_1.levelValues[0].value.toString()],
-                    [header_2_2_2.levelValues[0].value.toString()]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("8x3 matrix (column value headers)", (done) => {
-
-            let matrix = matrixThreeColumnGroups;
-            v.onDataChanged({
-                dataViews: [matrixThreeColumnGroupsDataView]
-            });
-
-            setTimeout(() => {
-
-                let header_1 = matrix.columns.root.children[0];
-                let header_1_1 = header_1.children[0];
-                let header_1_1_1 = (header_1_1.children[0]).levelValues[0].value.toString();
-                let header_1_1_2 = (header_1_1.children[1]).levelValues[0].value.toString();
-                let header_1_2 = header_1.children[1];
-                let header_1_2_1 = (header_1_2.children[0]).levelValues[0].value.toString();
-                let header_1_2_2 = (header_1_2.children[1]).levelValues[0].value.toString();
-                let header_2 = matrix.columns.root.children[1];
-                let header_2_1 = header_2.children[0];
-                let header_2_1_1 = (header_2_1.children[0]).levelValues[0].value.toString();
-                let header_2_1_2 = (header_2_1.children[1]).levelValues[0].value.toString();
-                let header_2_2 = header_2.children[1];
-                let header_2_2_1 = (header_2_2.children[0]).levelValues[0].value.toString();
-                let header_2_2_2 = (header_2_2.children[1]).levelValues[0].value.toString();
-
-                let expectedCells: PrimitiveValue[][] = [
-                    ["", header_1.levelValues[0].value, header_2.levelValues[0].value],
-                    ["", header_1_1.levelValues[0].value, header_1_2.levelValues[0].value, header_2_1.levelValues[0].value, header_2_2.levelValues[0].value],
-                    ["", header_1_1_1, header_1_1_2, header_1_2_1, header_1_2_2, header_2_1_1, header_2_1_2, header_2_2_1, header_2_2_2]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("6x5 matrix (column value headers and row value headers, multiple group instances, empty cells)", (done) => {
-            let matrix = matrixThreeRowGroupsThreeColumnGroups;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2,
-                            rowGroupSource3formatted,
-                            columnGroupSource1,
-                            columnGroupSource2,
-                            columnGroupSource3formatted
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let rowHeader_1 = matrix.rows.root.children[0];
-                let rowHeader_1_1 = rowHeader_1.children[0];
-                let rowHeaderValue_1_1_1 = formatter(rowHeader_1_1.children[0].levelValues[0].value, rowGroupSource3formatted);
-                let rowHeaderValue_1_1_2 = formatter(rowHeader_1_1.children[1].levelValues[0].value, rowGroupSource3formatted);
-                let rowHeader_1_2 = rowHeader_1.children[1];
-                let rowHeaderValue_1_2_1 = formatter(rowHeader_1_2.children[0].levelValues[0].value, rowGroupSource3formatted);
-                let colHeader_1 = matrix.columns.root.children[0];
-                let colHeader_1_1 = colHeader_1.children[0];
-                let colHeaderValue_1_1_1 = formatter(colHeader_1_1.children[0].levelValues[0].value, columnGroupSource3formatted);
-                let colHeaderValue_1_1_2 = formatter(colHeader_1_1.children[1].levelValues[0].value, columnGroupSource3formatted);
-                let colHeader_1_2 = colHeader_1.children[1];
-                let colHeaderValue_1_2_1 = formatter(colHeader_1_2.children[0].levelValues[0].value, columnGroupSource3formatted);
-
-                let expectedCells: PrimitiveValue[][] = [
-                    ["", "", columnGroupSource1.displayName, colHeader_1.levelValues[0].value],
-                    ["", "", columnGroupSource2.displayName, colHeader_1_1.levelValues[0].value, colHeader_1_2.levelValues[0].value],
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, rowGroupSource3.displayName, colHeaderValue_1_1_1, colHeaderValue_1_1_2, colHeaderValue_1_2_1],
-                    [rowHeader_1.levelValues[0].value, rowHeader_1_1.levelValues[0].value, rowHeaderValue_1_1_1, "", "", ""],
-                    [rowHeaderValue_1_1_2, "", "", ""],
-                    [rowHeader_1_2.levelValues[0].value, rowHeaderValue_1_2_1, "", "", ""]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("3x4 matrix (boolean and null group instances)", (done) => {
-            let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasure;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ]
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let colHeader1 = matrix.columns.root.children[0];
-                let colHeader2 = matrix.columns.root.children[1];
-                let rowHeader1 = matrix.rows.root.children[0];
-                let rowHeader2 = matrix.rows.root.children[1];
-                let rowHeader3 = matrix.rows.root.children[2];
-
-                let expectedCells: string[][] = [
-                    [rowGroupSource4.displayName, formatter(colHeader1.levelValues[0].value, columnGroupSource4), formatter(colHeader2.levelValues[0].value, columnGroupSource4)],
-                    [formatter(rowHeader1.levelValues[0].value, rowGroupSource4), formatter(rowHeader1.values[0].value, measureSource1), formatter(rowHeader1.values[1].value, measureSource1)],
-                    [formatter(rowHeader2.levelValues[0].value, rowGroupSource4), formatter(rowHeader2.values[0].value, measureSource1), formatter(rowHeader2.values[1].value, measureSource1)],
-                    [EmptyCell, formatter(rowHeader3.values[0].value, measureSource1), formatter(rowHeader3.values[1].value, measureSource1)]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("Matrix with row and column subtotals", (done) => {
-            let matrix = matrixRowGroupColumnGroupWithBooleanAndNullOneMeasureBothTotals;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource4,
-                            columnGroupSource4,
-                            measureSource1
-                        ],
-                        objects: {
-                            general: {
-                                rowSubtotals: true,
-                                columnSubtotals: true
-                            }
-                        }
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let colHeader1 = matrix.columns.root.children[0];
-                let colHeader2 = matrix.columns.root.children[1];
-                let rowHeader1 = matrix.rows.root.children[0];
-                let rowHeader2 = matrix.rows.root.children[1];
-                let rowHeader3 = matrix.rows.root.children[2];
-                let rowHeader4 = matrix.rows.root.children[3];
-
-                let expectedCells: string[][] = [
-                    [rowGroupSource4.displayName, formatter(colHeader1.levelValues[0].value, columnGroupSource4), formatter(colHeader2.levelValues[0].value, columnGroupSource4), TableTotalLabel],
-                    [formatter(rowHeader1.levelValues[0].value, rowGroupSource4), formatter(rowHeader1.values[0].value, measureSource1), formatter(rowHeader1.values[1].value, measureSource1), formatter(rowHeader1.values[2].value, measureSource1)],
-                    [formatter(rowHeader2.levelValues[0].value, rowGroupSource4), formatter(rowHeader2.values[0].value, measureSource1), formatter(rowHeader2.values[1].value, measureSource1), formatter(rowHeader2.values[2].value, measureSource1)],
-                    [EmptyCell, formatter(rowHeader3.values[0].value, measureSource1), formatter(rowHeader3.values[1].value, measureSource1), formatter(rowHeader3.values[2].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader4.values[0].value, measureSource1), formatter(rowHeader4.values[1].value, measureSource1), formatter(rowHeader4.values[2].value, measureSource1)]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("Matrix with multiple row and column group hierarchy levels, one measure with subtotals", (done) => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsOneMeasureAndTotals;
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2,
-                            columnGroupSource1,
-                            columnGroupSource2,
-                            measureSource1
-                        ],
-                        objects: {
-                            general: {
-                                rowSubtotals: true,
-                                columnSubtotals: true
-                            }
-                        }
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let colHeader1 = matrix.columns.root.children[0];
-                let colHeader2 = matrix.columns.root.children[1];
-                let colHeader1_1 = matrix.columns.root.children[0].children[0];
-                let colHeader1_2 = matrix.columns.root.children[0].children[1];
-                let colHeader2_1 = matrix.columns.root.children[1].children[0];
-                let colHeader2_2 = matrix.columns.root.children[1].children[1];
-
-                let rowHeader1 = matrix.rows.root.children[0];
-                let rowHeader2 = matrix.rows.root.children[1];
-                let rowHeader3 = matrix.rows.root.children[2];
-                let rowHeader4 = matrix.rows.root.children[3];
-                let rowHeadert = matrix.rows.root.children[4];
-
-                let rowHeader1_1 = matrix.rows.root.children[0].children[0];
-                let rowHeader1_2 = matrix.rows.root.children[0].children[1];
-                let rowHeader1_t = matrix.rows.root.children[0].children[2];
-                let rowHeader2_1 = matrix.rows.root.children[1].children[0];
-                let rowHeader2_2 = matrix.rows.root.children[1].children[1];
-                let rowHeader2_t = matrix.rows.root.children[1].children[2];
-                let rowHeader3_1 = matrix.rows.root.children[2].children[0];
-                let rowHeader3_t = matrix.rows.root.children[2].children[1];
-                let rowHeader4_1 = matrix.rows.root.children[3].children[0];
-                let rowHeader4_t = matrix.rows.root.children[3].children[1];
-
-                let expectedCells: string[][] = [
-                    ["", columnGroupSource1.displayName, colHeader1.levelValues[0].value.toString(), colHeader2.levelValues[0].value.toString(), TableTotalLabel],
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, colHeader1_1.levelValues[0].value.toString(), colHeader1_2.levelValues[0].value.toString(), TableTotalLabel, colHeader2_1.levelValues[0].value.toString(), colHeader2_2.levelValues[0].value.toString(), TableTotalLabel],
-                    [rowHeader1.levelValues[0].value.toString(), rowHeader1_1.levelValues[0].value.toString(), formatter(rowHeader1_1.values[0].value, measureSource1), formatter(rowHeader1_1.values[1].value, measureSource1), formatter(rowHeader1_1.values[2].value, measureSource1), formatter(rowHeader1_1.values[3].value, measureSource1), formatter(rowHeader1_1.values[4].value, measureSource1), formatter(rowHeader1_1.values[5].value, measureSource1), formatter(rowHeader1_1.values[6].value, measureSource1)],
-                    [rowHeader1_2.levelValues[0].value.toString(), formatter(rowHeader1_2.values[0].value, measureSource1), formatter(rowHeader1_2.values[1].value, measureSource1), formatter(rowHeader1_2.values[2].value, measureSource1), formatter(rowHeader1_2.values[3].value, measureSource1), formatter(rowHeader1_2.values[4].value, measureSource1), formatter(rowHeader1_2.values[5].value, measureSource1), formatter(rowHeader1_2.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader1_t.values[0].value, measureSource1), formatter(rowHeader1_t.values[1].value, measureSource1), formatter(rowHeader1_t.values[2].value, measureSource1), formatter(rowHeader1_t.values[3].value, measureSource1), formatter(rowHeader1_t.values[4].value, measureSource1), formatter(rowHeader1_t.values[5].value, measureSource1), formatter(rowHeader1_t.values[6].value, measureSource1)],
-                    [rowHeader2.levelValues[0].value.toString(), rowHeader2_1.levelValues[0].value.toString(), formatter(rowHeader2_1.values[0].value, measureSource1), formatter(rowHeader2_1.values[1].value, measureSource1), formatter(rowHeader2_1.values[2].value, measureSource1), formatter(rowHeader2_1.values[3].value, measureSource1), formatter(rowHeader2_1.values[4].value, measureSource1), formatter(rowHeader2_1.values[5].value, measureSource1), formatter(rowHeader2_1.values[6].value, measureSource1)],
-                    [rowHeader2_2.levelValues[0].value.toString(), formatter(rowHeader2_2.values[0].value, measureSource1), formatter(rowHeader2_2.values[1].value, measureSource1), formatter(rowHeader2_2.values[2].value, measureSource1), formatter(rowHeader2_2.values[3].value, measureSource1), formatter(rowHeader2_2.values[4].value, measureSource1), formatter(rowHeader2_2.values[5].value, measureSource1), formatter(rowHeader2_2.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader2_t.values[0].value, measureSource1), formatter(rowHeader2_t.values[1].value, measureSource1), formatter(rowHeader2_t.values[2].value, measureSource1), formatter(rowHeader2_t.values[3].value, measureSource1), formatter(rowHeader2_t.values[4].value, measureSource1), formatter(rowHeader2_t.values[5].value, measureSource1), formatter(rowHeader2_t.values[6].value, measureSource1)],
-                    [rowHeader3.levelValues[0].value.toString(), rowHeader3_1.levelValues[0].value.toString(), formatter(rowHeader3_1.values[0].value, measureSource1), formatter(rowHeader3_1.values[1].value, measureSource1), formatter(rowHeader3_1.values[2].value, measureSource1), formatter(rowHeader3_1.values[3].value, measureSource1), formatter(rowHeader3_1.values[4].value, measureSource1), formatter(rowHeader3_1.values[5].value, measureSource1), formatter(rowHeader3_1.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader3_t.values[0].value, measureSource1), formatter(rowHeader3_t.values[1].value, measureSource1), formatter(rowHeader3_t.values[2].value, measureSource1), formatter(rowHeader3_t.values[3].value, measureSource1), formatter(rowHeader3_t.values[4].value, measureSource1), formatter(rowHeader3_t.values[5].value, measureSource1), formatter(rowHeader3_t.values[6].value, measureSource1)],
-                    [rowHeader4.levelValues[0].value.toString(), rowHeader4_1.levelValues[0].value.toString(), formatter(rowHeader4_1.values[0].value, measureSource1), formatter(rowHeader4_1.values[1].value, measureSource1), formatter(rowHeader4_1.values[2].value, measureSource1), formatter(rowHeader4_1.values[3].value, measureSource1), formatter(rowHeader4_1.values[4].value, measureSource1), formatter(rowHeader4_1.values[5].value, measureSource1), formatter(rowHeader4_1.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader4_t.values[0].value, measureSource1), formatter(rowHeader4_t.values[1].value, measureSource1), formatter(rowHeader4_t.values[2].value, measureSource1), formatter(rowHeader4_t.values[3].value, measureSource1), formatter(rowHeader4_t.values[4].value, measureSource1), formatter(rowHeader4_t.values[5].value, measureSource1), formatter(rowHeader4_t.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeadert.values[0].value, measureSource1), formatter(rowHeadert.values[1].value, measureSource1), formatter(rowHeadert.values[2].value, measureSource1), formatter(rowHeadert.values[3].value, measureSource1), formatter(rowHeadert.values[4].value, measureSource1), formatter(rowHeadert.values[5].value, measureSource1), formatter(rowHeadert.values[6].value, measureSource1)]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        it("Matrix with multiple row and column group hierarchy levels, two measures with subtotals", (done) => {
-            let matrix = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotals;
-
-            /**
-             * Scaling factor will be 1.05 because phantomjs renders as 11px font which is 8.25pt
-             * i.e. 8.25 / 8 ~= 1.05
-             * In actual practice, default 8pt text size ~= 10.6667px font
-             * which will result in a scale factor ~= 1.0 as expected
-             */
-            v.onDataChanged({
-                dataViews: [{
-                    metadata: {
-                        columns:
-                        [
-                            rowGroupSource1,
-                            rowGroupSource2,
-                            columnGroupSource1,
-                            columnGroupSource2,
-                            measureSource1,
-                            measureSource2
-                        ],
-                        objects: {
-                            general: {
-                                rowSubtotals: true,
-                                columnSubtotals: true
-                            }
-                        }
-                    },
-                    matrix: matrix
-                }]
-            });
-
-            setTimeout(() => {
-
-                let colHeader1 = matrix.columns.root.children[0];
-                let colHeader1_1 = matrix.columns.root.children[0].children[0];
-                let colHeader1_2 = matrix.columns.root.children[0].children[1];
-                let colHeader2 = matrix.columns.root.children[1];
-                let colHeader2_1 = matrix.columns.root.children[1].children[0];
-
-                let rowHeader1 = matrix.rows.root.children[0];
-                let rowHeader2 = matrix.rows.root.children[1];
-                let rowHeader3 = matrix.rows.root.children[2];
-                let rowHeader4 = matrix.rows.root.children[3];
-                let rowHeadert = matrix.rows.root.children[4];
-
-                let rowHeader1_1 = matrix.rows.root.children[0].children[0];
-                let rowHeader1_2 = matrix.rows.root.children[0].children[1];
-                let rowHeader1_t = matrix.rows.root.children[0].children[2];
-                let rowHeader2_1 = matrix.rows.root.children[1].children[0];
-                let rowHeader2_2 = matrix.rows.root.children[1].children[1];
-                let rowHeader2_t = matrix.rows.root.children[1].children[2];
-                let rowHeader3_1 = matrix.rows.root.children[2].children[0];
-                let rowHeader3_t = matrix.rows.root.children[2].children[1];
-                let rowHeader4_1 = matrix.rows.root.children[3].children[0];
-                let rowHeader4_t = matrix.rows.root.children[3].children[1];
-
-                let expectedCells: string[][] = [
-                    ["", columnGroupSource1.displayName, colHeader1.levelValues[0].value.toString(), colHeader2.levelValues[0].value.toString()],
-                    ["", columnGroupSource2.displayName, colHeader1_1.levelValues[0].value.toString(), colHeader1_2.levelValues[0].value.toString(), TableTotalLabel, colHeader2_1.levelValues[0].value.toString()],
-                    [rowGroupSource1.displayName, rowGroupSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName, measureSource2.displayName, measureSource1.displayName],
-                    [rowHeader1.levelValues[0].value.toString(), rowHeader1_1.levelValues[0].value.toString(), formatter(rowHeader1_1.values[0].value, measureSource1), formatter(rowHeader1_1.values[1].value, measureSource1), formatter(rowHeader1_1.values[2].value, measureSource1), formatter(rowHeader1_1.values[3].value, measureSource1), formatter(rowHeader1_1.values[4].value, measureSource1), formatter(rowHeader1_1.values[5].value, measureSource1), formatter(rowHeader1_1.values[6].value, measureSource1)],
-                    [rowHeader1_2.levelValues[0].value.toString(), formatter(rowHeader1_2.values[0].value, measureSource1), formatter(rowHeader1_2.values[1].value, measureSource1), formatter(rowHeader1_2.values[2].value, measureSource1), formatter(rowHeader1_2.values[3].value, measureSource1), formatter(rowHeader1_2.values[4].value, measureSource1), formatter(rowHeader1_2.values[5].value, measureSource1), formatter(rowHeader1_2.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader1_t.values[0].value, measureSource1), formatter(rowHeader1_t.values[1].value, measureSource1), formatter(rowHeader1_t.values[2].value, measureSource1), formatter(rowHeader1_t.values[3].value, measureSource1), formatter(rowHeader1_t.values[4].value, measureSource1), formatter(rowHeader1_t.values[5].value, measureSource1), formatter(rowHeader1_t.values[6].value, measureSource1)],
-                    [rowHeader2.levelValues[0].value.toString(), rowHeader2_1.levelValues[0].value.toString(), formatter(rowHeader2_1.values[0].value, measureSource1), formatter(rowHeader2_1.values[1].value, measureSource1), formatter(rowHeader2_1.values[2].value, measureSource1), formatter(rowHeader2_1.values[3].value, measureSource1), formatter(rowHeader2_1.values[4].value, measureSource1), formatter(rowHeader2_1.values[5].value, measureSource1), formatter(rowHeader2_1.values[6].value, measureSource1)],
-                    [rowHeader2_2.levelValues[0].value.toString(), formatter(rowHeader2_2.values[0].value, measureSource1), formatter(rowHeader2_2.values[1].value, measureSource1), formatter(rowHeader2_2.values[2].value, measureSource1), formatter(rowHeader2_2.values[3].value, measureSource1), formatter(rowHeader2_2.values[4].value, measureSource1), formatter(rowHeader2_2.values[5].value, measureSource1), formatter(rowHeader2_2.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader2_t.values[0].value, measureSource1), formatter(rowHeader2_t.values[1].value, measureSource1), formatter(rowHeader2_t.values[2].value, measureSource1), formatter(rowHeader2_t.values[3].value, measureSource1), formatter(rowHeader2_t.values[4].value, measureSource1), formatter(rowHeader2_t.values[5].value, measureSource1), formatter(rowHeader2_t.values[6].value, measureSource1)],
-                    [rowHeader3.levelValues[0].value.toString(), rowHeader3_1.levelValues[0].value.toString(), formatter(rowHeader3_1.values[0].value, measureSource1), formatter(rowHeader3_1.values[1].value, measureSource1), formatter(rowHeader3_1.values[2].value, measureSource1), formatter(rowHeader3_1.values[3].value, measureSource1), formatter(rowHeader3_1.values[4].value, measureSource1), formatter(rowHeader3_1.values[5].value, measureSource1), formatter(rowHeader3_1.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader3_t.values[0].value, measureSource1), formatter(rowHeader3_t.values[1].value, measureSource1), formatter(rowHeader3_t.values[2].value, measureSource1), formatter(rowHeader3_t.values[3].value, measureSource1), formatter(rowHeader3_t.values[4].value, measureSource1), formatter(rowHeader3_t.values[5].value, measureSource1), formatter(rowHeader3_t.values[6].value, measureSource1)],
-                    [rowHeader4.levelValues[0].value.toString(), rowHeader4_1.levelValues[0].value.toString(), formatter(rowHeader4_1.values[0].value, measureSource1), formatter(rowHeader4_1.values[1].value, measureSource1), formatter(rowHeader4_1.values[2].value, measureSource1), formatter(rowHeader4_1.values[3].value, measureSource1), formatter(rowHeader4_1.values[4].value, measureSource1), formatter(rowHeader4_1.values[5].value, measureSource1), formatter(rowHeader4_1.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeader4_t.values[0].value, measureSource1), formatter(rowHeader4_t.values[1].value, measureSource1), formatter(rowHeader4_t.values[2].value, measureSource1), formatter(rowHeader4_t.values[3].value, measureSource1), formatter(rowHeader4_t.values[4].value, measureSource1), formatter(rowHeader4_t.values[5].value, measureSource1), formatter(rowHeader4_t.values[6].value, measureSource1)],
-                    [TableTotalLabel, formatter(rowHeadert.values[0].value, measureSource1), formatter(rowHeadert.values[1].value, measureSource1), formatter(rowHeadert.values[2].value, measureSource1), formatter(rowHeadert.values[3].value, measureSource1), formatter(rowHeadert.values[4].value, measureSource1), formatter(rowHeadert.values[5].value, measureSource1), formatter(rowHeadert.values[6].value, measureSource1)]
-                ];
-
-                validateMatrix(expectedCells);
-
-                done();
-            }, DefaultWaitForRender);
-        });
-
-        function formatter(value: any, source?: DataViewMetadataColumn): string {
-            return valueFormatter.formatVariantMeasureValue(value, source, TablixObjects.PropColumnFormatString);
-        }
-    });
-
-    describe("Matrix sort validation", () => {
-        let element: JQuery;
-
-        beforeEach((done) => {
-            element = powerbitests.helpers.testDom("1800", "1800");
-            element["visible"] = () => { return true; };
-            done();
-        });
-
-        it("matrix with single measure", (done) => {
-            // Clicking on the measure will result in a sort event
-            let data: powerbi.DataView = matrixOneMeasureDataView;
-            let expectedColumnHeaders = [{ row: 0, col: 1, expectedText: "Measure1" }];
-            let clicks = [{ row: 0, col: 1 }, { row: 1, col: 1 }];
-            let expectedSorts = [];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with one measure and one column group", (done) => {
-            // Clicking on a column group (even if there is only a single instance) will not result in a sort event
-            let data: powerbi.DataView = matrixOneMeasureOneColumnGroupOneGroupInstanceDataView;
-            let expectedColumnHeaders = [{ row: 0, col: 1, expectedText: "Group A" }];
-            let clicks = [{ row: 0, col: 1 }, { row: 1, col: 1 }, { row: 0, col: 1 }];
-            let expectedSorts = [];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with three measures", (done) => {
-            // Clicking on any measure will result in a sort event
-            let data: powerbi.DataView = matrixThreeMeasuresDataView;
-            let expectedColumnHeaders = [{ row: 0, col: 1, expectedText: "Measure1" }, { row: 0, col: 2, expectedText: "Measure2" }, { row: 0, col: 3, expectedText: "Measure3" }];
-            let clicks = [{ row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }];
-            let expectedSorts = [];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with three measures under one column group", (done) => {
-            // Clicking on any column group or any measure underneath it will not result in a sort event
-            let data: powerbi.DataView = matrixThreeMeasuresOneColumnGroupOneGroupInstanceDataView;
-            let expectedColumnHeaders = [{ row: 0, col: 1, expectedText: "Group A" }, { row: 1, col: 1, expectedText: "Measure1" }, { row: 1, col: 2, expectedText: "Measure2" }, { row: 1, col: 3, expectedText: "Measure3" }];
-            let clicks = [{ row: 0, col: 1 }, { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }];
-            let expectedSorts = [];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with three measures and three row groups", (done) => {
-            // Clicking on any row group or any measure will result in a sort event
-            let data: powerbi.DataView = matrixThreeMeasuresThreeRowGroupsDataView;
-            let expectedColumnHeaders = [
-                { row: 0, col: 0, expectedText: "RowGroup1" },
-                { row: 0, col: 1, expectedText: "RowGroup2" },
-                { row: 0, col: 2, expectedText: "RowGroup3" },
-                { row: 0, col: 3, expectedText: "Measure1" },
-                { row: 0, col: 4, expectedText: "Measure2" },
-                { row: 0, col: 5, expectedText: "Measure3" }];
-            let clicks = [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }, { row: 0, col: 4 }, { row: 0, col: 5 }];
-            let expectedSorts = [
-                [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }],
-                [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }],
-                [{ queryName: "RowGroup3", sortDirection: powerbi.SortDirection.Descending }],
-                [{ queryName: "Measure1", sortDirection: powerbi.SortDirection.Descending }],
-                [{ queryName: "Measure2", sortDirection: powerbi.SortDirection.Descending }],
-                [{ queryName: "Measure3", sortDirection: powerbi.SortDirection.Descending }],
-            ];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with one row group and one column group", (done) => {
-            // Clicking on the row group will result in a sort event; clicking on the column group will not
-            let data: powerbi.DataView = matrixOneRowGroupOneColumnGroupOneGroupInstanceDataView;
-            let expectedColumnHeaders = [
-                { row: 0, col: 0, expectedText: "RowGroup1" },
-                { row: 0, col: 1, expectedText: "10" }];
-            let clicks = [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 1, col: 0 }];
-            let expectedSorts = [
-                [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }]
-            ];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with one row group and one column group", (done) => {
-            // Clicking on any row group will result in a sort event
-            let data: powerbi.DataView = matrixThreeRowGroupsOneGroupInstanceDataView;
-            let expectedColumnHeaders = [
-                { row: 0, col: 0, expectedText: "RowGroup1" },
-                { row: 0, col: 1, expectedText: "RowGroup2" },
-                { row: 0, col: 2, expectedText: "RowGroup3" }];
-            let clicks = [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }];
-            let expectedSorts = [
-                [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup3", sortDirection: powerbi.SortDirection.Descending }]
-            ];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with three column groups", (done) => {
-            // Clicking on any column group will not result in a sort event
-            let data: powerbi.DataView = matrixThreeColumnGroupsDataView;
-            let expectedColumnHeaders = [
-                { row: 0, col: 1, expectedText: "Africa" }, { row: 0, col: 2, expectedText: "Asia" },
-                { row: 1, col: 1, expectedText: "Algeria" }, { row: 1, col: 2, expectedText: "Angola" }, { row: 1, col: 3, expectedText: "China" }, { row: 1, col: 4, expectedText: "India" },
-                { row: 2, col: 1, expectedText: "2008" }, { row: 2, col: 2, expectedText: "2012" }, { row: 2, col: 3, expectedText: "2008" }, { row: 2, col: 4, expectedText: "2012" }, { row: 2, col: 5, expectedText: "2008" }, { row: 2, col: 6, expectedText: "2012" }, { row: 2, col: 7, expectedText: "2008" }, { row: 2, col: 8, expectedText: "2012" }
-            ];
-            let clicks = [
-                { row: 0, col: 1 }, { row: 0, col: 2 },
-                { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 },
-                { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 }, { row: 2, col: 6 }, { row: 2, col: 7 }, { row: 2, col: 8 }
-            ];
-            let expectedSorts = [];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with two row groups, two column groups and two measures", (done) => {
-            // Clicking on any row group will result in a sort event, clicking on any column group or measure column will not result in a sort event
-            let data: powerbi.DataView = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresDataView;
-            let expectedColumnHeaders = [
-                { row: 0, col: 1, expectedText: "ColGroup1" }, { row: 0, col: 2, expectedText: "1992" }, { row: 0, col: 3, expectedText: "1996" },
-                { row: 1, col: 1, expectedText: "ColGroup2" }, { row: 1, col: 2, expectedText: "Bronze" }, { row: 1, col: 3, expectedText: "Gold" }, { row: 1, col: 4, expectedText: "Silver" }, { row: 1, col: 5, expectedText: "Bronze" }, { row: 1, col: 6, expectedText: "Gold" }, { row: 1, col: 7, expectedText: "Silver" },
-                { row: 2, col: 0, expectedText: "RowGroup1" }, { row: 2, col: 1, expectedText: "RowGroup2" }, { row: 2, col: 2, expectedText: "Measure1" }, { row: 2, col: 3, expectedText: "Measure2" }, { row: 2, col: 4, expectedText: "Measure1" }, { row: 2, col: 5, expectedText: "Measure2" }, { row: 2, col: 6, expectedText: "Measure1" }, { row: 2, col: 7, expectedText: "Measure2" }, { row: 2, col: 8, expectedText: "Measure1" }, { row: 2, col: 9, expectedText: "Measure2" }, { row: 2, col: 10, expectedText: "Measure1" }, { row: 2, col: 11, expectedText: "Measure2" }, { row: 2, col: 12, expectedText: "Measure1" }
-            ];
-            let clicks = [
-                { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 },
-                { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 }, { row: 1, col: 5 }, { row: 1, col: 6 }, { row: 1, col: 7 },
-                { row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 }, { row: 2, col: 6 }, { row: 2, col: 7 }, { row: 2, col: 8 }, { row: 2, col: 9 }, { row: 2, col: 10 }, { row: 2, col: 11 }, { row: 2, col: 12 }
-            ];
-            let expectedSorts = [
-                [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }]
-            ];
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with two row groups, two column groups and one measure with totals", (done) => {
-            // Clicking on any row group will result in a sort event, clicking on any column group or measure column will not result in a sort event; clicking on the column grand total will result in a sort (by measure)
-            let data: powerbi.DataView = matrixTwoRowGroupsTwoColumnGroupsOneMeasureAndTotalsDataView;
-            let expectedColumnHeaders = [
-                { row: 0, col: 1, expectedText: "ColGroup1" }, { row: 0, col: 2, expectedText: "1992" }, { row: 0, col: 3, expectedText: "1996" }, { row: 0, col: 4, expectedText: Matrix.TotalLabel },
-                { row: 1, col: 0, expectedText: "RowGroup1" }, { row: 1, col: 1, expectedText: "RowGroup2" }, { row: 1, col: 2, expectedText: "Silver" }, { row: 1, col: 3, expectedText: "Gold" }, { row: 1, col: 4, expectedText: Matrix.TotalLabel }, { row: 1, col: 5, expectedText: "Silver" }, { row: 1, col: 6, expectedText: "Gold" }, { row: 1, col: 7, expectedText: Matrix.TotalLabel }
-            ];
-            let clicks = [
-                { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }, { row: 0, col: 4 },
-                { row: 1, col: 0 }, { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 }, { row: 1, col: 5 }, { row: 1, col: 6 }, { row: 1, col: 7 }
-            ];
-            let expectedSorts = [
-                [{ queryName: "Measure1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }]
-            ];
-
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with two row groups, two column groups and two measures with totals", (done) => {
-            // Clicking on any row group will result in a sort event, clicking on any column group or measure column will not result in a sort event; clicking on the column grand total will result in a sort (by measure)
-            let data: powerbi.DataView = matrixTwoRowGroupsTwoColumnGroupsTwoMeasuresAndTotalsDataView;
-            let expectedColumnHeaders = [
-                { row: 0, col: 1, expectedText: "ColGroup1" }, { row: 0, col: 2, expectedText: "1992" }, { row: 0, col: 3, expectedText: "1996" }, { row: 0, col: 4, expectedText: Matrix.TotalLabel },
-                { row: 1, col: 1, expectedText: "ColGroup2" }, { row: 1, col: 2, expectedText: "Silver" }, { row: 1, col: 3, expectedText: "Gold" }, { row: 1, col: 4, expectedText: Matrix.TotalLabel }, { row: 1, col: 5, expectedText: "Silver" }, { row: 1, col: 6, expectedText: "Gold" }, { row: 1, col: 7, expectedText: Matrix.TotalLabel },
-                { row: 2, col: 0, expectedText: "RowGroup1" }, { row: 2, col: 1, expectedText: "RowGroup2" }, { row: 2, col: 2, expectedText: "Measure1" }, { row: 2, col: 3, expectedText: "Measure2" }, { row: 2, col: 4, expectedText: "Measure1" }, { row: 2, col: 5, expectedText: "Measure2" }, { row: 2, col: 6, expectedText: "Measure1" }, { row: 2, col: 7, expectedText: "Measure2" }, { row: 2, col: 8, expectedText: "Measure1" }, { row: 2, col: 9, expectedText: "Measure2" }, { row: 2, col: 10, expectedText: "Measure1" }, { row: 2, col: 11, expectedText: "Measure2" }, { row: 2, col: 12, expectedText: "Measure1" }, { row: 2, col: 13, expectedText: "Measure2" }, { row: 2, col: 14, expectedText: "Measure1" }, { row: 2, col: 15, expectedText: "Measure2" }
-            ];
-            let clicks = [
-                { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }, { row: 0, col: 4 },
-                { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 }, { row: 1, col: 5 }, { row: 1, col: 6 }, { row: 1, col: 7 },
-                { row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 }, { row: 2, col: 6 }, { row: 2, col: 7 }, { row: 2, col: 8 }, { row: 2, col: 9 }, { row: 2, col: 10 }, { row: 2, col: 11 }, { row: 2, col: 12 }, { row: 2, col: 13 }, { row: 2, col: 14 }, { row: 2, col: 15 }
-            ];
-            let expectedSorts = [
-                [{ queryName: "RowGroup1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "RowGroup2", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "Measure1", sortDirection: powerbi.SortDirection.Descending }], [{ queryName: "Measure2", sortDirection: powerbi.SortDirection.Descending }]
-            ];
-
-            tablixHelper.runTablixSortTest(element, done, "matrix", data, expectedColumnHeaders, clicks, expectedSorts);
-        });
-
-        it("matrix with columnGroup url", (done) => {
-            let data: powerbi.DataView = matrixOneMeasureOneColumnGroupWithUrlOneGroupInstanceDataView;
-
-            let renderTablixPromise = tablixHelper.renderNewTablix(
-                element,
-                {
-                    visualType: "matrix",
-                    data: data
-                });
-
-            renderTablixPromise.then(
-                () => {
-                    let tableBody = $(".tablixContainer > div.tablixCanvas > div:nth-child(1) > table.unselectable > tbody");
-                    expect(tableBody).toBeInDOM();
-
-                    let cellInfo = tablixHelper.getTableCell(tableBody, { row: 0, col: 1 });
-                    let aTag = $("> div > a", cellInfo.clickTarget);
-                    expect(aTag.length).toBe(1);
-                    expect(aTag.text()).toBe("http://www.validurl.com");
-                    expect(aTag.attr("href")).toBe("http://www.validurl.com");
-                    expect(aTag.attr("title")).toBe("http://www.validurl.com");
-                    done();
-                });
-        });
-
-        it("matrix with rowGroup url", (done) => {
-            let data: powerbi.DataView = matrixOneMeasureOneRowGroupUrlOneGroupInstanceDataView;
-
-            let renderTablixPromise = tablixHelper.renderNewTablix(
-                element,
-                {
-                    visualType: "matrix",
-                    data: data
-                });
-
-            renderTablixPromise.then(
-                () => {
-                    let tableBody = $(".tablixContainer > div.tablixCanvas > div:nth-child(1) > table.unselectable > tbody");
-                    expect(tableBody).toBeInDOM();
-
-                    let cellInfo = tablixHelper.getTableCell(tableBody, { row: 1, col: 0 });
-                    let aTag = $("> div > a", cellInfo.clickTarget);
-                    expect(aTag.length).toBe(1);
-                    expect(aTag.text()).toBe("http://www.validurl.com");
-                    expect(aTag.attr("href")).toBe("http://www.validurl.com");
-                    expect(aTag.attr("title")).toBe("http://www.validurl.com");
-                    done();
-                });
-        });
-
-        it("matrix with rowGroup Kpi", (done) => {
-            let data: powerbi.DataView = matrixOneMeasureOneRowGroupKpiStatusOneGroupInstanceDataView;
-
-            let renderTablixPromise = tablixHelper.renderNewTablix(
-                element,
-                {
-                    visualType: "matrix",
-                    data: data
-                });
-
-            renderTablixPromise.then(
-                () => {
-                    let tableBody = $(".tablixContainer > div.tablixCanvas > div:nth-child(1) > table.unselectable > tbody");
-                    expect(tableBody).toBeInDOM();
-
-                    let cellHeader = tablixHelper.getTableCell(tableBody, { row: 0, col: 1 });
-                    let headerDiv = $("> div", cellHeader.clickTarget);
-                    let cellInfo = tablixHelper.getTableCell(tableBody, { row: 1, col: 1 });
-                    let kpiDiv = $("div.powervisuals-glyph.circle.kpi-green", cellInfo.clickTarget);
-
-                    expect(headerDiv.text()).toBe('ColGroupKpiStatus');
-                    expect(kpiDiv.length).toBe(1);
-                    expect(kpiDiv.text()).toEqual('');
-
-                    done();
-                });
-        });
+        interface MatrixStylePresetElements {
+            grid: {
+                outlineColor: string;
+                outlineWeight: number;
+                gridVertical: boolean;
+                gridVerticalColor: string;
+                gridVerticalWeight: number;
+                gridHorizontal: boolean;
+                gridHorizontalColor: string;
+                gridHorizontalWeight: number;
+                rowPadding: number;
+            };
+
+            columnHeaders: {
+                outline: string;
+                fontColor: string;
+                backColor: string;
+            };
+
+            values: {
+                outline: string;
+                fontColorPrimary: string;
+                backColorPrimary: string;
+                fontColorSecondary: string;
+                backColorSecondary: string;
+            };
+
+            subTotals: {
+                fontColor: string;
+                backColor: string;
+            };
+
+            total: {
+                fontColor: string;
+                backColor: string;
+                applyToHeaders: boolean;
+            };
+        };
+
+        function assertStylePresetObjects(actual: powerbi.data.DataViewObjectDefinitions, expected: MatrixStylePresetElements): void {
+            helpers.assertSolidFillDefinition(actual, "grid", "outlineColor", expected.grid.outlineColor);
+            helpers.assertSQConstantExpr(actual, "grid", "outlineWeight", expected.grid.outlineWeight);
+            helpers.assertSQConstantExpr(actual, "grid", "gridVertical", expected.grid.gridVertical);
+            helpers.assertSolidFillDefinition(actual, "grid", "gridVerticalColor", expected.grid.gridVerticalColor);
+            helpers.assertSQConstantExpr(actual, "grid", "gridVerticalWeight", expected.grid.gridVerticalWeight);
+            helpers.assertSQConstantExpr(actual, "grid", "gridHorizontal", expected.grid.gridHorizontal);
+            helpers.assertSolidFillDefinition(actual, "grid", "gridHorizontalColor", expected.grid.gridHorizontalColor);
+            helpers.assertSQConstantExpr(actual, "grid", "gridHorizontalWeight", expected.grid.gridHorizontalWeight);
+            helpers.assertSQConstantExpr(actual, "grid", "rowPadding", expected.grid.rowPadding);
+
+            helpers.assertSQConstantExpr(actual, "columnHeaders", "outline", expected.columnHeaders.outline);
+            helpers.assertSolidFillDefinition(actual, "columnHeaders", "fontColor", expected.columnHeaders.fontColor);
+            helpers.assertSolidFillDefinition(actual, "columnHeaders", "backColor", expected.columnHeaders.backColor);
+
+            helpers.assertSQConstantExpr(actual, "values", "outline", expected.values.outline);
+            helpers.assertSolidFillDefinition(actual, "values", "fontColorPrimary", expected.values.fontColorPrimary);
+            helpers.assertSolidFillDefinition(actual, "values", "backColorPrimary", expected.values.backColorPrimary);
+            helpers.assertSolidFillDefinition(actual, "values", "fontColorSecondary", expected.values.fontColorSecondary);
+            helpers.assertSolidFillDefinition(actual, "values", "backColorSecondary", expected.values.backColorSecondary);
+
+            helpers.assertSolidFillDefinition(actual, "subTotals", "fontColor", expected.subTotals.fontColor);
+            helpers.assertSolidFillDefinition(actual, "subTotals", "backColor", expected.subTotals.backColor);
+
+            helpers.assertSolidFillDefinition(actual, "total", "fontColor", expected.total.fontColor);
+            helpers.assertSolidFillDefinition(actual, "total", "backColor", expected.total.backColor);
+            helpers.assertSQConstantExpr(actual, "total", "applyToHeaders", expected.total.applyToHeaders);
+        };
     });
 }
 

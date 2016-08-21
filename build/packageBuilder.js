@@ -25,6 +25,7 @@
  */
 
 "use strict";
+
 var gulp = require("gulp"),
     base64 = require("gulp-base64"),
     pathModule = require("path"),
@@ -37,7 +38,14 @@ var gulp = require("gulp"),
     runSequence = require("run-sequence").use(gulp),
     gulpRename = require("gulp-rename"),
     ts = require("gulp-typescript"),
-    replace = require('gulp-replace');
+    replace = require('gulp-replace'),
+    configOptions = require("./options.js"),
+    gulpModify = require("gulp-modify"),
+    gulpMinifyCSS = require("gulp-minify-css"),
+    gulpUglify = require("gulp-uglify"),
+    gulpNop = require("gulp-nop"),
+    gulpAddSrc = require('gulp-add-src'),
+    gulpConcat = require('gulp-concat');
 
 var PACKAGE_BUNDLE_NAME = "bundle.json";
 var CUSTOM_VISUALS_PATH = "src/Clients/CustomVisuals/visuals";
@@ -85,30 +93,67 @@ PackageBuilder.prototype.createTasks = function () {
         regexSamples = new RegExp("samples", "g"),
         cssFileName = this._config.package.code.css,
         jsFileName = this._config.package.code.javaScript,
-        typeScriptFileName = this._config.package.code.typeScript;
+        typeScriptFileName = this._config.package.code.typeScript,
+        tsconfigFileName,
+        externals;
+
+    tsconfigFileName = this._config.package.tsc
+        ? this._config.package.tsc.configFile
+        : undefined;
+
+    externals = this._config.package.tsc
+        ? this._config.package.tsc.externals.map(function (external) {
+            return pathModule.join(visualPath, external);
+        })
+        : undefined;
 
     gulp.task(this.getTaskName("buildTS"), function (done) {
+        var tsResult,
+            tsProject;
 
-        var tsResult = gulp.src([
-            "lib/powerbi-externals.d.ts",
-            "lib/powerbi-visuals.d.ts",
-            pathModule.join(visualPath, "visual/**/*.ts")])
-            .pipe(ts({
+        if (tsconfigFileName) {
+            tsProject = ts.createProject(pathModule.join(visualPath, tsconfigFileName), {
                 typescript: require('typescript'),
                 module: "amd",
                 sortOutput: false,
                 target: "ES5",
                 noEmitOnError: false,
                 noResolve: true,
-            }, undefined, ts.reporter.longReporter()))
-            .on("error", function(err) {
-                process.exit(1);
-            })
+                outFileName: pathModule.join(packageResourcesPath, jsFileName),
+                out: jsFileName
+            });
+
+            tsResult = tsProject
+                .src()
+                .pipe(ts(tsProject, undefined, ts.reporter.longReporter()));
+        } else {
+            tsResult = gulp
+                .src([
+                    "lib/powerbi-externals.d.ts",
+                    "lib/powerbi-visuals.d.ts",
+                    pathModule.join(visualPath, "visual/**/*.ts")
+                ])
+                .pipe(ts({
+                    typescript: require('typescript'),
+                    module: "amd",
+                    sortOutput: false,
+                    target: "ES5",
+                    noEmitOnError: false,
+                    noResolve: true,
+                }, undefined, ts.reporter.longReporter()))
+                .on("error", function(err) {
+                    process.exit(1);
+                });
+        }
+
+        return tsResult
+            .pipe(externals ? gulpAddSrc.prepend(externals) : gulpNop())
+            .pipe(externals ? gulpConcat(jsFileName) : gulpNop())
             .pipe(gulpRename({
                 basename: jsFileName,
                 extname: ""
             }))
-            .pipe(PackageBuilder.removeTypeScriptReference())
+            .pipe(configOptions.minifyPackage ? gulpNop() : PackageBuilder.removeTypeScriptReference())
             .pipe(insert.append(PackageBuilder.portalExports))
             .pipe(replace(regexString, guid))
             .pipe(replace(regexSamples, guid))
@@ -116,17 +161,23 @@ PackageBuilder.prototype.createTasks = function () {
                 guid: guid,
                 visualName: packageName
             }))
-            .pipe(gulp.dest(pathModule.join(visualPath, "package/resources")))
-        return tsResult;
+            .pipe(configOptions.minifyPackage ? gulpUglify() : gulpNop())
+            .pipe(gulp.dest(pathModule.join(visualPath, "package/resources")));
     });
 
     gulp.task(this.getTaskName("copyTS"), function () {
         return gulp
-            .src([
-                pathModule.join(visualPath, "visual/*.ts"),
-                pathModule.join(visualPath, "visual/**/*.ts")
-            ])
-            .pipe(PackageBuilder.removeTypeScriptReference())
+            .src(!configOptions.copyTSFilesToPackage
+                ? [ pathModule.join(visualPath, "visual", packageName + ".ts") ]
+                : [ pathModule.join(visualPath, "visual/**/*.ts") ])
+            .pipe(!configOptions.copyTSFilesToPackage
+                ? gulpModify({ fileModifier: function (file, contents) {
+                    return '// See .js file.';
+                }})
+                : gulpNop())
+            .pipe(!configOptions.copyTSFilesToPackage
+                ? gulpNop()
+                : PackageBuilder.removeTypeScriptReference())
             .pipe(gulpRename({
                 basename: typeScriptFileName,
                 extname: ""
@@ -171,6 +222,7 @@ PackageBuilder.prototype.createTasks = function () {
                 basename: cssFileName,
                 extname: "",
             }))
+            .pipe(configOptions.minifyPackage ? gulpMinifyCSS() : gulpNop())
             .pipe(gulp.dest(pathModule.join(visualPath, "package/resources")));
 
         return lessResult;

@@ -131,7 +131,6 @@ module powerbi.visuals {
         gaugeSmallViewPortProperties?: GaugeSmallViewPortProperties;
         animator?: IGenericAnimator;
         tooltipsEnabled?: boolean;
-        tooltipBucketEnabled?: boolean;
     }
 
     export interface GaugeDataViewObjects extends DataViewObjects {
@@ -233,7 +232,7 @@ module powerbi.visuals {
         private showTargetLabel: boolean;
 
         private tooltipsEnabled: boolean;
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
 
         private hostService: IVisualHostServices;
         private labels: GaugeLabel[];
@@ -250,7 +249,6 @@ module powerbi.visuals {
                 }
                 this.animator = options.animator;
                 this.tooltipsEnabled = options.tooltipsEnabled;
-                this.tooltipBucketEnabled = options.tooltipBucketEnabled;
             }
         }
 
@@ -344,6 +342,7 @@ module powerbi.visuals {
             this.options = options;
             this.settings = Gauge.DefaultStyleProperties;
             this.targetSettings = Gauge.DefaultTargetSettings;
+            this.tooltipService = createTooltipService(options.host);
 
             this.setMargins();
 
@@ -404,7 +403,7 @@ module powerbi.visuals {
 
             let dataView = this.dataView = options.dataViews[0];
             let reader = data.createIDataViewCategoricalReader(dataView);
-            this.data = Gauge.converter(reader, this.tooltipBucketEnabled);
+            this.data = Gauge.converter(reader);
             this.targetSettings = this.data.targetSettings;
             this.dataView.single = { value: this.data.total };
             this.labels = this.createLabels();
@@ -488,7 +487,7 @@ module powerbi.visuals {
         /**
          * Populates Gauge data based on roles or axis settings.
          */
-        private static parseGaugeData(reader: data.IDataViewCategoricalReader, tooltipBucketEnabled?: boolean): GaugeTargetData {
+        private static parseGaugeData(reader: data.IDataViewCategoricalReader): GaugeTargetData {
             let dataViewObjects = <GaugeDataViewObjects>reader.getStaticObjects();
             let valueMetadata = reader.getValueMetadataColumn(gaugeRoleNames.y);
             let axisObject = dataViewObjects ? dataViewObjects.axis : null;
@@ -526,7 +525,7 @@ module powerbi.visuals {
             // For maxumum we set values in such priority: 
             // 1. Maximum column
             // 2. Property pane axis settings
-            // 3. If the value column is specified and it has no percent formatting and min is undefined: 
+            // 3. If the value column is specified and it has no percent formatting: 
             //                                                      a. 2 * value if value > 0
             //                                                      b. 0 if value < 0
             // 4. Use Default Max value what is 1 right now. 
@@ -547,7 +546,7 @@ module powerbi.visuals {
                         }
                     }
 
-                    if (!hasPercent && !isMinDefined) {
+                    if (!hasPercent) {
                         data.max = data.value < 0 ? Gauge.DEFAULT_MIN : 2 * data.value;
                     }
                 }
@@ -557,7 +556,7 @@ module powerbi.visuals {
             // 1. Minimum column.
             // 2. Property pane axis settings.
             // 3. Use Default Min value what is 0 right now for value >= 0.
-            // 4. Use value * 2 for value < 0 and max hasn't been specified.
+            // 4. Use value * 2 for value < 0
             if (isMinDefined) {
                 data.min = reader.getValue(gaugeRoleNames.minValue, valueIndex);
             }
@@ -566,23 +565,21 @@ module powerbi.visuals {
             }
             else {
                 data.min = Gauge.DEFAULT_MIN;
-                if (!isMaxDefined && isValueDefined && data.value != null && data.value < 0) {
+                if (isValueDefined && data.value != null && data.value < 0) {
                     data.min = 2 * data.value;
                 }
             }
 
-            if (tooltipBucketEnabled) {
                 TooltipBuilder.addTooltipBucketItem(reader, data.tooltipItems, 0);
-            }
 
             return data;
         }
 
         /** Note: Made public for testability */
-        public static converter(reader: data.IDataViewCategoricalReader, tooltipBucketEnabled: boolean = true): GaugeData {
+        public static converter(reader: data.IDataViewCategoricalReader): GaugeData {
             let objectSettings = reader.getStaticObjects();
             let metadataColumn = reader.getValueMetadataColumn(gaugeRoleNames.y);
-            let gaugeData = Gauge.parseGaugeData(reader, tooltipBucketEnabled);
+            let gaugeData = Gauge.parseGaugeData(reader);
             let value = gaugeData.value;
 
             return {
@@ -667,7 +664,7 @@ module powerbi.visuals {
 
             let targetSettings = this.data.targetSettings;
 
-            return $.isNumeric(targetSettings.min) && $.isNumeric(targetSettings.max) || targetSettings.min > targetSettings.max;
+            return $.isNumeric(targetSettings.min) && $.isNumeric(targetSettings.max) && targetSettings.min <= targetSettings.max;
         }
 
         private updateKpiBands(radius: number, innerRadiusFactor: number, tString: string, kpiAngleAttr: KpiArcAttributes[]) {
@@ -851,15 +848,18 @@ module powerbi.visuals {
             this.svg.attr('height', this.currentViewport.height).attr('width', this.currentViewport.width);
         }
 
-        public getValueAngle(): number {
+        public getAngle(value: number): number {
             let settings = this.data.targetSettings;
-            let total = this.data.total;
-            if (!this.isValid() || !$.isNumeric(total)) {
+            if (!this.isValid() || !$.isNumeric(value) || value <= settings.min) {
                 return 0;
             }
+            else if(settings.target >= settings.max) {
+                return 1;
+            }
 
-            let adjustedTotal = Math.min(Math.max(total, settings.min), settings.max);
-            let angle: number = (adjustedTotal - settings.min) / (settings.max - settings.min);
+            let diff: number = settings.max - settings.min;
+            let adjustedTotal: number = Math.min(Math.max(value, settings.min), settings.max);
+            let angle: number = (adjustedTotal - settings.min) / diff;
 
             return angle;
         }
@@ -908,7 +908,7 @@ module powerbi.visuals {
             let duration = AnimatorCommon.GetAnimationDuration(this.animator, suppressAnimations);
 
             let data = this.data;
-            let lastAngle = this.lastAngle = -Math.PI / 2 + Math.PI * this.getValueAngle();
+            let lastAngle = this.lastAngle = -Math.PI / 2 + Math.PI * this.getAngle(this.data.total);
             this.foregroundArcPath
                 .transition()
                 .ease(this.settings.transition.ease)
@@ -919,8 +919,15 @@ module powerbi.visuals {
             this.updateVisualConfigurations();
             this.updateVisualStyles();
             if (this.tooltipsEnabled) {
-                TooltipManager.addTooltip(this.foregroundArcPath, (tooltipEvent: TooltipEvent) => data.tooltipInfo);
-                TooltipManager.addTooltip(this.backgroundArcPath, (tooltipEvent: TooltipEvent) => data.tooltipInfo);
+                this.tooltipService.addTooltip(
+                    this.foregroundArcPath,
+                    (args: TooltipEventArgs<any>) => data.tooltipInfo,
+                    (args: TooltipEventArgs<any>) => undefined);
+
+                this.tooltipService.addTooltip(
+                    this.backgroundArcPath, 
+                    (args: TooltipEventArgs<any>) => data.tooltipInfo,
+                    (args: TooltipEventArgs<any>) => undefined);
             }
         }
 
@@ -1159,12 +1166,12 @@ module powerbi.visuals {
                 if (this.showTargetLabel) {
                     let targetSettings = this.targetSettings;
                     // If we're showing the target label, only reduce the margin on the side that doesn't have a target label
-                    let tRatio = (targetSettings.target - targetSettings.min) / (targetSettings.max - targetSettings.min);
+                    let tRatio = this.getAngle(targetSettings.target);
 
                     if (tRatio > 0.5)
-                        this.margin.left = Gauge.ReducedLeftRightMargin;
-                    else
                         this.margin.right = Gauge.ReducedLeftRightMargin;
+                    else
+                        this.margin.left = Gauge.ReducedLeftRightMargin;
                 }
             }
             else if (labelsPosition === GaugeLabelPosition.LeftRight) {

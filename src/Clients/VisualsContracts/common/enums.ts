@@ -62,6 +62,9 @@ module powerbi {
     export const enum ViewMode {
         View = 0,
         Edit = 1,
+        // TODO(aafische,2016.08.04) -- TFS 8104483:  eventually remove this enum value and all associated uses.  It is a temporary stand-in until the scaffolding for Ribbon components is ready.  
+        InFocusEdit = 2,  // the InFocus (i.e. full-screen) Edit Button is only shown if already in Edit mode.
+        // /TODO
     }
 
     export const enum ResizeMode {

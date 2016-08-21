@@ -50,6 +50,7 @@
 
 
 
+
 declare module powerbi {
     enum VisualDataRoleKind {
         /** Indicates that the role should be bound to something that evaluates to a grouping of values. */
@@ -80,6 +81,7 @@ declare module powerbi {
     const enum ViewMode {
         View = 0,
         Edit = 1,
+        InFocusEdit = 2,
     }
     const enum ResizeMode {
         Resizing = 1,
@@ -712,8 +714,9 @@ declare module powerbi.data {
     export interface CompiledDataViewMappingScriptDefinition {
         source: DataViewObjectPropertyIdentifier;
         provider: DataViewObjectPropertyIdentifier;
-        imageFormat?: string;
         scriptInput?: ScriptInput;
+        scriptSourceDefault?: string;
+        scriptProviderDefault?: string;
     }
 
     export interface CompiledDataViewScriptResultMapping {
@@ -1187,7 +1190,7 @@ declare module powerbi {
     }
 
     export interface DataViewScriptResultData {
-        imageBase64: string;
+        payloadBase64: string;
     }
 }﻿/*
  *  Power BI Visualizations
@@ -1384,7 +1387,8 @@ declare module powerbi {
     export interface DataViewMappingScriptDefinition {
         source: DataViewObjectPropertyIdentifier;
         provider: DataViewObjectPropertyIdentifier;
-        imageFormat?: string;
+        scriptSourceDefault?: string;
+        scriptProviderDefault?: string;
     }
 
     export interface DataViewScriptResultMapping {
@@ -1435,12 +1439,16 @@ declare module powerbi {
 declare module powerbi {
     /** Represents evaluated, named, custom objects in a DataView. */
     export interface DataViewObjects {
-        [name: string]: DataViewObject | DataViewObjectMap;
+        [name: string]: DataViewObject;
     }
 
     /** Represents an object (name-value pairs) in a DataView. */
     export interface DataViewObject {
+        /** Map of property name to property value. */
         [propertyName: string]: DataViewPropertyValue;
+
+        /** Instances of this object. When there are multiple instances with the same object name they will appear here. */
+        $instances?: DataViewObjectMap;
     }
 
     export interface DataViewObjectWithId {
@@ -1453,7 +1461,7 @@ declare module powerbi {
         propertyName: string;
     }
 
-    export type DataViewObjectMap = DataViewObjectWithId[];
+    export type DataViewObjectMap = { [id: string]: DataViewObject };
 
     export type DataViewPropertyValue = PrimitiveValue | StructuralObjectValue;
 }﻿/*
@@ -1509,10 +1517,10 @@ declare module powerbi.data {
         description?: DisplayNameGetter;
         placeHolderText?: DisplayNameGetter;
         type: DataViewObjectPropertyTypeDescriptor;
-        rule?: DataViewObjectPropertyRuleDescriptor;        
+        rule?: DataViewObjectPropertyRuleDescriptor;
 
         /** Indicates whether the Format Painter should ignore this property. */
-        suppressFormatPainterCopy?: boolean;   
+        suppressFormatPainterCopy?: boolean;
     }
 
     export type DataViewObjectPropertyTypeDescriptor = ValueTypeDescriptor | StructuralTypeDescriptor;
@@ -1523,6 +1531,9 @@ declare module powerbi.data {
 
         /** Defines the output for rule-typed properties. */
         output?: DataViewObjectPropertyRuleOutputDescriptor;
+
+        /** Defines the conditions under which this rule applies */
+        conditions?: DataViewMappingCondition[];
     }
 
     export interface DataViewObjectPropertyRuleOutputDescriptor {
@@ -1532,7 +1543,7 @@ declare module powerbi.data {
         /** Names roles that define the selector for the output properties. */
         selector: string[];
     }
-    
+
 }﻿/*
  *  Power BI Visualizations
  *
@@ -1705,6 +1716,9 @@ declare module powerbi.data {
 
         /** The name of this column expected by the script. */
         Name: string;
+
+        /** The data role name */
+        Role?: string;
     }
 
     export interface ScriptInput {
@@ -2947,6 +2961,47 @@ declare module powerbi {
         /** The filter after analyzed. It will be the default filter if it has defaultValue and the pre-analyzed filter is undefined. */
         filter: ISemanticFilter;
     }
+    
+    export interface VisualTooltipShowEventArgs extends VisualTooltipMoveEventArgs {
+        dataItems: VisualTooltipDataItem[];
+    }
+    
+    export interface VisualTooltipMoveEventArgs {
+        coordinates: number[];
+        isTouchEvent: boolean;
+        dataItems?: VisualTooltipDataItem[];
+        identities: SelectorsByColumn[];
+    }
+    
+    export interface VisualTooltipHideEventArgs {
+        isTouchEvent: boolean;
+        immediately: boolean;
+    }
+    
+    export interface VisualTooltipDataItem {
+        displayName: string;
+        value: string;
+        color?: string;
+        header?: string;
+        opacity?: string;
+    }
+    
+    export interface IVisualHostTooltipService {
+        /** Show a tooltip. */
+        show(args: VisualTooltipShowEventArgs): void;
+
+        /** Move a visible tooltip. */
+        move(args: VisualTooltipMoveEventArgs): void;
+
+        /** Hide a tooltip. */
+        hide(args: VisualTooltipHideEventArgs): void;
+
+        /** Gets the container that tooltip elements will be appended to. */
+        container(): Element;
+
+        /** Indicates if tooltips are enabled or not. */
+        enabled(): boolean;
+    }
 
     /** Defines behavior for IVisual interaction with the host environment. */
     export interface IVisualHostServices {
@@ -3033,6 +3088,12 @@ declare module powerbi {
         setIdentityDisplayNames(displayNamesIdentityPairs: DisplayNameIdentityPair[]): void;
         
         visualCapabilitiesChanged?(): void;
+        
+        /** 
+         * Gets the tooltip service.
+         * NOTE: This is a preview API.
+         */
+        tooltips(): IVisualHostTooltipService; 
     }
 
     export interface DisplayNameIdentityPair {
@@ -3522,6 +3583,73 @@ declare module powerbi.extensibility.v100 {
 
 
 declare module powerbi.extensibility.v110 {
+    /**
+     * Represents a visualization displayed within an application (PowerBI dashboards, ad-hoc reporting, etc.).
+     * This interface does not make assumptions about the underlying JS/HTML constructs the visual uses to render itself.
+     */
+    export interface IVisual extends extensibility.IVisual {
+        /** Notifies the IVisual of an update (data, viewmode, size change). */
+        update<T>(options: VisualUpdateOptions, viewModel?: T): void;
+
+        /** Notifies the visual that it is being destroyed, and to do any cleanup necessary (such as unsubscribing event handlers). */
+        destroy?(): void;
+
+        /** Gets the set of objects that the visual is currently displaying. */
+        enumerateObjectInstances?(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstanceEnumeration;
+    }
+
+    export interface IVisualHost extends extensibility.IVisualHost {
+        createSelectionIdBuilder: () => visuals.ISelectionIdBuilder;
+        createSelectionManager: () => ISelectionManager;
+        /** An array of default colors to be used by the visual */
+        colors: IColorInfo[];
+    }
+
+    export interface VisualUpdateOptions extends extensibility.VisualUpdateOptions {
+        viewport: IViewport;
+        dataViews: DataView[];
+        type: VisualUpdateType;
+        viewMode?: ViewMode;
+    }
+
+    export interface VisualConstructorOptions extends extensibility.VisualConstructorOptions {
+        element: HTMLElement;
+        host: IVisualHost;
+    }
+}
+/*
+ *  Power BI Visualizations
+ *
+ *  Copyright (c) Microsoft Corporation
+ *  All rights reserved. 
+ *  MIT License
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the ""Software""), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is
+ *  furnished to do so, subject to the following conditions:
+ *   
+ *  The above copyright notice and this permission notice shall be included in 
+ *  all copies or substantial portions of the Software.
+ *   
+ *  THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ *  THE SOFTWARE.
+ */
+
+/**
+ * Change Log Version 1.2.0
+ */
+
+
+
+declare module powerbi.extensibility.v120 {
     /**
      * Represents a visualization displayed within an application (PowerBI dashboards, ad-hoc reporting, etc.).
      * This interface does not make assumptions about the underlying JS/HTML constructs the visual uses to render itself.

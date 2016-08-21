@@ -4,5 +4,7 @@
     "minifyCss": true,
     "generateMaps": true,
     "tslintOnBuild": false,
-    "tslintOnChange": false
+    "tslintOnChange": false,
+    "minifyPackage": false,
+    "copyTSFilesToPackage": true
 }

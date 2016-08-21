@@ -36,6 +36,7 @@
 /// <reference path="./common/toEqualSQExprTests.ts"/>
 /// <reference path="./common/trendLineHelperTests.ts"/>
 /// <reference path="./common/urlUtilsTests.ts"/>
+/// <reference path="./types/valueTypeTests.ts"/>
 /// <reference path="./converters/slicerConverterTests.ts"/>
 /// <reference path="./data/contracts/queryProjectionTests.ts"/>
 /// <reference path="./data/dataView/dataViewCategoricalReaderTests.ts"/>
@@ -70,7 +71,9 @@
 /// <reference path="./visuals/common/visualBackgroundHelperTests.ts"/>
 /// <reference path="./visuals/common/visualObjectRepetitionTests.ts"/>
 /// <reference path="./visuals/common/wordBreakerTests.ts"/>
+/// <reference path="./visuals/controls/svgScrollbarTests.ts"/>
 /// <reference path="./visuals/controls/tablixControlTests.ts"/>
+/// <reference path="./visuals/controls/selectMenuTests.ts"/>
 /// <reference path="./visuals/dataColorPaletteTests.ts"/>
 /// <reference path="./visuals/dataDotChartTests.ts"/>
 /// <reference path="./visuals/donutChartTests.ts"/>
@@ -100,6 +103,7 @@
 /// <reference path="./visuals/services/interactivityServiceTests.ts"/>
 /// <reference path="./visuals/services/storageServiceTests.ts"/>
 /// <reference path="./visuals/services/textMeasurementServiceTests.ts"/>
+/// <reference path="./visuals/services/tooltipServiceTests.ts"/>
 /// <reference path="./visuals/slicerTests.ts"/>
 /// <reference path="./visuals/tableTests.ts"/>
 /// <reference path="./visuals/textboxTests.ts"/>
@@ -127,7 +131,7 @@
 /// <reference path="./customVisuals/sampleDataViews/BulletChartData.ts"/>
 /// <reference path="./customVisuals/sampleDataViews/CarLogosData.ts"/>
 /// <reference path="./customVisuals/sampleDataViews/ChordChartData.ts"/>
-/// <reference path="./customVisuals/sampleDataViews/CountriesData.ts"/>
+/// <reference path="./customVisuals/sampleDataViews/WordCloudData.ts"/>
 /// <reference path="./customVisuals/sampleDataViews/ValueByNameGroupData.ts"/>
 /// <reference path="./customVisuals/sampleDataViews/SalesByDayOfWeekData.ts"/>
 /// <reference path="./customVisuals/sampleDataViews/EnhancedScatterChartData.ts"/>

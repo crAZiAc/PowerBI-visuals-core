@@ -76,8 +76,12 @@ module jsCommon {
             return urlRanges;
         }
 
+        export function isDataUri(uri: string): boolean {
+            return uri && uri.indexOf('data:') === 0;
+        }
+
         export function getBase64ContentFromDataUri(uri: string): string {
-            if (uri.indexOf('data:') !== 0)
+            if (!isDataUri(uri))
                 throw new Error("Expected data uri");
 
             // Locate the base 64 content from the URL (e.g. "data:image/png;base64,xxxxx=")

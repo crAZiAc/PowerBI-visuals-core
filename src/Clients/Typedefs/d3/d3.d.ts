@@ -56,6 +56,7 @@ declare module D3 {
         altKey: any;
         ctrlKey: any;
         shiftKey: any;
+        metaKey: boolean;
         type: string;
     }
 
@@ -1796,7 +1797,7 @@ declare module D3 {
                 (value: number): Axis;
             }
             tickFormat(): (any) => string;
-            tickFormat(formatter: (value: any) => string): Axis;
+            tickFormat(formatter: (value: any, index: number) => string): Axis;
             nice(count?: number): Axis;
         }
 

@@ -29,7 +29,7 @@
 module powerbi.visuals {
     export module CartesianHelper {
         export function getCategoryAxisProperties(dataViewMetadata: DataViewMetadata, axisTitleOnByDefault?: boolean): DataViewObject {
-            let toReturn: DataViewObject = {};
+            let toReturn: DataViewObject = axisTitleOnByDefault ? { showAxisTitle: true } : {};
             if (!dataViewMetadata)
                 return toReturn;
 
@@ -94,12 +94,12 @@ module powerbi.visuals {
             return toReturn;
         }        
        
-        export function isScalar(isScalar: boolean, xAxisCardProperties: DataViewObject): boolean {
-            if (isScalar) {
+        export function isScalar(supportsScalar: boolean, xAxisCardProperties: DataViewObject): boolean {
+            if (supportsScalar) {
                 //now check what the user wants
-                isScalar = xAxisCardProperties && xAxisCardProperties['axisType'] ? xAxisCardProperties['axisType'] === axisType.scalar : true;
+                return xAxisCardProperties && xAxisCardProperties['axisType'] ? xAxisCardProperties['axisType'] === axisType.scalar : true;
             }
-            return isScalar;
+            return false;
         }
 
         export function getPrecision(precision: DataViewPropertyValue): number {

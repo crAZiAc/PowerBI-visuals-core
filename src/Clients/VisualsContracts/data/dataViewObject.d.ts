@@ -29,12 +29,16 @@
 declare module powerbi {
     /** Represents evaluated, named, custom objects in a DataView. */
     export interface DataViewObjects {
-        [name: string]: DataViewObject | DataViewObjectMap;
+        [name: string]: DataViewObject;
     }
 
     /** Represents an object (name-value pairs) in a DataView. */
     export interface DataViewObject {
+        /** Map of property name to property value. */
         [propertyName: string]: DataViewPropertyValue;
+
+        /** Instances of this object. When there are multiple instances with the same object name they will appear here. */
+        $instances?: DataViewObjectMap;
     }
 
     export interface DataViewObjectWithId {
@@ -47,7 +51,7 @@ declare module powerbi {
         propertyName: string;
     }
 
-    export type DataViewObjectMap = DataViewObjectWithId[];
+    export type DataViewObjectMap = { [id: string]: DataViewObject };
 
     export type DataViewPropertyValue = PrimitiveValue | StructuralObjectValue;
 }

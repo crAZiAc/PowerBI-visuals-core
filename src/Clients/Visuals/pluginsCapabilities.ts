@@ -32,9 +32,9 @@ module powerbi.visuals.capabilities {
 
     export let animatedNumber = powerbi.visuals.animatedNumberCapabilities;
 
-    export let areaChart = powerbi.visuals.lineChartCapabilities;
+    export let areaChart = powerbi.visuals.getLineChartCapabilities(false /*isStacked*/);
 
-    export let barChart = powerbi.visuals.getColumnChartCapabilities(true);
+    export let barChart = powerbi.visuals.getColumnChartCapabilities(true, true /*isStacked*/);
 
     export let card = powerbi.visuals.cardCapabilities;
 
@@ -44,7 +44,7 @@ module powerbi.visuals.capabilities {
 
     export let clusteredColumnChart = powerbi.visuals.getColumnChartCapabilities();
 
-    export let columnChart = powerbi.visuals.getColumnChartCapabilities();
+    export let columnChart = powerbi.visuals.getColumnChartCapabilities(false, true /*isStacked*/);
 
     export let comboChart = powerbi.visuals.comboChartCapabilities;
 
@@ -60,13 +60,15 @@ module powerbi.visuals.capabilities {
 
     export let gauge = powerbi.visuals.gaugeCapabilities;
 
-    export let hundredPercentStackedBarChart = powerbi.visuals.getColumnChartCapabilities(true);
+    export let hundredPercentStackedBarChart = powerbi.visuals.getColumnChartCapabilities(true, true /*isStacked*/);
 
-    export let hundredPercentStackedColumnChart = powerbi.visuals.getColumnChartCapabilities();
+    export let hundredPercentStackedColumnChart = powerbi.visuals.getColumnChartCapabilities(false, true /*isStacked*/);
 
     export let image = powerbi.visuals.imageVisualCapabilities;
 
-    export let lineChart = powerbi.visuals.lineChartCapabilities;
+    export let lineChart = powerbi.visuals.getLineChartCapabilities(false /*isStacked*/);
+
+    export let stackedAreaChart = powerbi.visuals.getLineChartCapabilities(true /*isStacked*/);
 
     export let lineStackedColumnComboChart = powerbi.visuals.comboChartCapabilities;
 

@@ -169,8 +169,6 @@ module powerbi.visuals {
     export interface IColumnChartConverterStrategy {
         getLegend(colors: IDataColorPalette, defaultLegendLabelColor: string, defaultColor?: string): LegendSeriesInfo;
         getValueBySeriesAndCategory(series: number, category: number): number;
-        getMeasureNameByIndex(series: number, category: number): string;
-        hasHighlightValues(series: number): boolean;
         getHighlightBySeriesAndCategory(series: number, category: number): PrimitiveValue;
     }
 
@@ -225,7 +223,7 @@ module powerbi.visuals {
         private animator: IColumnChartAnimator;
         private isScrollable: boolean;
         private tooltipsEnabled: boolean;
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
         private element: JQuery;
         private isComboChart: boolean;
 
@@ -239,7 +237,6 @@ module powerbi.visuals {
             this.animator = options.animator;
             this.isScrollable = options.isScrollable;
             this.tooltipsEnabled = options.tooltipsEnabled;
-            this.tooltipBucketEnabled = options.tooltipBucketEnabled;
             this.interactivityService = options.interactivityService;
         }
 
@@ -311,6 +308,7 @@ module powerbi.visuals {
             this.options = options;
             this.isComboChart = ComboChart.isComboChart(options.chartType);
             this.element = options.element;
+            this.tooltipService = options.services.tooltips;
         }
 
         private getCategoryLayout(numCategoryValues: number, options: CalculateScaleAndDomainOptions): CategoryLayout {
@@ -346,8 +344,7 @@ module powerbi.visuals {
             dataViewMetadata: DataViewMetadata = null,
             chartType?: ColumnChartType,
             interactivityService?: IInteractivityService,
-            tooltipsEnabled: boolean = true,
-            tooltipBucketEnabled?: boolean): ColumnChartData {
+            tooltipsEnabled: boolean = true): ColumnChartData {
             debug.assertValue(dataView, 'dataView');
             debug.assertValue(colors, 'colors');
 
@@ -400,8 +397,7 @@ module powerbi.visuals {
                 defaultDataPointColor,
                 chartType,
                 categoryMetadata,
-                tooltipsEnabled,
-                tooltipBucketEnabled);
+                tooltipsEnabled);
             let columnSeries: ColumnChartSeries[] = result.series;
 
             let valuesMetadata: DataViewMetadataColumn[] = [];
@@ -463,8 +459,7 @@ module powerbi.visuals {
             defaultDataPointColor?: string,
             chartType?: ColumnChartType,
             categoryMetadata?: DataViewMetadataColumn,
-            tooltipsEnabled?: boolean,
-            tooltipBucketEnabled?: boolean): { series: ColumnChartSeries[]; hasHighlights: boolean; hasDynamicSeries: boolean; isMultiMeasure: boolean } {
+            tooltipsEnabled?: boolean): { series: ColumnChartSeries[]; hasHighlights: boolean; hasDynamicSeries: boolean; isMultiMeasure: boolean } {
             let dataViewCat = dataView.categorical;
 
             let reader = powerbi.data.createIDataViewCategoricalReader(dataView);
@@ -489,7 +484,7 @@ module powerbi.visuals {
             let isMultiMeasure = !hasDynamicSeries && seriesCount > 1;
 
             let highlightsOverflow = false; // Overflow means the highlight larger than value or the signs being different
-            let hasHighlights = converterStrategy.hasHighlightValues(0);
+            let hasHighlights = reader.hasHighlights('Y');
             for (let seriesIndex = 0; seriesIndex < seriesCount; seriesIndex++) {
                 let seriesValues = [];
                 let seriesHighlightValues = [];
@@ -612,7 +607,7 @@ module powerbi.visuals {
                     let identity = SelectionIdBuilder.builder()
                         .withCategory(category, categoryIndex)
                         .withSeries(dataViewCat.values, seriesGroup)
-                        .withMeasure(converterStrategy.getMeasureNameByIndex(seriesIndex))
+                        .withMeasure(reader.getValueMetadataColumn('Y', seriesIndex).queryName)
                         .createSelectionId();
 
                     let rawCategoryValue = reader.getCategoryValue('Category', categoryIndex);
@@ -716,10 +711,8 @@ module powerbi.visuals {
                             });
                         }
 
-                        if (tooltipBucketEnabled) {
                             TooltipBuilder.addTooltipBucketItem(reader, tooltipInfo, categoryIndex, hasDynamicSeries ? seriesIndex : undefined);
                         }
-                    }
 
                     let series = columnSeries[seriesIndex];
                     let dataPointLabelSettings = (series.labelSettings) ? series.labelSettings : defaultLabelSettings;
@@ -880,8 +873,7 @@ module powerbi.visuals {
                         dataView.metadata,
                         this.chartType,
                         this.interactivityService,
-                        this.tooltipsEnabled,
-                        this.tooltipBucketEnabled);
+                        this.tooltipsEnabled);
                 }
             }
 
@@ -1209,7 +1201,8 @@ module powerbi.visuals {
         }
 
         private selectColumn(indexOfColumnSelected: number, force: boolean = false): void {
-            if (!force && this.lastInteractiveSelectedColumnIndex === indexOfColumnSelected) return; // same column, nothing to do here
+            if (force) this.lastInteractiveSelectedColumnIndex = undefined; 
+            if (this.lastInteractiveSelectedColumnIndex === indexOfColumnSelected) return; // same column, nothing to do here
 
             let legendData: LegendData = this.createInteractiveLegendDataPoints(indexOfColumnSelected);
             let legendDataPoints: LegendDataPoint[] = legendData.dataPoints;
@@ -1275,8 +1268,13 @@ module powerbi.visuals {
                 .attr('height', height)
                 .attr('width', width);
 
-            if (this.tooltipsEnabled)
-                TooltipManager.addTooltip(columnChartDrawInfo.eventGroup, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo);
+            if (this.tooltipsEnabled) {
+                this.tooltipService.addTooltip(
+                    columnChartDrawInfo.eventGroup,
+                    (args: TooltipEventArgs<ColumnChartDataPoint>) => args.data.tooltipInfo,
+                    (args: TooltipEventArgs<ColumnChartDataPoint>) => args.data.identity);
+            }
+                    
 
             let allDataPoints: ColumnChartDataPoint[] = [];
             let behaviorOptions: ColumnBehaviorOptions = undefined;
@@ -1413,7 +1411,7 @@ module powerbi.visuals {
                         seriesObjects.push(series.objects);
 
                         let selectionIdBuilder = new SelectionIdBuilder();
-                        selectionIdBuilder = selectionIdBuilder.withMeasure(this.getMeasureNameByIndex(valueIndex));
+                        selectionIdBuilder = selectionIdBuilder.withMeasure(source.queryName);
                         if (reader.hasDynamicSeries()) {
                             selectionIdBuilder = selectionIdBuilder.withSeries(reader.getSeriesValueColumns(), reader.getSeriesValueColumnGroup(valueGroupsIndex));
                         }
@@ -1462,17 +1460,8 @@ module powerbi.visuals {
             return this.reader.getValue('Y', category, series);
         }
 
-        public getMeasureNameByIndex(index: number): string {
-            return this.dataView.values[index].source.queryName;
-        }
-
-        public hasHighlightValues(series: number): boolean {
-            let column = this.dataView && this.dataView.values ? this.dataView.values[series] : undefined;
-            return column && !!column.highlights;
-        }
-
         public getHighlightBySeriesAndCategory(series: number, category: number): PrimitiveValue {
-            return this.dataView.values[series].highlights[category];
+            return this.reader.getHighlight('Y', category, series);
         }
     }
 }

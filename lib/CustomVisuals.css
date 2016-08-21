@@ -131,7 +131,7 @@
   font-family: 'Segoe UI', 'wf_segoe-ui_normal', helvetica, arial, sans-serif;
 }
 .chicletSlicer .clear {
-  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAOCAIAAAB/6NG4AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAHYcAAB2HAY/l8WUAAADtSURBVChTlZBLioRAEETn/jdwJSjqThFBRRARQRD8LjyCCwUPoKJOVEf1tC09MPNWFVkvsz5f53/41c6yrKoqGZ58tqFGUeR5XtM0svTggw01DMN937dtcxzn2nC3i6KgyrgsCxq6rmN8s28qYUPf91i/bKi2beN0mS/keY4pWEi7rmvXdQ3DGIaBlR8wJQgCHijstm3xfEyd59k0zXEcH5oAKrcYha2qKi7HjAbLsthQluVVBcJO0zSO4+M4WJqmCVfCP95UIGx4sJMkYQlAxT+s6yrzE/lKNui6jqlAURRN07DwfZ8CkfafOM9vHlBGJTazbYkAAAAASUVORK5CYII=');
+  background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAOCAMAAADHVLbdAAAAZlBMVEUAAADq6urp6enBwcHV1dWfn5+zs7O/v7/l5eWZmZmioqKjo6OlpaWmpqanp6eurq6vr6+xsbGzs7O2tra3t7e4uLi6urq9vb3Dw8PGxsbJycnMzMzNzc3Ozs7Pz8/Q0NDR0dH///9091kCAAAACXRSTlMARGaZmd3d3e7y4Z+JAAAAX0lEQVQIW3XI1xJAMBSE4dWiHUSJRPf+TymFCRf2Ymf+D/iZWr85sv2dAuAeZmGen5/UELtsbp+sby1lzgfzBwOq0CSzmpirQywuEUl9AanOJSBTfYo/qaEkygvqvfhdpMwD2G4l8pMAAAAASUVORK5CYII=);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -146,9 +146,6 @@
 }
 .chicletSlicer .hidden {
   display: none !important;
-}
-.chicletSlicer .slicerBody {
-  margin-left: -5px;
 }
 .chicletSlicer .slicerBody .cell {
   box-sizing: border-box;
@@ -222,11 +219,7 @@
 }
 .chicletSlicer .slicerText,
 .chicletSlicer .slicerContainer .slicerText {
-  padding: 0px 5px;
   line-height: 20px;
-}
-.chicletSlicer .slicerHeader {
-  margin-bottom: 5px;
 }
 .chicletSlicer .searchHeader {
   overflow: hidden;
@@ -250,7 +243,7 @@
   width: 17px;
   height: 17px;
   background-size: cover;
-  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAYAAAA7bUf6AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAEjSURBVDhPpZIhc4MwFMffpipx4FLH3OpWx1wtjjkkErmPUJmPMEkdneocyLlsirriOpc46t6SJex6NKR39HcHl8fL/UKSP6ATjk25xjR6QgKAIB8/TJBWR9PXjEs6hnRFMMoLZLzrP+KRFZhHBFeUyUozIjlgkRBMioOph+h+tuN/lVXSVa9I8up/JSu8xPSRIpPDe7nPC/ZfHxDHS5iZ2or3DC/LGvYtgFVyOn1DMHMqJB5483dof0YkQRBBK4SpxhAg5F8orJL5IobPTS2nORA1bLYZLB7kWJ/SEI677Prt9H3nFRNymRNucpK8Na6cnK/SJzZEXyXWDzFK11g2Oh89A8m1kNk5k0wTKIxkukAhJbcJFMBoeJNAcadeOj1TAfgFYPT85BI1AkcAAAAASUVORK5CYII=');
+  background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAAAk1BMVEUAAACnVx///+8AAAAAFycXAAAXJ1cfAAAfHx8fb78vX68/X4c/b6dHj89Xn9dXp99fF2dfL49fPydfPzdnt+9vPx9vv/eHx/+PRx+Pv+enVx+n3/+v1++3ZwC3Zx+3Z0+37//HhwDPjyfPjy/P7/fP///Xr4ffnz/nz6fvz6f3v3f/z4//76//98///9///+/////atKXiAAAAA3RSTlMA3d02gtHlAAAAbUlEQVR4AWOAATVhdmY2SQY40JXgUWFg0BDlhQnoSfFDaRGoiBYnlKEjqAphKItBRfTlpSEMRXEIjWCpi8DUyEJFtLlg5ggoQBhMcvwIOyEsRg6QezRF+RDO0VcTYmXhlkEIQFnkCzAoAQUIAADDFQhfMTPyzwAAAABJRU5ErkJggg==);
 }
 .chicletSlicer .searchHeader input {
   color: #333333;
@@ -574,7 +567,6 @@
 }
 .histogram .legends text {
   font-size: 12px;
-  fill: #000;
   text-anchor: middle;
 }
 /*
@@ -962,45 +954,53 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-.Timeline .label,
-.Timeline .mainArea .label,
-.Timeline .upperTextCell,
-.Timeline .lowerTextCell {
+.timeline {
+  font-family: 'Segoe UI', 'wf_segoe-ui_normal', helvetica, arial, sans-serif;
+  cursor: default;
+}
+.timeline .label,
+.timeline .mainArea .label,
+.timeline .upperTextCell,
+.timeline .lowerTextCell {
   text-anchor: middle;
 }
-.Timeline .cellRect {
+.timeline .cellRect {
   stroke: #333444;
 }
-.Timeline .selectionCursor {
+.timeline .selectionCursor {
   fill: gray;
 }
-.Timeline .selectionRangeContainer {
-  float: none;
-  position: absolute;
+.timeline .selectionRangeContainer {
   text-anchor: start;
 }
-.Timeline .timelineSlicer {
-  position: absolute;
-  top: 20px;
-  right: 17px;
+.timeline .timelineSlicer {
   fill: #000000;
 }
-.Timeline .timelineSlicer .periodSlicerRect {
+.timeline .timelineSlicer .periodSlicerRect {
   stroke: #aaa;
   stroke-width: 2px;
   fill: transparent;
 }
-.Timeline .timelineSlicer .periodSlicerGranularities {
-  font-family: sans-serif;
-  font-size: 10px;
-}
-.Timeline .timelineSlicer .periodSlicerSelection {
-  font-family: sans-serif;
+.timeline .timelineSlicer .periodSlicerGranularities,
+.timeline .timelineSlicer .periodSlicerSelection {
   font-size: 10px;
   text-anchor: middle;
 }
-.Timeline .timelineSlicer .periodSlicerSelectionRect {
+.timeline .timelineSlicer .periodSlicerSelectionRect {
   fill: transparent;
+}
+.timeline .timelineSlicer .periodSlicerRect,
+.timeline .timelineSlicer .periodSlicerSelectionRect {
+  -webkit-tap-highlight-color: transparent;
+}
+.timeline .timelineSlicer .periodSlicerRect {
+  pointer-events: none;
+}
+.timeline .periodSlicerSelectionRect,
+.timeline .timelineVertLine,
+.timeline .cellRect,
+.timeline .selectionCursor {
+  cursor: pointer;
 }
 /*
  *  Power BI Visualizations

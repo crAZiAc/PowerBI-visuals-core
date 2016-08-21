@@ -27,6 +27,7 @@
 ///<reference path="../../Typedefs/d3/d3.d.ts"/>
 ///<reference path="../../Typedefs/jquery-visible/jquery-visible.d.ts"/>
 ///<reference path="../../Typedefs/jquery/jquery.d.ts"/>
+///<reference path="../../Typedefs/jquery/jqueryui.d.ts"/>
 ///<reference path="../../Typedefs/microsoftMaps/Microsoft.Maps.d.ts" />
 ///<reference path="../../Typedefs/moment/moment.d.ts"/>
 ///<reference path="../../Typedefs/velocity/velocity-animate.d.ts"/>

@@ -42,7 +42,7 @@ module powerbitests {
             visual = new mocks.MockVisualLegacy();
             visualPlugin = new mocks.MockVisualPlugin();  
             telemetryService = mocks.createMockTelemetryService();
-            wrapper = new powerbi.extensibility.VisualSafeExecutionWrapper(visual, visualPlugin, telemetryService, true);
+            wrapper = new powerbi.extensibility.VisualSafeExecutionWrapper(visual, visualPlugin, telemetryService, false, true);
         });
 
         it("Should create instance of visual", () => {

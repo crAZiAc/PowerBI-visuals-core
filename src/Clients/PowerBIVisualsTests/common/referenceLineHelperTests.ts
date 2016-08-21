@@ -29,12 +29,14 @@
 module powerbitests {
     import lineStyle = powerbi.visuals.lineStyle;
     import referenceLinePosition = powerbi.visuals.referenceLinePosition;
+    import labelText = powerbi.visuals.labelText;
     import referenceLineDataLabelHorizontalPosition = powerbi.visuals.referenceLineDataLabelHorizontalPosition;
     import referenceLineDataLabelVerticalPosition = powerbi.visuals.referenceLineDataLabelVerticalPosition;
     import ObjectEnumerationBuilder = powerbi.visuals.ObjectEnumerationBuilder;
     import ReferenceLineHelper = powerbi.visuals.ReferenceLineHelper;
     import DataViewObject = powerbi.DataViewObject;
     import DataViewObjectMap = powerbi.DataViewObjectMap;
+    import AxisLocation = powerbi.visuals.AxisLocation;
 
     describe('ReferenceLineHelper', () => {
         describe('enumerateObjectInstances', () => {
@@ -55,7 +57,7 @@ module powerbitests {
                         lineColor: { solid: { color: 'red' } },
                         transparency: 50,
                         style: lineStyle.dashed,
-                        position: referenceLinePosition.back,
+                        position: referenceLinePosition.front,
                         dataLabelShow: false,
                     },
                     objectName: 'xAxisReferenceLine',
@@ -64,31 +66,29 @@ module powerbitests {
 
             it('enumerates all reference lines', () => {
                 let enumerationBuilder = new ObjectEnumerationBuilder();
-                let objects: DataViewObjectMap = [
-                    {
-                        id: '0',
-                        object: referenceLineObjects.redLine,
-                    }, {
-                        id: '1',
-                        object: referenceLineObjects.blueLine,
-                    }
-                ];
-                ReferenceLineHelper.enumerateObjectInstances(enumerationBuilder, objects, 'black', 'xAxisReferenceLine');
+                let objects: DataViewObjectMap = {
+                    '0': referenceLineObjects.redLine,
+                    '1': referenceLineObjects.blueLine,
+                };
+                let refLines = ReferenceLineHelper.readDataView(objects, 'black', 'xAxisReferenceLine', null);
+                ReferenceLineHelper.enumerateObjectInstances(enumerationBuilder, refLines, 'black', 'xAxisReferenceLine');
                 let instances = enumerationBuilder.complete().instances;
 
                 expect(instances.length).toBe(2);
                 expect(instances[0]).toEqual({
                     selector: {
-                        id: '0'
+                        id: '0',
+                        metadata: undefined
                     },
-                    properties: objects[0].object,
+                    properties: objects['0'],
                     objectName: 'xAxisReferenceLine',
                 });
                 expect(instances[1]).toEqual({
                     selector: {
-                        id: '1'
+                        id: '1',
+                        metadata: undefined
                     },
-                    properties: objects[1].object,
+                    properties: objects['1'],
                     objectName: 'xAxisReferenceLine',
                 });
             });
@@ -97,21 +97,107 @@ module powerbitests {
                 let enumerationBuilder = new ObjectEnumerationBuilder();
 
                 let object: DataViewObject = $.extend({}, referenceLineObjects.redLine);
-                object[ReferenceLineHelper.referenceLineProps.lineColor] = undefined;
-                object[ReferenceLineHelper.referenceLineProps.dataLabelColor] = undefined;
+                object[ReferenceLineHelper.ReferenceLineProps.lineColor] = undefined;
+                object[ReferenceLineHelper.ReferenceLineProps.dataLabelColor] = undefined;
 
-                let objects: DataViewObjectMap = [
-                    {
-                        id: '0',
-                        object: object,
-                    }
-                ];
-
-                ReferenceLineHelper.enumerateObjectInstances(enumerationBuilder, objects, 'red', 'xAxisReferenceLine');
+                let objects: DataViewObjectMap = {
+                    '0': object,
+                };
+                let refLines = ReferenceLineHelper.readDataView(objects, 'red', 'xAxisReferenceLine', AxisLocation.Y1);
+                ReferenceLineHelper.enumerateObjectInstances(enumerationBuilder, refLines, 'red', 'xAxisReferenceLine');
                 let instances = enumerationBuilder.complete().instances;
 
-                expect(instances[0].properties[ReferenceLineHelper.referenceLineProps.lineColor]).toEqual({ solid: { color: 'red' } });
-                expect(instances[0].properties[ReferenceLineHelper.referenceLineProps.dataLabelColor]).toEqual({ solid: { color: 'red' } });
+                expect(instances[0].properties[ReferenceLineHelper.ReferenceLineProps.lineColor]).toEqual({ solid: { color: 'red' } });
+                expect(instances[0].properties[ReferenceLineHelper.ReferenceLineProps.dataLabelColor]).toEqual({ solid: { color: 'red' } });
+            });
+        });
+
+        describe('readDataView', () => {
+            it('no reference lines generates an empty list', () => {
+                let refLines = ReferenceLineHelper.readDataView(null, '#ffffff', 'minimum', AxisLocation.Y1);
+                expect(refLines.length).toEqual(0);
+            });
+
+            it('read red line and blue line objects', () => {
+                let objects: DataViewObjectMap = {
+                    '0': referenceLineObjects.redLine,
+                    '1': referenceLineObjects.blueLine,
+                };
+                let refLines = ReferenceLineHelper.readDataView(objects, '#ffffff', 'minimum', AxisLocation.Y1);
+                expect(refLines.length).toEqual(2);
+
+                let redLine = refLines[0];
+                expect(redLine.show).toBeTruthy();
+                expect(redLine.value).toEqual('1');
+                expect(redLine.color.solid.color).toEqual('red');
+                expect(redLine.transparency).toEqual(10);
+                expect(redLine.style).toEqual(lineStyle.dashed);
+                expect(redLine.position).toEqual(referenceLinePosition.back);
+
+                expect(redLine.dataLabelProperties.show).toBeTruthy();
+                expect(redLine.dataLabelProperties.color.solid.color).toEqual('green');
+                expect(redLine.dataLabelProperties.decimalPoints).toEqual(3);
+                expect(redLine.dataLabelProperties.horizontalPosition).toEqual(referenceLineDataLabelHorizontalPosition.left);
+                expect(redLine.dataLabelProperties.verticalPosition).toEqual(referenceLineDataLabelVerticalPosition.above);
+                expect(redLine.dataLabelProperties.displayUnits).toEqual(100000);
+                expect(redLine.dataLabelProperties.text).toEqual(labelText.value);
+
+                let blueLine = refLines[1];
+                expect(blueLine.show).toBeTruthy();
+                expect(blueLine.value).toEqual('2');
+                expect(blueLine.color.solid.color).toEqual('blue');
+                expect(blueLine.transparency).toEqual(20);
+                expect(blueLine.style).toEqual(lineStyle.dotted);
+                expect(blueLine.position).toEqual(referenceLinePosition.front);
+
+                expect(blueLine.dataLabelProperties.show).toBeTruthy();
+                expect(blueLine.dataLabelProperties.color.solid.color).toEqual('purple');
+                expect(blueLine.dataLabelProperties.decimalPoints).toEqual(2);
+                expect(blueLine.dataLabelProperties.horizontalPosition).toEqual(referenceLineDataLabelHorizontalPosition.right);
+                expect(blueLine.dataLabelProperties.verticalPosition).toEqual(referenceLineDataLabelVerticalPosition.under);
+                expect(blueLine.dataLabelProperties.displayUnits).toEqual(0);
+                expect(blueLine.dataLabelProperties.text).toEqual(labelText.name);
+            });
+
+            it('read line with defaults', () => {
+                let defaultObject: DataViewObject = {
+                    show: true,
+                    value: '1',
+                    transparency: 10,
+                    style: lineStyle.dashed,
+                    position: referenceLinePosition.back,
+                };
+
+                let objects: DataViewObjectMap = {
+                    '0': defaultObject
+                };
+
+                let refLines = ReferenceLineHelper.readDataView(objects, 'white', 'minimum', AxisLocation.Y1);
+                expect(refLines.length).toEqual(1);
+
+                let defaultLine = refLines[0];
+                expect(defaultLine.show).toBeTruthy();
+                expect(defaultLine.value).toEqual('1');
+                expect(defaultLine.color.solid.color).toEqual('white');
+                expect(defaultLine.transparency).toEqual(10);
+                expect(defaultLine.style).toEqual(lineStyle.dashed);
+                expect(defaultLine.position).toEqual(referenceLinePosition.back);
+                expect(defaultLine.dataLabelProperties.show).toBeFalsy();
+            });
+
+            it('read line with name and value label', () => {
+                let objects: DataViewObjectMap = {
+                    '0': referenceLineObjects.greenLine
+                };
+
+                let refLines = ReferenceLineHelper.readDataView(objects, 'green', 'minimum', AxisLocation.Y1);
+                expect(refLines.length).toEqual(1);
+                let greenLine = refLines[0];
+                expect(greenLine.show).toBeTruthy();
+                expect(greenLine.value).toEqual('3');
+                expect(greenLine.color.solid.color).toEqual('green');
+                expect(greenLine.dataLabelProperties.show).toBeTruthy();
+                expect(greenLine.dataLabelProperties.text).toEqual(labelText.nameAndValue);
             });
         });
     });
@@ -127,6 +213,7 @@ module powerbitests {
             position: referenceLinePosition.back,
             dataLabelShow: true,
             dataLabelColor: { solid: { color: 'green' } },
+            dataLabelText: labelText.value,
             dataLabelDecimalPoints: 3,
             dataLabelHorizontalPosition: referenceLineDataLabelHorizontalPosition.left,
             dataLabelVerticalPosition: referenceLineDataLabelVerticalPosition.above,
@@ -143,6 +230,24 @@ module powerbitests {
             position: referenceLinePosition.front,
             dataLabelShow: true,
             dataLabelColor: { solid: { color: 'purple' } },
+            dataLabelText: labelText.name,
+            dataLabelDecimalPoints: 2,
+            dataLabelHorizontalPosition: referenceLineDataLabelHorizontalPosition.right,
+            dataLabelVerticalPosition: referenceLineDataLabelVerticalPosition.under,
+            dataLabelDisplayUnits: 0,
+        };
+
+        export const greenLine: DataViewObject = {
+            show: true,
+            displayName: 'green',
+            value: '3',
+            lineColor: { solid: { color: 'green' } },
+            transparency: 20,
+            style: lineStyle.dotted,
+            position: referenceLinePosition.front,
+            dataLabelShow: true,
+            dataLabelColor: { solid: { color: 'green' } },
+            dataLabelText: labelText.nameAndValue,
             dataLabelDecimalPoints: 2,
             dataLabelHorizontalPosition: referenceLineDataLabelHorizontalPosition.right,
             dataLabelVerticalPosition: referenceLineDataLabelVerticalPosition.under,

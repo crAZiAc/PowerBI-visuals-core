@@ -168,6 +168,16 @@ module powerbitests {
             expect(id1.equals(idA1)).toBe(false);
         });
 
+        it("SelectionId isEqual different identifiers", () => {
+            let undefinedId: SelectionId;
+            expect(SelectionId.isEqual(null, null)).toBe(true);
+            expect(SelectionId.isEqual(undefinedId, null)).toBe(false);
+            expect(SelectionId.isEqual(null, undefinedId)).toBe(false);
+            expect(SelectionId.isEqual(undefinedId, undefinedId)).toBe(true);
+            expect(SelectionId.isEqual(idA, idA)).toBe(true);
+            expect(SelectionId.isEqual(idA, ida)).toBe(false);
+        });
+
         it("SelectionId includes with category", () => {
             expect(idA.includes(idA)).toBe(true);
             expect(idA.includes(idAb)).toBe(true);

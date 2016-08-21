@@ -45,5 +45,6 @@
 /// <reference path="./extensibility/Versioning.d.ts"/>
 /// <reference path="./extensibility/versions/v1.0.0.d.ts"/>
 /// <reference path="./extensibility/versions/v1.1.0.d.ts"/>
+/// <reference path="./extensibility/versions/v1.2.0.d.ts"/>
 /// <reference path="./extensibility/components/iSelectionManager.d.ts"/>
 /// <reference path="./extensibility/components/iSelectionIdBuilder.d.ts"/>

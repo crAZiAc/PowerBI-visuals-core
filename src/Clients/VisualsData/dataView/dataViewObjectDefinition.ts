@@ -73,6 +73,18 @@ module powerbi.data {
             return newDefn;
         }
 
+        export function updateSelector(
+            defns: DataViewObjectDefinitions,
+            objectName: string,
+            oldSelector: Selector,
+            newSelector: Selector): void {
+            debug.assertValue(defns, 'defns');
+
+            let defn = _.find(defns[objectName], defn => Selector.equals(defn.selector, oldSelector));
+            if (defn)
+                defn.selector = newSelector;
+        }
+
         /**
          * Delete a object definition from Defns if it matches objName + selector
          * @param {DataViewObjectDefinitions} defns
@@ -120,7 +132,7 @@ module powerbi.data {
 
         /**
          * Fills in missing properties with default ones, mutating the first definitions.
-         * Properties are matched agains defaultDefns using ObjectName, Selector, and PropertyName.
+         * Properties are matched against defaultDefns using ObjectName, Selector, and PropertyName.
          * It just fills missing properties, it doesn't overwrite existing ones.
          * Any property already in targetDefns will not change.
          * Any property in defaultDefns but not in targetDefns will be added by reference.
@@ -427,6 +439,14 @@ module powerbi.data {
 
             //note: We decided that delete is acceptable here and that we don't need optimization here
             delete defn.properties[propertyName];
+        }
+
+        /**
+         * Determines if a given property name is valid.
+         */
+        export function isValidPropertyName(propertyName: string): boolean {
+            // Property names starting with the '$' character are reserved for internal use, e.g. $instances.
+            return !jsCommon.StringExtensions.startsWith(propertyName, '$');
         }
     }
 }

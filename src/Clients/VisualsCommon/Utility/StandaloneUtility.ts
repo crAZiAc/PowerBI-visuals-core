@@ -37,13 +37,6 @@ module jsCommon {
     }
 
     /**
-     * Interface to help define objects indexed by name to a particular type.
-     */
-    export interface IStringDictionary<T> {
-        [key: string]: T;
-    }
-
-    /**
      * Extensions for Enumerations.
      */
     export module EnumExtensions {

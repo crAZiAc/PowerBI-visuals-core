@@ -233,7 +233,7 @@ module powerbitests {
                 dataBuilder = new WaterfallDataBuilder();
                 let dataView = dataBuilder.build();
 
-                data = WaterfallChart.converter(dataView, colors, visualBuilder.host, dataBuilder.dataLabelSettings, dataBuilder.sentimentColors, /* interactivityService */ null, /* tooltipsEnabled */true, /* tooltipBucketEnabled */true);
+                data = WaterfallChart.converter(dataView, colors, visualBuilder.host, dataBuilder.dataLabelSettings, dataBuilder.sentimentColors, /* interactivityService */ null, /* tooltipsEnabled */true);
                 dataPoints = data.series[0].data;
             });
 
@@ -303,7 +303,7 @@ module powerbitests {
             it("validate tooltip info not being created when tooltips are disabled and tooltipBuckets are enabled", () => {
                 dataBuilder = new WaterfallDataBuilder();
                 let dataView = dataBuilder.build();
-                data = WaterfallChart.converter(dataView, colors, visualBuilder.host, dataBuilder.dataLabelSettings, dataBuilder.sentimentColors, /* interactivityService */ null, /*tooltipsEnabled*/false, /*tooltipBucketEnabled*/true);
+                data = WaterfallChart.converter(dataView, colors, visualBuilder.host, dataBuilder.dataLabelSettings, dataBuilder.sentimentColors, /* interactivityService */ null, /*tooltipsEnabled*/false);
                 dataPoints = data.series[0].data;
                 
                 for (let dataPoint of dataPoints) {
@@ -1124,7 +1124,10 @@ module powerbitests {
                 interactivity: { isInteractiveLegend: false, selection: true },
                 animation: { transitionImmediate: true },
                 svg: this._svg,
-                cartesianHost: this._cartesianHost
+                cartesianHost: this._cartesianHost,
+                services: {
+                    tooltips: powerbi.visuals.createTooltipService(this._host)
+                }
             };
         }
 

@@ -41,8 +41,9 @@ declare module powerbi.data {
     export interface CompiledDataViewMappingScriptDefinition {
         source: DataViewObjectPropertyIdentifier;
         provider: DataViewObjectPropertyIdentifier;
-        imageFormat?: string;
         scriptInput?: ScriptInput;
+        scriptSourceDefault?: string;
+        scriptProviderDefault?: string;
     }
 
     export interface CompiledDataViewScriptResultMapping {

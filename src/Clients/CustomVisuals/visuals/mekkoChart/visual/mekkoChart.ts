@@ -65,7 +65,6 @@ module powerbi.visuals.samples {
     import IVisual = powerbi.IVisual;
     import VisualCapabilities = powerbi.VisualCapabilities;
     import VisualDataRoleKind = powerbi.VisualDataRoleKind;
-    import createDisplayNameGetter = powerbi.data.createDisplayNameGetter;
     import ILegend = powerbi.visuals.ILegend;
     import LegendData = powerbi.visuals.LegendData;
     import VisualInitOptions = powerbi.VisualInitOptions;
@@ -967,7 +966,7 @@ module powerbi.visuals.samples {
                 .attr("class", (d: MekkoChartColumnDataPoint) => itemCS.class.concat(d.highlight ? " highlight" : ""));
 
             shapes
-                .style("fill", (d: MekkoChartColumnDataPoint) => d.color)
+                .style("fill", (d: MekkoChartColumnDataPoint) => data.showAllDataPoints ? d.color : data.defaultDataPointColor)
                 .style("fill-opacity", (d: MekkoChartColumnDataPoint) => MekkoChartUtils.getFillOpacity(d.selected, d.highlight, hasSelection, data.hasHighlights))
                 .attr(layout.shapeLayout);
 
@@ -1249,12 +1248,12 @@ module powerbi.visuals.samples {
                     displayName: 'Column Border',
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter('Visual_Show'),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         color: {
-                            displayName: createDisplayNameGetter('Visual_LabelsFill'),
-                            description: createDisplayNameGetter('Visual_LabelsFillDescription'),
+                            displayName: "Color",
+                            description: "Select color for data labels",
                             type: { fill: { solid: { color: true } } }
                         },
                         width: {
@@ -1264,58 +1263,54 @@ module powerbi.visuals.samples {
                     },
                 },
                 labels: {
-                    displayName: createDisplayNameGetter('Visual_DataPointsLabels'),
-                    description: createDisplayNameGetter('Visual_DataPointsLabelsDescription'),
+                    displayName: "Data labels",
+                    description: "Display data label options",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter('Visual_Show'),
-                            type: { bool: true }
-                        },
-                        showSeries: {
-                            displayName: createDisplayNameGetter('Visual_Show'),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         color: {
-                            displayName: createDisplayNameGetter('Visual_LabelsFill'),
-                            description: createDisplayNameGetter('Visual_LabelsFillDescription'),
+                            displayName: "Color",
+                            description: "Select color for data labels",
                             type: { fill: { solid: { color: true } } }
                         },
                         labelDisplayUnits: {
-                            displayName: createDisplayNameGetter('Visual_DisplayUnits'),
-                            description: createDisplayNameGetter('Visual_DisplayUnitsDescription'),
+                            displayName: "Display units",
+                            description: "Select the units (millions, billions, etc.)",
                             type: { formatting: { labelDisplayUnits: true } },
                             suppressFormatPainterCopy: true
                         },
                         labelPrecision: {
-                            displayName: createDisplayNameGetter('Visual_Precision'),
-                            description: createDisplayNameGetter('Visual_PrecisionDescription'),
-                            placeHolderText: createDisplayNameGetter('Visual_Precision_Auto'),
+                            displayName: "Decimal Places",
+                            description: "Select the number of decimal places to display",
+                            placeHolderText: "Auto",
                             type: { numeric: true },
                             suppressFormatPainterCopy: true
                         },
                         showAll: {
-                            displayName: createDisplayNameGetter('Visual_ShowAll'),
+                            displayName: "Show All",
                             type: { bool: true }
                         },
                         fontSize: {
-                            displayName: createDisplayNameGetter('Visual_TextSize'),
+                            displayName: "Text Size",
                             type: { formatting: { fontSize: true } }
                         },
                     },
                 },
                 legend: {
-                    displayName: createDisplayNameGetter('Visual_Legend'),
+                    displayName: "Legend",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter('Visual_Show'),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         position: {
-                            displayName: createDisplayNameGetter('Visual_LegendPosition'),
+                            displayName: "Position",
                             type: { formatting: { legendPosition: true } }
                         },
                         showTitle: {
-                            displayName: createDisplayNameGetter('Visual_LegendShowTitle'),
+                            displayName: "Title",
                             type: { bool: true }
                         },
                         titleText: {
@@ -1329,96 +1324,96 @@ module powerbi.visuals.samples {
                     }
                 },
                 categoryAxis: {
-                    displayName: createDisplayNameGetter('Visual_XAxis'),
+                    displayName: "X-Axis",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter('Visual_Show'),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         position: {
-                            displayName: createDisplayNameGetter('Visual_YAxis_Position'),
+                            displayName: "Position",
                             type: { formatting: { yAxisPosition: true } }
                         },
                         axisScale: {
-                            displayName: createDisplayNameGetter('Visual_Axis_Scale'),
+                            displayName: "Scale type",
                             type: { formatting: { axisScale: true } }
                         },
                         axisType: {
-                            displayName: createDisplayNameGetter('Visual_Axis_Type'),
+                            displayName: "Type",
                             type: { formatting: { axisType: true } }
                         },
                         showAxisTitle: {
-                            displayName: createDisplayNameGetter('Visual_Axis_Title'),
+                            displayName: "Title",
                             type: { bool: true }
                         },
                         axisStyle: {
-                            displayName: createDisplayNameGetter('Visual_Axis_Style'),
+                            displayName: "Style",
                             type: { formatting: { axisStyle: true } }
                         },
                         labelColor: {
-                            displayName: createDisplayNameGetter('Visual_Axis_LabelColor'),
+                            displayName: "Color",
                             type: { fill: { solid: { color: true } } }
                         },
                         fontSize: {
-                            displayName: createDisplayNameGetter('Visual_TextSize'),
+                            displayName: "Text Size",
                             type: { formatting: { fontSize: true } }
                         },
                     }
                 },
                 valueAxis: {
-                    displayName: createDisplayNameGetter('Visual_YAxis'),
+                    displayName: "Y-Axis",
                     properties: {
                         show: {
-                            displayName: createDisplayNameGetter('Visual_Show'),
+                            displayName: "Show",
                             type: { bool: true }
                         },
                         position: {
-                            displayName: createDisplayNameGetter('Visual_YAxis_Position'),
+                            displayName: "Position",
                             type: { formatting: { yAxisPosition: true } }
                         },
                         axisScale: {
-                            displayName: createDisplayNameGetter('Visual_Axis_Scale'),
+                            displayName: "Scale type",
                             type: { formatting: { axisScale: true } }
                         },
                         intersection: {
-                            displayName: createDisplayNameGetter('Visual_Axis_Intersection'),
+                            displayName: "Intersection",
                             type: { numeric: true }
                         },
                         showAxisTitle: {
-                            displayName: createDisplayNameGetter('Visual_Axis_Title'),
+                            displayName: "Title",
                             type: { bool: true }
                         },
                         axisStyle: {
-                            displayName: createDisplayNameGetter('Visual_Axis_Style'),
+                            displayName: "Style",
                             type: { formatting: { axisStyle: true } }
                         },
                         labelColor: {
-                            displayName: createDisplayNameGetter('Visual_Axis_LabelColor'),
+                            displayName: "Color",
                             type: { fill: { solid: { color: true } } }
                         },
                         fontSize: {
-                            displayName: createDisplayNameGetter('Visual_TextSize'),
+                            displayName: "Text Size",
                             type: { formatting: { fontSize: true } }
                         }
                     }
                 },
                 dataPoint: {
-                    displayName: createDisplayNameGetter('Visual_DataPoint'),
+                    displayName: "Data colors",
                     properties: {
                         defaultColor: {
-                            displayName: createDisplayNameGetter('Visual_DefaultColor'),
+                            displayName: "Default color",
                             type: { fill: { solid: { color: true } } }
                         },
                         showAllDataPoints: {
-                            displayName: createDisplayNameGetter('Visual_DataPoint_Show_All'),
+                            displayName: "Show all",
                             type: { bool: true }
                         },
                         fill: {
-                            displayName: createDisplayNameGetter('Visual_Fill'),
+                            displayName: "Fill",
                             type: { fill: { solid: { color: true } } }
                         },
                         fillRule: {
-                            displayName: createDisplayNameGetter('Visual_Gradient'),
+                            displayName: "Color saturation",
                             type: { fillRule: {} },
                             rule: {
                                 inputRole: 'Gradient',
@@ -1661,7 +1656,7 @@ module powerbi.visuals.samples {
                 true);
         }
 
-        private renderAxesLabels(options: MekkoAxisRenderingOptions): void {
+        private renderAxesLabels(options: MekkoAxisRenderingOptions, xFontSize: number): void {
             debug.assertValue(options, 'options');
             debug.assertValue(options.viewport, 'options.viewport');
             debug.assertValue(options.axisLabels, 'options.axisLabels');
@@ -1673,11 +1668,11 @@ module powerbi.visuals.samples {
             var width = options.viewport.width - (margin.left + margin.right);
             var height = options.viewport.height;
             var fontSize = MekkoChart.FontSize;
-            var heightOffset = fontSize;
 
             var showOnRight = this.yAxisOrientation === yAxisPosition.right;
 
             if (!options.hideXAxisTitle) {
+                var xAxisYPosition = <number>d3.transform(this.xAxisGraphicsContext.attr("transform")).translate[1] - fontSize + xFontSize + 33;
                 var xAxisLabel = this.axisGraphicsContext.append("text")
                     .style("text-anchor", "middle")
                     .text(options.axisLabels.x)
@@ -1685,8 +1680,9 @@ module powerbi.visuals.samples {
                         text.each(function () {
                             var text = d3.select(this);
                             text.attr({
-                                "class": "xAxisLabel",
-                                "transform": SVGUtil.translate(width / 2, height - heightOffset)
+                                'class': "xAxisLabel",
+                                'x': width / 2,
+                                'y': xAxisYPosition
                             });
                         });
                     });
@@ -2545,10 +2541,13 @@ module powerbi.visuals.samples {
             var leftRightMarginLimit = this.leftRightMarginLimit = viewport.width * maxMarginFactor;
             this.bottomMarginLimit = Math.max(MekkoChart.MinBottomMargin, Math.ceil(viewport.height * maxMarginFactor));
 
-            var xAxisTextProperties = MekkoChart.getTextProperties(this.categoryAxisProperties && parseFloat(<any>this.categoryAxisProperties['fontSize']) || undefined);
-            var y1AxisTextProperties = MekkoChart.getTextProperties(this.valueAxisProperties && parseFloat(<any>this.valueAxisProperties['fontSize']) || undefined);
+            var xAxisTextProperties = MekkoChart.getTextProperties(this.categoryAxisProperties 
+                && jsCommon.PixelConverter.fromPointToPixel(parseFloat(<any>this.categoryAxisProperties['fontSize'])) || undefined);
+            var y1AxisTextProperties = MekkoChart.getTextProperties(this.valueAxisProperties
+                && jsCommon.PixelConverter.fromPointToPixel(parseFloat(<any>this.valueAxisProperties['fontSize'])) || undefined);
 
             var margin = this.margin;
+
             // reset defaults
             margin.top = parseFloat(y1AxisTextProperties.fontSize) / 2;
             margin.bottom = MekkoChart.MinBottomMargin;
@@ -2806,6 +2805,9 @@ module powerbi.visuals.samples {
                     xLabelColor = this.valueAxisProperties && this.valueAxisProperties['labelColor'] ? this.valueAxisProperties['labelColor'] : null;
                     xFontSize = this.valueAxisProperties && this.valueAxisProperties['fontSize'] ? this.valueAxisProperties['fontSize'] : NewDataLabelUtils.DefaultLabelFontSizeInPt;
                 }
+
+                xFontSize = jsCommon.PixelConverter.fromPointToPixel(xFontSize);
+
                 axes.x.axis.orient("bottom");
                 if (!axes.x.willLabelsFit) {
                     axes.x.axis.tickPadding(MekkoChart.TickPaddingRotatedX);
@@ -2838,7 +2840,7 @@ module powerbi.visuals.samples {
                 }
 
                 xAxisGraphicsElement
-                    .call(MekkoChart.moveBorder, axes.x.scale, borderWidth, xFontSize / 2 - 8);
+                    .call(MekkoChart.moveBorder, axes.x.scale, borderWidth, xFontSize / 1.5 - 12);
 
                 xAxisTextNodes
                     .call(MekkoChart.wordBreak, axes.x, columnWidth, bottomMarginLimit, borderWidth);
@@ -2855,6 +2857,9 @@ module powerbi.visuals.samples {
                     yLabelColor = this.valueAxisProperties && this.valueAxisProperties['labelColor'] ? this.valueAxisProperties['labelColor'] : null;
                     yFontSize = this.valueAxisProperties && this.valueAxisProperties['fontSize'] != null ? this.valueAxisProperties['fontSize'] : NewDataLabelUtils.DefaultLabelFontSizeInPt;
                 }
+
+                yFontSize = jsCommon.PixelConverter.fromPointToPixel(yFontSize);
+
                 var yAxisOrientation = this.yAxisOrientation;
                 var showY1OnRight = yAxisOrientation === yAxisPosition.right;
                 axes.y1.axis
@@ -2926,6 +2931,8 @@ module powerbi.visuals.samples {
                 this.y2AxisGraphicsContext.selectAll('*').remove();
             }
 
+            this.translateAxes(viewport);
+
             // Axis labels
             if (chartHasAxisLabels) {
                 var hideXAxisTitle: boolean = !this.shouldRenderAxis(axes.x, "showAxisTitle");
@@ -2945,14 +2952,12 @@ module powerbi.visuals.samples {
                     margin: undefined,
                 };
 
-                this.renderAxesLabels(renderAxisOptions);
+                this.renderAxesLabels(renderAxisOptions, xFontSize);
             }
             else {
                 this.axisGraphicsContext.selectAll('.xAxisLabel').remove();
                 this.axisGraphicsContext.selectAll('.yAxisLabel').remove();
             }
-
-            this.translateAxes(viewport);
 
             var dataPoints: SelectableDataPoint[] = [];
             var layerBehaviorOptions: any[] = [];
@@ -3177,7 +3182,7 @@ module powerbi.visuals.samples {
                         }
                     }
 
-                    xMax = Math.max(xMax, height);
+                    xMax = Math.max(xMax, height*1.4-15);
                 }
                 // trim any actual overflow to the limit
                 leftOverflow = enableOverflowCheck ? Math.min(leftOverflow, XLabelMaxAllowedOverflow) : 0;
@@ -4163,7 +4168,7 @@ module powerbi.visuals.samples {
                     }
                 });
 
-                for (var i: number = 0; i < singleSeriesData.length; i++) {
+                for (var i: number = 0; i < singleSeriesData.length && data.showAllDataPoints; i++) {
                     var singleSeriesDataPoints = singleSeriesData[i],
                         categoryValue: any = data.categories[i];
                     enumeration.pushInstance({

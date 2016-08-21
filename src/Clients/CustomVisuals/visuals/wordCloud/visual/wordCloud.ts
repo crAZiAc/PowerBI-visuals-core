@@ -72,7 +72,7 @@ module powerbi.visuals.samples {
         color: string;
         selectionIds: SelectionId[];
         wordIndex: number;
-        widthOfWord?: number;
+        getWidthOfWord?: () => number;
         count: number;
     }
 
@@ -95,48 +95,63 @@ module powerbi.visuals.samples {
         margin?: IMargin;
     }
 
-    class CustomSelectionManager {
-        private selectionIdsValue: SelectionId[] = [];
+    class ValueSelectionManager<T> {
+        private selectedValuesValue: T[] = [];
         private hostServices: IVisualHostServices;
+        private getSelectionIds: (value: T | T[]) => SelectionId[];
+        private selectionManager: utility.SelectionManager;
 
-        public constructor(hostServices: IVisualHostServices) {
+        public constructor(hostServices: IVisualHostServices, getSelectionIds: (value: T) => SelectionId[]) {
             this.hostServices = hostServices;
+            this.selectionManager = new utility.SelectionManager({ hostServices: hostServices });
+
+            this.getSelectionIds = (value) => _.isArray(value)
+                ? <SelectionId[]>_.flatten((<T[]>value).map(x => getSelectionIds(x)))
+                : getSelectionIds(<T>value);
+        }
+
+        public get selectedValues(): T[] {
+            return this.selectedValuesValue;
         }
 
         public get selectionIds(): SelectionId[] {
-            return this.selectionIdsValue;
+            return this.getSelectionIds(this.selectedValues);
         }
 
         public get hasSelection(): boolean {
-            return this.selectionIds.length > 0;
+            return this.selectedValues.length > 0;
         }
 
-        public selectAndSendSelection(selectionId: SelectionId[] | SelectionId, multiSelect: boolean = false): JQueryDeferred<SelectionId[]> {
-            var selectionIds = <SelectionId[]>(_.isArray(selectionId) ? selectionId : [selectionId]);
+        public get getSelectionIdValues() {
+            return this.selectedValues.map(v => { return { value: v, selectionId: this.getSelectionIds(v) }; });
+        }
+
+        public selectAndSendSelection(value: T[] | T, multiSelect: boolean = false): JQueryDeferred<SelectionId[]> {
+            var values = <T[]>(_.isArray(value) ? value : [value]);
             if (this.hostServices.shouldRetainSelection()) {
-                return this.sendSelectionToHost(selectionIds);
+                return this.sendSelectionToHost(this.getSelectionIds(values));
             } else {
-                this.selectInternal(selectionIds, multiSelect);
+                this.selectInternal(values, multiSelect);
                 return this.sendSelection();
             }
         }
 
-        public select(selectionId: SelectionId[] | SelectionId, multiSelect: boolean = false) {
-            var selectionIds = <SelectionId[]>(_.isArray(selectionId) ? selectionId : [selectionId]);
-            this.selectInternal(selectionIds, multiSelect);
+        public select(value: T[] | T, multiSelect: boolean = false) {
+            var values = <T[]>(_.isArray(value) ? value : [value]);
+            this.selectInternal(values, multiSelect);
         }
 
-        public isSelected(selectionId: SelectionId[] | SelectionId): boolean {
-            var selectionIds = <SelectionId[]>(_.isArray(selectionId) ? selectionId : [selectionId]);
-            return selectionIds.every(x => utility.SelectionManager.containsSelection(this.selectionIds, x));
+        public isSelected(selectionId: T[] | T): boolean {
+            var values = <T[]>(_.isArray(selectionId) ? selectionId : [selectionId]);
+            return values.every(v => this.selectedValues.some(s => s === v));
         }
 
         public sendSelection(): JQueryDeferred<SelectionId[]> {
             return this.sendSelectionToHost(this.selectionIds);
         }
 
-        public clear(sendToHost: boolean = true): JQueryDeferred<{}> {
-            this.selectionIds.length = 0;
+        public clear(sendToHost: boolean): JQueryDeferred<{}> {
+            this.selectedValues.length = 0;
 
             if(sendToHost) {
                 return this.sendSelection();
@@ -145,40 +160,26 @@ module powerbi.visuals.samples {
             return $.Deferred().resolve();
         }
 
-        private selectInternal(selectionIds: SelectionId[] , multiSelect: boolean) {
-            var resultSelectionIds = [];
+        private selectInternal(values: T[] , multiSelect: boolean) {
+            var resultValues = [];
 
-            if (selectionIds.every(x => this.isSelected(x))) {
-                resultSelectionIds = multiSelect
-                    ? this.selectionIds.filter(x => !utility.SelectionManager.containsSelection(selectionIds, x))
-                    : this.selectionIds.length === selectionIds.length ? [] : selectionIds;
+            if (this.isSelected(values)) {
+                resultValues = multiSelect
+                    ? this.selectedValues.filter(s => !values.some(v => v === s))
+                    : this.selectedValues.length === values.length ? [] : values;
             } else {
-                resultSelectionIds = multiSelect
-                    ? selectionIds.filter(x => !this.isSelected(x)).concat(this.selectionIds)
-                    : selectionIds;
+                resultValues = multiSelect
+                    ? values.filter(x => !this.isSelected(x)).concat(this.selectedValues)
+                    : values;
             }
 
-            this.selectionIds.length = 0;
-            resultSelectionIds.forEach(x => this.selectionIds.push(x));
+            this.selectedValues.length = 0;
+            resultValues.forEach(x => this.selectedValues.push(x));
         }
 
         private sendSelectionToHost(ids: SelectionId[]): JQueryDeferred<SelectionId[]> {
             var deferred: JQueryDeferred<data.Selector[]> = $.Deferred();
-
-            var selectArgs: SelectEventArgs = {
-                visualObjects: _.chain(ids)
-                    .filter((value: SelectionId) => value.hasIdentity())
-                    .map((value: SelectionId) => {
-                        return <VisualObject>{
-                            objectName: undefined,
-                            selectorsByColumn: value.getSelectorsByColumn(),
-                        };
-                    })
-                    .value(),
-            };
-
-            this.hostServices.onSelect(selectArgs);
-
+            (<any>this.selectionManager).sendSelectionToHost(ids);
             deferred.resolve(this.selectionIds);
             return deferred;
         }
@@ -452,7 +453,7 @@ module powerbi.visuals.samples {
             return categorical && _.mapValues(
                 new this<DataViewCategoryColumn & DataViewValueColumn[] & DataViewValueColumns>(),
                 (n, i) => categories.filter(x => x.source.roles && x.source.roles[i])[0]
-                    || values.source && values.source.roles && values.source.roles[i]
+                    || values.source && values.source.roles && values.source.roles[i] && values
                     || values.filter(x => x.source.roles && x.source.roles[i]));
         }
 
@@ -652,15 +653,16 @@ module powerbi.visuals.samples {
             var settings: WordCloudSettings = WordCloud.parseSettings(dataView, previousData && previousData.settings);
 
             var wordValueFormatter = ValueFormatter.create({
-                format: ValueFormatter.getFormatString(categorical.Category.source, properties.general.formatString),
-                value: catValues.Category[0]
+                format: ValueFormatter.getFormatString(categorical.Category.source, properties.general.formatString)
             });
 
             var stopWords = _.isString(settings.stopWords.words) ? settings.stopWords.words.split(WordCloud.StopWordsDelemiter) : [];
             stopWords = settings.stopWords.isDefaultStopWords ? stopWords.concat(WordCloud.StopWords) : stopWords;
 
             var colorHelper = new ColorHelper(colors, properties.dataPoint.fill, explore.util.getRandomColor());
-            var texts = catValues.Category.map((item: string, index: number) => {
+            var texts = catValues.Category
+                .filter(x => x !== null && x !== undefined && x.toString().length > 0)
+                .map((item: string, index: number) => {
                 var color;
                 if (categorical.Category.objects && categorical.Category.objects[index]) {
                     color = explore.util.hexToRgb(colorHelper.getColorForMeasure(categorical.Category.objects[index], ""));
@@ -674,6 +676,7 @@ module powerbi.visuals.samples {
                     .withCategory(dataView.categorical.categories[0], index)
                     .createSelectionId();
 
+                item = wordValueFormatter.format(item);
                 return <WordCloudText>{
                     text: item,
                     count: (catValues.Values && catValues.Values[index] && !isNaN(catValues.Values[index])) ? catValues.Values[index] : 1,
@@ -685,7 +688,7 @@ module powerbi.visuals.samples {
             });
 
             var reducedTexts = WordCloud.getReducedText(texts, stopWords, settings);
-            var dataPoints = WordCloud.getDataPoints(reducedTexts, settings, wordValueFormatter);
+            var dataPoints = WordCloud.getDataPoints(reducedTexts, settings);
             return <WordCloudData>{
                 dataView: dataView,
                 settings: settings,
@@ -731,25 +734,32 @@ module powerbi.visuals.samples {
 
             words.forEach((item: WordCloudText) => {
                 if (typeof item.text === "string") {
-                    var words = item.text.replace(punctuatuinRegExp, " ").split(whiteSpaceRegExp);
+                    var splittedWords = item.text.replace(punctuatuinRegExp, " ").split(whiteSpaceRegExp);
 
                     if (settings.stopWords.show) {
-                        words = words.filter((value: string) =>
+                        splittedWords = splittedWords.filter((value: string) =>
                             value.length > 0 && !stopWords.some((removeWord: string) =>
                                 value.toLocaleLowerCase() === removeWord.toLocaleLowerCase()));
                     }
 
-                    words.forEach((element: string) => {
-                        if (element.length > 0 && !whiteSpaceRegExp.test(element)) {
-                            brokenStrings.push({
-                                text: element,
-                                textGroup: item.textGroup,
-                                count: item.count,
-                                index: item.index,
-                                selectionId: item.selectionId,
-                                color: item.color
-                            });
+                    splittedWords.forEach((splittedWord: string) => {
+                        if (splittedWord.length === 0 || whiteSpaceRegExp.test(splittedWord)) {
+                            return;
                         }
+
+                        var existingWord = _.find(words, w => w.text.toString().toLocaleLowerCase() === splittedWord.toLocaleLowerCase());
+                        if(existingWord && existingWord !== item) {
+                            splittedWord = existingWord.text;
+                        }
+
+                        brokenStrings.push({
+                            text: splittedWord,
+                            textGroup: item.textGroup,
+                            count: item.count,
+                            index: item.index,
+                            selectionId: item.selectionId,
+                            color: item.color
+                        });
                     });
                 } else {
                     brokenStrings.push(item);
@@ -761,8 +771,7 @@ module powerbi.visuals.samples {
 
         private static getDataPoints(
             textGroups: WordCloudText[][],
-            settings: WordCloudSettings,
-            wordValueFormatter: IValueFormatter): WordCloudDataPoint[] {
+            settings: WordCloudSettings): WordCloudDataPoint[] {
 
             if (_.isEmpty(textGroups)) {
                 return [];
@@ -770,7 +779,7 @@ module powerbi.visuals.samples {
 
             var returnValues = textGroups.map((values: WordCloudText[]) => {
                 return <WordCloudDataPoint>{
-                    text: wordValueFormatter.format(values[0].text),
+                    text: values[0].text,
                     x: 0,
                     y: 0,
                     rotate: WordCloud.getAngle(settings),
@@ -888,7 +897,7 @@ module powerbi.visuals.samples {
         private layout: VisualLayout;
 
         private hostService: IVisualHostServices;
-        private selectionManager: CustomSelectionManager;
+        private selectionManager: ValueSelectionManager<string>;
 
         private visualUpdateOptions: VisualUpdateOptions;
 
@@ -915,7 +924,10 @@ module powerbi.visuals.samples {
 
             this.colors = options.style.colorPalette.dataColors;
             this.hostService = options.host;
-            this.selectionManager = new CustomSelectionManager(this.hostService);
+            this.selectionManager = new ValueSelectionManager<string>(this.hostService, w => {
+                var dataPoints = this.data && this.data.dataPoints && this.data.dataPoints.filter(x => x.text === w);
+                return dataPoints && dataPoints[0] && dataPoints[0].selectionIds;
+            });
 
             this.layout = new VisualLayout(null, WordCloud.DefaultMargin);
 
@@ -964,7 +976,7 @@ module powerbi.visuals.samples {
 
                 var data = WordCloud.converter(dataView, this.colors, this.data);
                 if (!data) {
-                    //ClearVisual?
+                    this.clear();
                     return;
                 }
 
@@ -974,27 +986,32 @@ module powerbi.visuals.samples {
             }
         }
 
+        private clear() {
+            this.main
+                .select(WordCloud.Words.selector)
+                .selectAll(WordCloud.WordGroup.selector)
+                .remove();
+        }
+
         private computePositions(onPositionsComputed: (WordCloudDataView) => void): void {
             var words = this.data.dataPoints;
 
             if (_.isEmpty(words)) {
-                return null;
+                this.clear();
+                return;
             }
 
             requestAnimationFrame(() => {
                 var surface: number[] = _.range(0, (this.specialViewport.width >> 5) * this.specialViewport.height, 0);
-                if (words.length > this.settings.general.maxNumberOfWords) {
-                    words = words.slice(0, this.settings.general.maxNumberOfWords);
-                }
 
                 words.forEach(data => {
-                    data.widthOfWord = TextMeasurementService.measureSvgTextWidth(<TextProperties>{ 
+                    data.getWidthOfWord = () => (<any>data).widthOfWord || ((<any>data).widthOfWord = TextMeasurementService.measureSvgTextWidth(<TextProperties>{ 
                         fontFamily: this.fontFamily,
                         fontSize: (data.size + 1) +  WordCloud.Size,
                         //fontWeight: "normal",
                         //fontStyle: "normal",
                         text: data.text
-                    }) + 2;
+                    }) + 2);
                 });
 
                 this.computeCycle(words, this.getCanvasContext(), surface, null, onPositionsComputed, [], 0);
@@ -1034,6 +1051,10 @@ module powerbi.visuals.samples {
                 borders = this.updateBorders(word, borders);
                 word.x -= this.specialViewport.width >> 1;
                 word.y -= this.specialViewport.height >> 1;
+
+                if(wordsForDraw.length >= this.settings.general.maxNumberOfWords) {
+                    index = words.length - 1;
+                }
             }
 
             if (++index < words.length && this.root) {
@@ -1091,7 +1112,7 @@ module powerbi.visuals.samples {
 
             for (var i: number = startIndex, length = words.length; i < length; i++) {
                 var currentWordData: WordCloudDataPoint = words[i];
-                var widthOfWord: number = currentWordData.widthOfWord;
+                var widthOfWord: number = currentWordData.getWidthOfWord();
                 var heightOfWord: number = currentWordData.size << 1;
 
                 if (currentWordData.rotate) {
@@ -1428,14 +1449,15 @@ module powerbi.visuals.samples {
 
             this.wordsGroupUpdateSelection.selectAll("rect").data(d => [d])
                 .attr({
-                    x: (d: WordCloudDataPoint) => -d.widthOfWord * 0.5,
-                    width: (d: WordCloudDataPoint) => d.widthOfWord,
+                    x: (d: WordCloudDataPoint) => -d.getWidthOfWord() * 0.5,
+                    width: (d: WordCloudDataPoint) => d.getWidthOfWord(),
                     y: (d: WordCloudDataPoint) => -d.size * 0.75,
                     height: (d: WordCloudDataPoint) => d.size * 0.85,
                     fill: (d: WordCloudDataPoint) => "rgba(63, 191, 191, 0.0)",
                 })
                 .on("click", d => { this.setSelection(d); d3.event.stopPropagation(); });
 
+            this.clearIntorrectSelection(this.data.dataView);
             this.renderSelection();
 
             this.isUpdating = false;
@@ -1444,25 +1466,34 @@ module powerbi.visuals.samples {
             }
         }
 
-        private setSelection(dataPoint: WordCloudDataPoint) {
-            if(!dataPoint) {
-                this.selectionManager.clear().then(() => this.renderSelection());
+        private clearIntorrectSelection(dataView: DataView) {
+            var categories = dataView && dataView.categorical && dataView.categorical.categories;
+            var identityKeys = categories && categories[0] && categories[0].identity && categories[0].identity.map(x => x.key);
+            var oldIdentityKeys = <string[]>(<any>this).oldIdentityKeys;
+            (<any>this).oldIdentityKeys = identityKeys;
+            if(oldIdentityKeys && oldIdentityKeys.length > identityKeys.length) {
+                this.selectionManager.clear(false);
                 return;
             }
 
-            var selectionIds = dataPoint.selectionIds;
+            if(!_.isEmpty(identityKeys)) {
+                var incorrectValues = this.selectionManager.getSelectionIdValues.filter(x =>
+                    x.selectionId.some(s => _.contains(identityKeys, s.getKey())));
 
-            if(this.selectionManager.isSelected(selectionIds) && d3.event.ctrlKey) {
-                var dataPoints: WordCloudDataPoint[] = this.wordsGroupUpdateSelection.data()
-                    .filter((d: WordCloudDataPoint) => d.text !== dataPoint.text);
-                selectionIds = selectionIds.filter(x => !dataPoints.some(d => 
-                        this.selectionManager.isSelected(d.selectionIds)
-                        && utility.SelectionManager.containsSelection(d.selectionIds, x)));
+                incorrectValues.forEach(v => this.selectionManager.selectedValues
+                    .splice(this.selectionManager.selectedValues.indexOf(v.value), 1));
+            }
+        }
+
+        private setSelection(dataPoint: WordCloudDataPoint) {
+            if(!dataPoint) {
+                this.selectionManager.clear(true).then(() => this.renderSelection());
+                return;
             }
 
-            this.selectionManager.selectAndSendSelection(selectionIds, d3.event.ctrlKey);
-
-            this.renderSelection();
+            this.selectionManager
+                .selectAndSendSelection(dataPoint.text, d3.event.ctrlKey)
+                .then(() => this.renderSelection());
         }
 
         private scaleMainView(wordCloudDataView: WordCloudDataView) {
@@ -1471,6 +1502,11 @@ module powerbi.visuals.samples {
                 var hh = d.height/2;
                 return <ClientRect>{ left: d.x - hw, top: d.y - hh, right: d.x + hw, bottom: d.y + hh };
             });
+
+            if(_.isEmpty(rectangles)) {
+                return;
+            }
+
             var rectangle = <ClientRect>{
                 left: _.min(rectangles, x => x.left).left,
                 top: _.min(rectangles, x => x.top).top,
@@ -1497,10 +1533,8 @@ module powerbi.visuals.samples {
         }
 
         private renderSelection(): void {
-            if (this.selectionManager.selectionIds.some(x =>
-                !this.wordsGroupUpdateSelection.data().some((y: WordCloudDataPoint) =>
-                    y.selectionIds.some(z => z.getKey() === x.getKey())))) {
-                this.selectionManager.clear(false);
+            if(!this.wordsTextUpdateSelection) {
+                return;
             }
 
             if (!this.selectionManager.hasSelection) {
@@ -1508,8 +1542,8 @@ module powerbi.visuals.samples {
                 return;
             }
 
-            var selectedColumns = this.wordsTextUpdateSelection.filter((x: WordCloudDataPoint) =>
-                this.selectionManager.isSelected(x.selectionIds[0]));
+            var selectedColumns = this.wordsTextUpdateSelection.filter((d: WordCloudDataPoint) =>
+                this.selectionManager.isSelected(d.text));
 
             this.setOpacity(this.wordsTextUpdateSelection, WordCloud.MinOpacity);
             this.setOpacity(selectedColumns, WordCloud.MaxOpacity);

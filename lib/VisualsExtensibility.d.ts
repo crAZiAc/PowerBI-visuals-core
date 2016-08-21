@@ -20,6 +20,7 @@
 
 
 
+
 declare module powerbi.visuals.telemetry {
     /**
      * Creates a client-side Guid string.
@@ -193,4 +194,7 @@ declare module powerbi.extensibility.v100 {
 }
 
 declare module powerbi.extensibility.v110 {
+}
+
+declare module powerbi.extensibility.v120 {
 }

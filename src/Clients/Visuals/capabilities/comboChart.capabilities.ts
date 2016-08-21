@@ -53,7 +53,12 @@ module powerbi.visuals {
                 description: data.createDisplayNameGetter('Role_ComboChart_Y2Description'),
                 requiredTypes: [{ numeric: true }, { integer: true }],
                 cartesianKind: CartesianRoleKind.Y,
-            },
+            }, {
+                name: 'Tooltips',
+                kind: VisualDataRoleKind.Measure,
+                displayName: data.createDisplayNameGetter('Role_DisplayName_Tooltips'),
+                joinPredicate: JoinPredicateBehavior.None,
+            }
         ],
         objects: {
             general: {
@@ -250,7 +255,8 @@ module powerbi.visuals {
                         group: {
                             by: 'Series',
                             select: [
-                                { for: { in: 'Y' } }
+                                { for: { in: 'Y' } },
+                                { for: { in: 'Tooltips' } }
                             ],
                             dataReductionAlgorithm: { top: { count: 60 } }
                         }

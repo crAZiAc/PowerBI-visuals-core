@@ -34,7 +34,6 @@ module powerbi.visuals {
 
     export interface LineChartConstructorOptions extends CartesianVisualConstructorOptions {
         chartType?: LineChartType;
-        tooltipBucketEnabled?: boolean;
         advancedLineLabelsEnabled?: boolean;
     }
 
@@ -178,7 +177,7 @@ module powerbi.visuals {
         private previousCategoryCount: number;
         private pathXAdjustment: number = 0;
 
-        private tooltipBucketEnabled: boolean;
+        private tooltipService: ITooltipService;
         private advancedLineLabelsEnabled: boolean;
 
         private static validStackedLabelPositions = [RectLabelPosition.InsideCenter, RectLabelPosition.InsideEnd, RectLabelPosition.InsideBase];
@@ -213,7 +212,7 @@ module powerbi.visuals {
             if (roleItems && LineChart.shouldUseScalarKey(dataViewMapping, roleItems)) {
                     for (let item of roleItems) {
                         if (item.hasScalarKey) {
-                            item.scalarKeyMinProperty = lineChartProps.scalarKey.scalarKeyMin;
+                            item.scalarKeyMinProperty = cartesianChartProps.scalarKey.scalarKeyMin;
                             usingScalarKey = true;
                             break;
                         }
@@ -242,21 +241,6 @@ module powerbi.visuals {
             if (axisTypeValue === axisType.categorical)
                 return false;
 
-            // If we are sorting by something other than this group, the scalar key is of no value
-            let columns = dataViewMapping.metadata && dataViewMapping.metadata.columns;
-            let sortedColumns: DataViewMetadataColumn[];
-            if (columns)
-                sortedColumns = _.filter(columns, (c) => c.sort !== undefined);
-            if (!_.isEmpty(sortedColumns)) {
-                // If we are sorting by something other than category, we won't be positioning by scalar key
-                if (_.any(sortedColumns, (c) => !_.find(categoryRoleItems, (ri) => c.queryName === ri.queryName)))
-                    return false;
-
-                // Make sure all of the sorted items are in the same direction, otherwise a scalar key won't make sense
-                if (_.any(sortedColumns, (c) => c.sort !== sortedColumns[0].sort))
-                    return false;
-            }
-
             return true;
         }
 
@@ -274,6 +258,8 @@ module powerbi.visuals {
                 let objects: DataViewObjects;
                 if (dataViewMapping.metadata)
                     objects = dataViewMapping.metadata.objects;
+
+                //TODO: 8031611: if dataViewMapping contains scalarKeyProperty, don't return sortable roles
 
                 //TODO: line chart should be sortable by X if it has scalar axis
                 // But currently it doesn't support this. Always return 'category'
@@ -293,8 +279,7 @@ module powerbi.visuals {
             interactivityService?: IInteractivityService,
             shouldCalculateStacked?: boolean,
             isComboChart?: boolean,
-            tooltipsEnabled: boolean = true,
-            tooltipBucketEnabled: boolean = false): LineChartData {
+            tooltipsEnabled: boolean = true): LineChartData {
             let reader = powerbi.data.createIDataViewCategoricalReader(dataView);
             let valueRoleName = isComboChart ? 'Y2' : 'Y';
             let categorical = dataView.categorical;
@@ -308,7 +293,7 @@ module powerbi.visuals {
 
             let xAxisCardProperties = CartesianHelper.getCategoryAxisProperties(dataView.metadata);
             isScalar = CartesianHelper.isScalar(isScalar, xAxisCardProperties);
-            let scalarKeys = LineChart.getScalarKeys(category);
+            let scalarKeys = CartesianChart.getScalarKeys(category);
             let useScalarKeys = isScalar && scalarKeys && !_.isEmpty(scalarKeys.values);
 
             // if scalar and scalar keys defined, use scalar keys for xAxis labels
@@ -430,11 +415,9 @@ module powerbi.visuals {
                                     value: converterHelper.formatFromMetadataColumn(value, valuesMetadata, formatStringProp),
                                 });
                             }
-
-                            if (tooltipBucketEnabled) {
-                                extraTooltipInfo = [];
-                                TooltipBuilder.addTooltipBucketItem(reader, extraTooltipInfo, categoryIndex, hasDynamicSeries ? seriesIndex : undefined);
-                            }
+                            extraTooltipInfo = [];
+                            TooltipBuilder.addTooltipBucketItem(reader, extraTooltipInfo, categoryIndex, hasDynamicSeries ? seriesIndex : undefined);
+                            extraTooltipInfo = _.isEmpty(extraTooltipInfo) ? undefined : extraTooltipInfo;
                         }
 
                         let idBuilder = new SelectionIdBuilder();
@@ -590,7 +573,6 @@ module powerbi.visuals {
             this.interactivityService = options.interactivityService;
             this.animator = options.animator;
             this.lineClassAndSelector = LineChart.LineClassSelector;
-            this.tooltipBucketEnabled = options.tooltipBucketEnabled;
             this.advancedLineLabelsEnabled = options.advancedLineLabelsEnabled;
         }
 
@@ -604,6 +586,7 @@ module powerbi.visuals {
             this.isInteractiveChart = options.interactivity && options.interactivity.isInteractiveLegend;
             this.cartesianVisualHost = options.cartesianHost;
             this.scaleDetector = new SVGScaleDetector(this.cartesainSVG);
+            this.tooltipService = options.services.tooltips;
 
             let chartType = options.chartType;
             this.isComboChart = chartType === CartesianChartType.ComboChart || chartType === CartesianChartType.LineClusteredColumnCombo || chartType === CartesianChartType.LineStackedColumnCombo;
@@ -617,6 +600,7 @@ module powerbi.visuals {
             if (!this.isComboChart && !this.isInteractiveChart) {
                 this.overlayRect = graphicsContextParent
                     .append(LineChart.RectOverlayName)
+                    .classed('tooltip-overlay', true)
                     .style("opacity", SVGUtil.AlmostZero);
             }
             this.mainGraphicsContext = graphicsContextParent
@@ -702,7 +686,7 @@ module powerbi.visuals {
                         if (dvCategories && !_.isEmpty(dvCategories)) {
                             if (dvCategories[0].source && dvCategories[0].source.type)
                                 categoryType = dvCategories[0].source.type;
-                            scalarKeys = LineChart.getScalarKeys(dvCategories[0]);
+                            scalarKeys = CartesianChart.getScalarKeys(dvCategories[0]);
                         }
 
                         let convertedData = LineChart.converter(
@@ -713,8 +697,7 @@ module powerbi.visuals {
                             this.interactivityService,
                             EnumExtensions.hasFlag(this.lineType, LineChartType.stackedArea),
                             this.isComboChart,
-                            this.tooltipsEnabled,
-                            this.tooltipBucketEnabled);
+                            this.tooltipsEnabled);
                         this.data = convertedData;
                         
                         let previousCategoryIds = this.previousCategoryIds;
@@ -723,7 +706,7 @@ module powerbi.visuals {
                             this.suppressAnimation = false;
 
                             for (let categoryIndex = 0, categoryCount = Math.min(previousCategoryIds.length, currentCategoryIds.length); categoryIndex < categoryCount; categoryIndex++) {
-                                if (!previousCategoryIds[categoryIndex].equals(currentCategoryIds[categoryIndex])) {
+                                if (!SelectionId.isEqual(previousCategoryIds[categoryIndex], currentCategoryIds[categoryIndex])) {
                                     this.suppressAnimation = true;
                                     break;
                                 }
@@ -1145,30 +1128,47 @@ module powerbi.visuals {
                             height: height
                         });
 
-                    let seriesTooltipApplier = (tooltipEvent: TooltipEvent) => {
-                        let pointX: number = tooltipEvent.elementCoordinates[0];
-                        let index = this.getCategoryIndexFromTooltipEvent(tooltipEvent, pointX);
+                    let seriesTooltipApplier = (args: TooltipEventArgs<LineChartSeries|LineChartDataPoint>) => {
+                        let pointX: number = args.elementCoordinates[0];
+                        let index = this.getCategoryIndexFromTooltipEvent(args, pointX);
                         let categoryData = this.selectColumnForTooltip(index);
                         return this.getSeriesTooltipInfo(categoryData);
                     };
 
-                    let clearHoverLine = () => {
-                        this.hoverLine.style('opacity', SVGUtil.AlmostZero);
-                        this.hoverLineContext.selectAll(LineChart.HoverLineCircleDot.selector).remove();
-                    };
-                    TooltipManager.addTooltip(this.mainGraphicsSVG, seriesTooltipApplier, true, clearHoverLine);
+                    this.tooltipService.addTooltip(
+                        this.mainGraphicsSVG, 
+                        seriesTooltipApplier,
+                        (args: TooltipEventArgs<LineChartSeries|LineChartDataPoint>) => args.data && args.data.identity, // data may be null if we are not over a line
+                        true);
+                    
+                    this.mainGraphicsSVG.on("mouseout", () => this.clearHoverLine());
                 } else {
-                    let seriesTooltipApplier = (tooltipEvent: TooltipEvent) => {
-                        let pointX: number = tooltipEvent.elementCoordinates[0];
-                        return this.getTooltipInfoForCombo(tooltipEvent, pointX);
+                    let seriesTooltipApplier = (args: TooltipEventArgs<LineChartSeries>) => {
+                        let pointX: number = args.elementCoordinates[0];
+                        return this.getTooltipInfoForCombo(args, pointX);
                     };
 
-                    if (interactivityLines)
-                        TooltipManager.addTooltip(interactivityLines, seriesTooltipApplier, true);
+                    if (interactivityLines) {
+                        this.tooltipService.addTooltip(
+                            interactivityLines, 
+                            seriesTooltipApplier,
+                            (args: TooltipEventArgs<LineChartSeries>) => args.data.identity, 
+                            true);
+                    }
 
-                    TooltipManager.addTooltip(dots, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo, true);
-                    if (explicitDots)
-                        TooltipManager.addTooltip(explicitDots, (tooltipEvent: TooltipEvent) => tooltipEvent.data.tooltipInfo, true);
+                    this.tooltipService.addTooltip(
+                        dots, 
+                        (args: TooltipEventArgs<LineChartDataPoint>) => args.data.tooltipInfo,
+                        (args: TooltipEventArgs<LineChartDataPoint>) => args.data.identity,  
+                        true);
+
+                    if (explicitDots) {
+                        this.tooltipService.addTooltip(
+                            explicitDots, 
+                            (args: TooltipEventArgs<LineChartDataPoint>) => args.data.tooltipInfo,
+                            (args: TooltipEventArgs<LineChartDataPoint>) => args.data.identity,  
+                            true);
+                    }
                 }
             }
 
@@ -1492,10 +1492,10 @@ module powerbi.visuals {
         /**
          * Note: Public for tests.
          */
-        public getTooltipInfoForCombo(tooltipEvent: TooltipEvent, pointX: number): TooltipDataItem[] {
+        public getTooltipInfoForCombo(tooltipEvent: TooltipEventArgs<LineChartSeries>, pointX: number): TooltipDataItem[] {
             // update pointX, the mouse coordinate, with the left-offset of the SVGRect from the x-scale space so we can use the d3.scale to get the index.
             let categoryIndex = this.getCategoryIndexFromTooltipEvent(tooltipEvent, pointX);
-            let seriesData = <LineChartSeries>tooltipEvent.data;
+            let seriesData = tooltipEvent.data;
 
             let dataPoint: LineChartDataPoint;
             if (seriesData && seriesData.data && seriesData.data.length) {
@@ -1506,17 +1506,22 @@ module powerbi.visuals {
             // return undefined so we don't show an empty tooltip
         }
 
+        private isDataPointData(data: LineChartSeries | LineChartDataPoint): data is LineChartDataPoint {
+            return data && (<LineChartDataPoint>data).categoryIndex != null;
+        }
+
         /**
          * Note: Public for tests.
          */
-        public getCategoryIndexFromTooltipEvent(tooltipEvent: TooltipEvent, pointX: number): number {
-            if (tooltipEvent.data && tooltipEvent.data.categoryIndex != null) {
+        public getCategoryIndexFromTooltipEvent(tooltipEvent: TooltipEventArgs<LineChartSeries|LineChartDataPoint>, pointX: number): number {
+            let data = tooltipEvent.data;
+            if (this.isDataPointData(data)) {
                 // Tooltip originated with a dot; simply return the categoryIndex from the dot's bound data
-                return tooltipEvent.data.categoryIndex;
+                return data.categoryIndex;
             }
-
-            let seriesData = <LineChartSeries>tooltipEvent.data;
-            return this.getCategoryIndexFromSeriesAndPointX(seriesData, pointX);
+            else {
+                return this.getCategoryIndexFromSeriesAndPointX(data, pointX);
+            }
         }
 
         public getCategoryIndexFromSeriesAndPointX(seriesData: LineChartSeries, pointX: number): number {
@@ -1543,11 +1548,16 @@ module powerbi.visuals {
             let dvCategories = this.dataViewCat ? this.dataViewCat.categories : undefined;
             let categoryType: ValueTypeDescriptor = { text: true };
             if (!_.isEmpty(dvCategories)) {
-                let scalarKeys = LineChart.getScalarKeys(dvCategories[0]);
-                if (scalarKeys && !_.isEmpty(scalarKeys.values))
-                    return axisType.both;
-                if (dvCategories[0].source && dvCategories[0].source.type)
-                    categoryType = dvCategories[0].source.type;
+                // At present, from this method there is no way to determine if scalar keys
+                // are available, only if they are actually being used.  It's possible to
+                // be in a state where the visual could use scalar keys on a type that is
+                // otherwise categorical but isn't using them because the user explicitly
+                // requested a categorical axis.  So always allow both.  If the user
+                // tries to use continuous when it won't be allowed, the UI will ignore the
+                // setting (verus not show it if we have the ability to detect this condition).
+                // if (dvCategories[0].source && dvCategories[0].source.type)
+                //     categoryType = dvCategories[0].source.type;
+                return axisType.both;
             }
             let isOrdinal = AxisHelper.isOrdinal(categoryType);
             return isOrdinal ? axisType.categorical : axisType.both;
@@ -1588,32 +1598,6 @@ module powerbi.visuals {
                 }
             }
             return newSeries;
-        }
-
-        private static getScalarKeys(dataViewCategoryColumn: DataViewCategoryColumn): ScalarKeys {
-            let categoryColumnObjects: DataViewObjects[];
-            if (dataViewCategoryColumn)
-                categoryColumnObjects = dataViewCategoryColumn.objects;
-
-            if (!_.isEmpty(categoryColumnObjects)) {
-                let scalarKeys: ScalarKeys;
-                let categoryObjectsLength = categoryColumnObjects.length;
-
-                for (let i = 0; i < categoryObjectsLength; i++) {
-                    let categoryObjects: DataViewObjects = categoryColumnObjects[i];
-                    let scalarKey = DataViewObjects.getValue<PrimitiveValue>(categoryObjects, lineChartProps.scalarKey.scalarKeyMin);
-                    if (scalarKey !== undefined) {
-                        if (!scalarKeys) {
-                            scalarKeys = {
-                                values: new Array<PrimitiveValueRange>(categoryObjectsLength)
-                            };
-                        }
-                        let key: PrimitiveValueRange = { min: scalarKey };
-                        scalarKeys.values[i] = key;
-                    }
-                }
-                return scalarKeys;
-            }
         }
 
         private getXOfFirstCategory(): number {
@@ -1685,6 +1669,11 @@ module powerbi.visuals {
                 .attr("y1", 0)
                 .attr("y2", this.getAvailableHeight())
                 .style('opacity', 1);
+        }
+
+        private clearHoverLine(): void {
+            this.hoverLine.style('opacity', SVGUtil.AlmostZero);
+            this.hoverLineContext.selectAll(LineChart.HoverLineCircleDot.selector).remove();
         }
 
         private setDotsForTooltip(chartX: number, dataPoints: HoverLineDataPoint[]) {

@@ -27,11 +27,20 @@
 /// <reference path="../_references.ts"/>
 
 module powerbitests.customVisuals {
+    // powerbi
+    import DataView = powerbi.DataView;
+
+    // powerbi.visuals.samples
     import VisualClass = powerbi.visuals.samples.ChicletSlicer;
+    import ChicletSlicerDataPoint = powerbi.visuals.samples.ChicletSlicerDataPoint;
+    import TableView = powerbi.visuals.samples.TableView;
+
+    // powerbitests
     import CarLogosData = powerbitests.customVisuals.sampleDataViews.CarLogosData;
     import colorAssert = powerbitests.helpers.assertColorsMatch;
     import VisualBuilderBase = powerbitests.customVisuals.VisualBuilderBase;
-    import DataView = powerbi.DataView;
+    import ClickEventType = powerbitests.helpers.ClickEventType;
+    import renderTimeout = powerbitests.customVisuals.helpers.renderTimeout;
 
     describe("ChicletSlicer", () => {
         let visualBuilder: ChicletSlicerBuilder,
@@ -653,14 +662,13 @@ module powerbitests.customVisuals {
 
             describe("selection", () => {
                 let selectionId = [{
-                    "selectior": { "data": [] }
+                    "selector": { "data": [] }
                 }];
 
                 it("chiclet selection is loaded", (done) => {
                     visualBuilder.updateRenderTimeout(dataView, () => {
                         let selectedItems: JQuery = visualBuilder
-                            .visibleGroup
-                            .find(".slicerItemContainer")
+                            .slicerItemContainer
                             .last()
                             .click();
 
@@ -709,6 +717,174 @@ module powerbitests.customVisuals {
                 });
             });
 
+            describe("multi selection", () => {
+                it("multi selection should work when ctrlKey is pressed", (done) => {
+                    testMultiSelection(
+                        dataView,
+                        visualBuilder,
+                        ClickEventType.CtrlKey,
+                        defaultDataViewBuilder.valuesCategory.length,
+                        done);
+                });
+
+                it("multi selection should work when metaKey is pressed", (done) => {
+                    testMultiSelection(
+                        dataView,
+                        visualBuilder,
+                        ClickEventType.MetaKey,
+                        defaultDataViewBuilder.valuesCategory.length,
+                        done);
+                });
+
+                function testMultiSelection(
+                    dataView: DataView,
+                    visualBuilder: ChicletSlicerBuilder,
+                    clickEventType: ClickEventType,
+                    lengthOfCategoryValues: number,
+                    callback: () => void) {
+
+                    visualBuilder.updateRenderTimeout(dataView, () => {
+                        visualBuilder
+                            .slicerItemContainer
+                            .d3Click(0, 0, clickEventType);
+
+                        checkSelection(
+                            visualBuilder,
+                            lengthOfCategoryValues,
+                            callback);
+                    });
+                }
+
+                function checkSelection(
+                    visualBuilder: ChicletSlicerBuilder,
+                    lengthOfCategoryValues: number,
+                    callback: () => void): void {
+                    renderTimeout(() => {
+                        let selectedPoints: ChicletSlicerDataPoint[] = visualBuilder.getSelectedPoints();
+
+                        expect(selectedPoints).toBeDefined();
+                        expect(selectedPoints).not.toBeNull();
+
+                        expect(selectedPoints.length).toBe(lengthOfCategoryValues);
+
+                        callback();
+                    });
+                }
+            });
+
+            describe("Cutting off data labels", () => {
+                let visualBuilder: ChicletSlicerBuilder;
+
+                beforeEach(() => {
+                    visualBuilder = new ChicletSlicerBuilder(150, 500);
+                });
+
+                it("data labels shouldn't be cut off", (done) => {
+                    let categories: string[] = defaultDataViewBuilder.valuesCategory,
+                        amountOfItems: number = categories.length;
+
+                    dataView.metadata.objects = {
+                        general: {
+                            columns: amountOfItems,
+                            rows: amountOfItems
+                        }
+                    };
+
+                    visualBuilder.updateRenderTimeout(dataView, () => {
+                        let slicerTextElements: JQuery = visualBuilder.slicerTextElements;
+
+                        for (var i = 0, length = slicerTextElements.length; i < length; i++) {
+                            let slicerText: string = slicerTextElements[i].textContent,
+                                isElementAvailable: boolean;
+
+                            isElementAvailable = categories.some((category: string) => {
+                                return slicerText === category;
+                            });
+
+                            expect(isElementAvailable).toBeTruthy();
+                        }
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        describe("DOM elements should be the same after updating", () => {
+            it("the first '.row' should be the same after changing of orientation", (done) => {
+                checkElement(
+                    visualBuilder,
+                    dataView,
+                    TableView.RowSelector.selector,
+                    done);
+            });
+
+            it("the first '.cell' should be the same after changing of orientation", (done) => {
+                checkElement(
+                    visualBuilder,
+                    dataView,
+                    TableView.CellSelector.selector,
+                    done);
+            });
+
+            it("the first '.slicerItemContainer' should be the same after changing of orientation", (done) => {
+                checkElement(
+                    visualBuilder,
+                    dataView,
+                    VisualClass.ItemContainerSelector.selector,
+                    done);
+            });
+
+            it("the first '.slicer-img-wrapper' should be the same after changing of orientation", (done) => {
+                checkElement(
+                    visualBuilder,
+                    dataView,
+                    VisualClass.SlicerImgWrapperSelector.selector,
+                    done);
+            });
+
+            it("the first '.slicer-text-wrapper' should be the same after changing of orientation", (done) => {
+                checkElement(
+                    visualBuilder,
+                    dataView,
+                    VisualClass.SlicerTextWrapperSelector.selector,
+                    done);
+            });
+
+            function checkElement(
+                visualBuilder: ChicletSlicerBuilder,
+                dataView: DataView,
+                selector: string,
+                done: () => {}): void {
+
+                updateVisual(visualBuilder, dataView, selector).done((firstElement: Element) => {
+                    dataView.metadata.objects = {
+                        general: {
+                            orientation: "Horizontal"
+                        }
+                    };
+
+                    updateVisual(visualBuilder, dataView, selector).done((secondElement: Element) => {
+                        expect(firstElement).toBe(secondElement);
+
+                        done();
+                    });
+                });
+            }
+
+            function updateVisual(
+                visualBuilder: ChicletSlicerBuilder,
+                dataView: DataView,
+                selector: string): JQueryDeferred<Element> {
+
+                var promise: JQueryDeferred<Element> = $.Deferred<Element>();
+
+                visualBuilder.updateRenderTimeout(dataView, () => {
+                    promise.resolve(visualBuilder.mainElement.find(selector).get(0));
+                });
+
+                return promise;
+            }
         });
     });
 
@@ -736,6 +912,10 @@ module powerbitests.customVisuals {
                 .children("div.visibleGroup");
         }
 
+        public get slicerTextElements(): JQuery {
+            return this.visibleGroup.find(".slicerText");
+        }
+
         public get slicerItemContainer(): JQuery {
             return this.visibleGroup
                 .children("div.row")
@@ -745,12 +925,17 @@ module powerbitests.customVisuals {
         }
 
         public saveSelection(selectionIds): void {
-            return this.visual["settings"]["general"].setSavedSelection(null, selectionIds);
+            return this.visual["settings"]["general"]
+                .setSavedSelection(null, selectionIds);
         }
 
         public getSelectedPoints() {
             return this.visual["behavior"]["dataPoints"]
-                .map((item) => { if (item.selected) return item; })
+                .map((item) => {
+                    if (item.selected) {
+                        return item;
+                    }
+                })
                 .filter(Boolean);
         }
 

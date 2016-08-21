@@ -1088,6 +1088,11 @@ module powerbi.data {
         public accept<T, TArg>(visitor: ISQExprVisitorWithArg<T, TArg>, arg?: TArg): T {
             return visitor.visitTransformOutputRoleRef(this, arg);
         }
+
+        public getMetadata(federatedSchema: FederatedConceptualSchema): SQExprMetadata {
+            // These are fabricated columns created by the transform algorithms on the service and hence don't have metadata
+            return;
+        }
     }
 
     /** Provides utilities for creating & manipulating expressions. */
@@ -2162,6 +2167,10 @@ module powerbi.data {
             return this.defaultRewrite();
         }
 
+        public visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): SQExpr {
+            return this.defaultRewrite();
+        }
+
         private defaultRewrite(): SQExpr {
             return SQExprChangeAggregateRewriter.rewrite(this.sqExpr, this.aggregate);
         }
@@ -2221,6 +2230,10 @@ module powerbi.data {
         }
 
         public visitPercentile(percentile: FieldExprPercentilePattern): SQExpr {
+            return this.defaultRewrite();
+        }
+
+        public visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): SQExpr {
             return this.defaultRewrite();
         }
 

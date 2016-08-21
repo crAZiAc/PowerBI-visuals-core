@@ -72,6 +72,11 @@ module powerbi.visuals {
                 displayName: data.createDisplayNameGetter('Role_DisplayName_Gradient'),
                 description: data.createDisplayNameGetter('Role_DisplayName_GradientDescription'),
                 requiredTypes: [{ numeric: true }, { integer: true }],
+            }, {
+                name: 'Tooltips',
+                kind: VisualDataRoleKind.Measure,
+                displayName: data.createDisplayNameGetter('Role_DisplayName_Tooltips'),
+                joinPredicate: JoinPredicateBehavior.None,
             }
         ],
         objects: {
@@ -104,6 +109,7 @@ module powerbi.visuals {
                         description: data.createDisplayNameGetter('Role_DisplayName_ValuesDescription'),
                         type: { fillRule: {} },
                         rule: {
+                            conditions: [{ 'Series': { max: 0 } }],
                             inputRole: 'Size',
                             output: {
                                 property: 'fill',
@@ -146,6 +152,7 @@ module powerbi.visuals {
                             { bind: { to: 'X' } },
                             { bind: { to: 'Y' } },
                             { bind: { to: 'Size' } },
+                            { for: { in: 'Tooltips' } }
                         ],
                         dataReductionAlgorithm: { top: {} }
                     }

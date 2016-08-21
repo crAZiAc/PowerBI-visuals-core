@@ -26,50 +26,67 @@
 
 @import (reference) "../../../../styles/styles.less";
 
-.Timeline {
+.timeline {
+    font-family: @regularFontFamily;
+
+    cursor: default;
+
     .label,
     .mainArea .label,
     .upperTextCell,
     .lowerTextCell {
         text-anchor: middle;
     }
+
     .cellRect {
         stroke: #333444;
     }
+
     .selection{
         &Cursor {
             fill: gray;
         }
+
         &RangeContainer {
-            float: none;
-            position: absolute;
             text-anchor: start;
         }
     }
+
     .timelineSlicer {
-        position: absolute;
-        top: 20px;
-        right: 17px;
         fill: #000000;
 
-        .periodSlicer{
+        .periodSlicer {
             &Rect {
                 stroke: #aaa;
                 stroke-width: 2px;
                 fill: transparent;
             }
-            &Granularities {
-                font-family: sans-serif;
-                font-size: 10px;
-            }
+
+            &Granularities,
             &Selection {
-                font-family: sans-serif;
                 font-size: 10px;
                 text-anchor: middle;
             }
+
             &SelectionRect {
                 fill: transparent;
             }
+
+            &Rect,
+            &SelectionRect {
+                -webkit-tap-highlight-color: transparent;
+            }
         }
+
+        .periodSlicerRect {
+            pointer-events: none;
+        }
+    }
+
+    .periodSlicerSelectionRect,
+    .timelineVertLine,
+    .cellRect,
+    .selectionCursor {
+        cursor: pointer;
     }
 }

@@ -30,18 +30,18 @@ module powerbitests.customVisuals {
     powerbitests.mocks.setLocale();
     import VisualClass = powerbi.visuals.samples.WordCloud;
     import colorAssert = powerbitests.helpers.assertColorsMatch;
-    import CountriesData = powerbitests.customVisuals.sampleDataViews.CountriesData;
+    import WordCloudData = powerbitests.customVisuals.sampleDataViews.WordCloudData;
     import VisualSettings = powerbi.visuals.samples.WordCloudSettings;
 
     describe("WordCloud", () => {
         let visualBuilder: WordCloudBuilder;
-        let defaultDataViewBuilder: CountriesData;
+        let defaultDataViewBuilder: WordCloudData;
         let dataView: powerbi.DataView;
         let settings:VisualSettings;
 
         beforeEach(() => {
             visualBuilder = new WordCloudBuilder(1000,500);
-            defaultDataViewBuilder = new CountriesData();
+            defaultDataViewBuilder = new WordCloudData();
             dataView = defaultDataViewBuilder.getDataView();
             settings = dataView.metadata.objects = <any>new VisualSettings();
         });
@@ -82,7 +82,7 @@ module powerbitests.customVisuals {
                             .toBe(0);
                         done();
                     });
-                }, 300);
+                }, 500);
             });
 
             it("Word returns after word stop property is changed back", (done) => {
@@ -104,7 +104,7 @@ module powerbitests.customVisuals {
                                 .toBeGreaterThan(0);
                             done();
                         });
-                    }, 300);
+                    }, 500);
                 }, 300);
             });
 
@@ -142,10 +142,10 @@ module powerbitests.customVisuals {
             });
 
             it("click on first visual, then click on the second visual doesn't remove items", (done) => {
-                defaultDataViewBuilder.valuesCategory = [
-                    "car collision hallway fall crash hallway",
-                    "car collision hallway hallway",
-                    "car collision person person car injure"
+                defaultDataViewBuilder.valuesCategoryValues = [
+                    ["car collision hallway fall crash hallway", 1],
+                    ["car collision hallway hallway", 2],
+                    ["car collision person person car injure", 3]
                 ];
 
                 dataView = defaultDataViewBuilder.getDataView();
@@ -172,6 +172,26 @@ module powerbitests.customVisuals {
                     });
 
                 }, 300);
+            });
+
+            it("max number of words test", (done) => {
+                var maxNumberOfWords = 30;
+                defaultDataViewBuilder.valuesCategoryValues.forEach((x, i) => x[1] = 1000 + i);
+                dataView = defaultDataViewBuilder.getDataView();
+                settings = dataView.metadata.objects = <any>new VisualSettings();
+
+                settings.general.isBrokenText = false;
+                settings.general.maxNumberOfWords = maxNumberOfWords;
+                visualBuilder.updateflushAllD3TransitionsRenderTimeout(dataView, () => {
+                    expect(visualBuilder.wordsText.length).toEqual(maxNumberOfWords);
+                    done();
+                }, 300);
+            });
+
+            it("null word values test", () => {
+                dataView.categorical.categories[0].values = dataView.categorical.categories[0].values
+                    .map((x, i) => (i % 2 === 0) ? null : x);
+                expect(() => visualBuilder.update(dataView)).not.toThrowError();
             });
         });
     });

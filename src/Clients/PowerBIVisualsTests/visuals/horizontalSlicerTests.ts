@@ -79,16 +79,16 @@ module powerbitests {
             jasmine.clock().uninstall();
         });
 
-        it("DOM validation", () => {
+        it("DOM validation", (done) => {
             spyOn(powerbi.visuals.valueFormatter, "format").and.callThrough();
 
-            helpers.runWithImmediateAnimationFrames(() => {
+            helpers.executeWithDelay(() => {
                 helpers.fireOnDataChanged(visual, interactiveDataViewOptions);
-
                 expect($(".horizontalSlicerContainer")).toBeInDOM();
-                expect($(".horizontalSlicerContainer .headerText")).toBeInDOM();
-                expect($(".horizontalSlicerContainer .slicerHeader .clear")).toBeInDOM();
+                expect($(".slicer-header-wrapper .slicer-header .slicer-header-title")).toBeInDOM();
+                expect($(".slicer-header-wrapper .slicer-header .slicer-header-clear")).toBeInDOM();
                 expect($(".horizontalSlicerContainer .slicerBody")).toBeInDOM();
+
                 expect($(".horizontalSlicerContainer.canScrollLeft")).not.toBeInDOM();
                 expect($(".horizontalSlicerContainer.canScrollRight")).not.toBeInDOM();
                 expect($(".horizontalSlicerContainer .slicerBody .slicerItemsContainer .slicerText")).toBeInDOM();
@@ -107,9 +107,10 @@ module powerbitests {
 
                 visual.onResizing(viewport);
                 jasmine.clock().tick(0);
+
                 expect($(".horizontalSlicerContainer")).toBeInDOM();
-                expect($(".horizontalSlicerContainer .headerText")).toBeInDOM();
-                expect($(".horizontalSlicerContainer .slicerHeader .clear")).toBeInDOM();
+                expect($(".slicer-header-wrapper .slicer-header .slicer-header-title")).toBeInDOM();
+                expect($(".slicer-header-wrapper .slicer-header .slicer-header-clear")).toBeInDOM();
                 expect($(".horizontalSlicerContainer .slicerBody")).toBeInDOM();
                 expect($(".horizontalSlicerContainer.canScrollLeft")).not.toBeInDOM();
                 expect($(".horizontalSlicerContainer.canScrollRight")).toBeInDOM();
@@ -121,10 +122,11 @@ module powerbitests {
                 expect(slicerText.first().attr('title').trim()).toBe(slicerHelper.SelectAllTextKey);
                 expect(slicerText.last().text()).toBe("Kiwi");
                 expect(slicerText.last().attr('title')).toBe("Kiwi");
-            });
+                done();
+            }, DefaultWaitForRender);
         });
 
-        it("DOM Validation - Tooltip of Long Text", () => {
+        it("DOM Validation - Tooltip of Long Text", (done) => {
             let dataView2: powerbi.DataView = {
                 metadata: dataViewMetadataWithLongName,
                 categorical: {
@@ -140,16 +142,14 @@ module powerbitests {
                     }]
                 }
             };
-
-            helpers.runWithImmediateAnimationFrames(() => {
-                helpers.fireOnDataChanged(visual, { dataViews: [dataView2] });
-                jasmine.clock().tick(50);
-
-                // TODO: figure out why this is failing!!!
+            dataView2.metadata.objects = slicerHelper.buildDefaultDataViewObjects(SlicerOrientation.Horizontal, false);
+            helpers.fireOnDataChanged(visual, { dataViews: [dataView2] });
+            jasmine.clock().tick(0);
+            helpers.executeWithDelay(() => {
                 //Test Slicer header tooltip
-                //let header = $(".horizontalSlicerContainer .slicerHeader");
-                //expect(header).toBeInDOM();
-                //expect(header.first().attr('title')).toBe(dataView2.metadata.columns[0].displayName);
+                let header = $(".slicer-header-wrapper .slicer-header");
+                expect(header).toBeInDOM();
+                expect(header.find(".slicer-header-text").attr('title')).toBe(dataView2.metadata.columns[0].displayName);
 
                 //Test Slicer Items tooltip
                 slicerText = getSlicerTextContainer();
@@ -157,7 +157,8 @@ module powerbitests {
                 for (let i = 0; i < dataView2.categorical.categories[0].values.length; i++) {
                     expect(slicerText[i].title).toBe(dataView2.categorical.categories[0].values[i]);
                 }
-            });
+                done();
+            }, 300);
         });
 
         it("Text wraps into multiple columns when there is no enough space", () => {
@@ -236,7 +237,7 @@ module powerbitests {
                 let slicerBody = $(".slicerBody").get(0);
 
                 // Right Navigation
-                slicerBody.dispatchEvent(helpers.createMouseWheelEvent("mousewheel", 0, -100, 0));
+                slicerBody.dispatchEvent(helpers.createMouseWheelEvent("mousewheel", -100, 0, -100, 0));
                 jasmine.clock().tick(0);
                 slicerText = getSlicerTextContainer();
                 expect($(".horizontalSlicerContainer.canScrollLeft")).toBeInDOM();
@@ -248,7 +249,7 @@ module powerbitests {
                 expect(slicerText.last().attr('title')).toBe("Banana");
 
                 // Left Navigation
-                slicerBody.dispatchEvent(helpers.createMouseWheelEvent("mousewheel", 0, 100, 0));
+                slicerBody.dispatchEvent(helpers.createMouseWheelEvent("mousewheel", 100, 0, 100, 0));
                 jasmine.clock().tick(0);
                 slicerText = getSlicerTextContainer();
                 expect($(".horizontalSlicerContainer.canScrollLeft")).not.toBeInDOM();
@@ -261,23 +262,25 @@ module powerbitests {
             });
         });
 
-        it("Validate scroll behavior with 1 visible item", () => {
+        it("Validate scroll behavior with 1 visible item", (done) => {
             // smaller dataset          
             let dataview2 = slicerHelper.buildSequenceDataView(field, 0, 3);
             dataview2.metadata.objects = slicerHelper.buildDefaultDataViewObjects(SlicerOrientation.Horizontal);
 
-            helpers.runWithImmediateAnimationFrames(() => {
+            helpers.executeWithDelay(() => {
                 helpers.fireOnDataChanged(visual, { dataViews: [dataview2] });
 
                 let viewport = {
                     height: 200,
-                    width: 80
-                };
+                    width: 75
+                }; 
+
                 visual.onResizing(viewport);
                 jasmine.clock().tick(0);
                 slicerText = getSlicerTextContainer();
                 expect(slicerText.length).toBe(1);
                 slicerHelper.validateSlicerItem(WrappedSelectAllTextKey, 0);
+                
 
                 // Right Navigation
                 navigate(NavigationDirection.Right);
@@ -309,7 +312,8 @@ module powerbitests {
                 navigate(NavigationDirection.Left);
                 jasmine.clock().tick(0);
                 slicerHelper.validateSlicerItem(WrappedSelectAllTextKey, 0);
-            });
+                done();
+            }, DefaultWaitForRender);
         });
 
         it("DOM Validation - SearchHeader visible", () => {

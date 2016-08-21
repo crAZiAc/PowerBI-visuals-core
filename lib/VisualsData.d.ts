@@ -326,6 +326,20 @@ declare module powerbi.data {
         From: EntitySource[];
         Where: QueryFilter[];
     }
+    interface GroupingDefinition {
+        Version: number;
+        Sources: EntitySource[];
+        GroupedColumns: QueryExpressionContainer[];
+        GroupItems?: GroupItem[];
+        BinItem?: BinItem;
+    }
+    interface GroupItem {
+        DisplayName: string;
+        Expression?: QueryExpressionContainer;
+    }
+    interface BinItem {
+        Expression: QueryExpressionContainer;
+    }
     enum EntitySourceType {
         Table = 0,
         Pod = 1,
@@ -621,6 +635,7 @@ declare module powerbi.data {
         Expression: QueryExpressionContainer;
     }
 }
+
 declare module powerbi.data {
     import INumberDictionary = jsCommon.INumberDictionary;
     interface DataViewTransformApplyOptions {
@@ -680,6 +695,7 @@ declare module powerbi.data {
     module DataViewTransform {
         function apply(options: DataViewTransformApplyOptions): DataView[];
         function transformObjects(dataView: DataView, targetDataViewKinds: StandardDataViewKinds, objectDescriptors: DataViewObjectDescriptors, objectDefinitions: DataViewObjectDefinitions, selectTransforms: DataViewSelectTransform[], colorAllocatorFactory: IColorAllocatorFactory): void;
+        function mergeObjects(targetObjects: DataViewObjects, sourceObjects: _.Dictionary<DataViewObject>, selector: Selector): void;
         function createValueColumns(values?: DataViewValueColumn[], valueIdentityFields?: SQExpr[], source?: DataViewMetadataColumn): DataViewValueColumns;
         function setGrouped(values: DataViewValueColumns, groupedResult?: DataViewValueColumnGroup[]): void;
     }
@@ -1036,6 +1052,7 @@ declare module powerbi.data {
         transform: string;
         constructor(role: string, transform?: string);
         accept<T, TArg>(visitor: ISQExprVisitorWithArg<T, TArg>, arg?: TArg): T;
+        getMetadata(federatedSchema: FederatedConceptualSchema): SQExprMetadata;
     }
     /** Provides utilities for creating & manipulating expressions. */
     module SQExprBuilder {
@@ -1304,7 +1321,7 @@ declare module powerbi {
             color?: SQExpr;
         };
     }
-    module FillDefinitionHelpers {
+    module fillDefinitionHelpers {
         function createSolidFillDefinition(color: string): FillDefinition;
         function createSolidFillSQExpr(color: string): SQExpr | StructuralObjectDefinition;
     }
@@ -1847,8 +1864,6 @@ declare module powerbi.visuals {
         allowFormatBeautification?: boolean;
         /** Specifies the maximum number of decimal places to show*/
         precision?: number;
-        /** Detect axis precision based on value */
-        detectAxisPrecision?: boolean;
         /** Specifies the column type of the data value */
         columnType?: ValueTypeDescriptor;
     }
@@ -1894,6 +1909,7 @@ declare module powerbi.visuals {
          * @returns Formatted value
          */
         function formatVariantMeasureValue(value: any, column: DataViewMetadataColumn, formatStringProp: DataViewObjectPropertyIdentifier, nullsAreBlank?: boolean): string;
+        function createDisplayUnitSystem(displayUnitSystemType?: DisplayUnitSystemType): DisplayUnitSystem;
         function getFormatString(column: DataViewMetadataColumn, formatStringProperty: DataViewObjectPropertyIdentifier, suppressTypeFallback?: boolean): string;
         /** The returned string will look like 'A, B, ..., and C'  */
         function formatListAnd(strings: string[]): string;
@@ -1916,6 +1932,7 @@ declare module powerbi.data {
          * Related code: DataViewTransform.findSelectedCategoricalColumn(...)
          */
         function setCategoriesDataViewObjects(prototypeCategories: DataViewCategoryColumn[], objects: DataViewObjects[]): DataViewCategoryColumn[];
+        function getRowCount(dataViewCategorical: DataViewCategorical): number;
     }
 }
 
@@ -2027,13 +2044,19 @@ declare module powerbi.data {
          */
         function isForAnyRole(metadataColumn: DataViewMetadataColumn, targetRoles: string[]): boolean;
         /**
-         * Left-joins each metadata column of the specified target roles in the specified columnSources
+         * Left-joins each metadata column (filtered by filterByRoles if specified) in the specified columnSources
          * with projection ordering index into a wrapper object.
          *
-         * If a metadata column is for one of the target roles but its select index is not projected, the projectionOrderIndex property
+         * The filterByRoles is just an optimization to avoid joining the irrevalent elements in columnSources.
+         * If filterByRoles is undefined, then every non-projected source in columnSources will result in a corresponding element with
+         * undefined projectionOrderIndex in the return value.
+         * If filterByRoles is specified, then only the non-projected sources in columnSources that have any one of those roles will
+         * result in corresponding elements with undefined projectionOrderIndex in the return value.
+         *
+         * If a metadata column passes the filterByRoles check and its select index is not projected, the projectionOrderIndex property
          * in that MetadataColumnAndProjectionIndex object will be undefined.
          *
-         * If a metadata column is for one of the target roles and its select index is projected more than once, that metadata column
+         * If a metadata column passes the filterByRoles check and its select index is projected more than once, that metadata column
          * will be included in multiple MetadataColumnAndProjectionIndex objects, once per occurrence in projection.
          *
          * If the specified projectionOrdering does not contain duplicate values, then the returned objects will be in the same order
@@ -2044,10 +2067,10 @@ declare module powerbi.data {
          * the DataViewHierarchyLevel.sources and DataViewMatrix.valueSources array properties.
          *
          * @param columnSources E.g. DataViewHierarchyLevel.sources, DataViewMatrix.valueSources...
-         * @param projectionOrdering The select indices in projection ordering.  It should be the ordering for the specified target roles.
-         * @param roles The roles for filtering out the irrevalent columns in columnSources.
+         * @param projectionOrdering The select indices in projection ordering.  It should be the ordering for the specified filterByRoles.
+         * @param filterByRoles The roles for filtering out the irrevalent columns in columnSources. Optional.
          */
-        function leftJoinMetadataColumnsAndProjectionOrder(columnSources: DataViewMetadataColumn[], projectionOrdering: number[], roles: string[]): MetadataColumnAndProjectionIndex[];
+        function leftJoinMetadataColumnsAndProjectionOrder(columnSources: DataViewMetadataColumn[], projectionOrdering: number[], filterByRoles?: string[]): MetadataColumnAndProjectionIndex[];
     }
 }
 
@@ -2268,13 +2291,11 @@ declare module powerbi {
         function getUserDefinedObjects(objects: DataViewObjects, objectName: string): DataViewObjectMap;
         /** Gets the solid color from a fill property. */
         function getFillColor(objects: DataViewObjects, propertyId: DataViewObjectPropertyIdentifier, defaultColor?: string): string;
-        /** Returns true if the given object represents a collection of user-defined objects */
-        function isUserDefined(objectOrMap: DataViewObject | DataViewObjectMap): boolean;
     }
     module DataViewObject {
         function getValue<T>(object: DataViewObject, propertyName: string, defaultValue?: T): T;
         /** Gets the solid color from a fill property using only a propertyName */
-        function getFillColorByPropertyName(objects: DataViewObjects, propertyName: string, defaultColor?: string): string;
+        function getFillColorByPropertyName(object: DataViewObject, propertyName: string, defaultColor?: string): string;
     }
 }
 
@@ -2294,6 +2315,7 @@ declare module powerbi.data {
     module DataViewObjectDefinitions {
         /** Creates or reuses a DataViewObjectDefinition for matching the given objectName and selector within the defns. */
         function ensure(defns: DataViewObjectDefinitions, objectName: string, selector: Selector): DataViewObjectDefinition;
+        function updateSelector(defns: DataViewObjectDefinitions, objectName: string, oldSelector: Selector, newSelector: Selector): void;
         /**
          * Delete a object definition from Defns if it matches objName + selector
          * @param {DataViewObjectDefinitions} defns
@@ -2310,7 +2332,7 @@ declare module powerbi.data {
         function deleteProperties(targetDefns: DataViewObjectDefinitions, sourceDefns: DataViewObjectDefinitions): void;
         /**
          * Fills in missing properties with default ones, mutating the first definitions.
-         * Properties are matched agains defaultDefns using ObjectName, Selector, and PropertyName.
+         * Properties are matched against defaultDefns using ObjectName, Selector, and PropertyName.
          * It just fills missing properties, it doesn't overwrite existing ones.
          * Any property already in targetDefns will not change.
          * Any property in defaultDefns but not in targetDefns will be added by reference.
@@ -2358,6 +2380,10 @@ declare module powerbi.data {
     }
     module DataViewObjectDefinition {
         function deleteSingleProperty(defn: DataViewObjectDefinition, propertyName: string): void;
+        /**
+         * Determines if a given property name is valid.
+         */
+        function isValidPropertyName(propertyName: string): boolean;
     }
 }
 
@@ -2379,7 +2405,7 @@ declare module powerbi.data {
 
 declare module powerbi.data {
     interface DataViewObjectDefinitionsByRepetition {
-        metadataOnce?: DataViewObjectDefinitionsForSelector;
+        metadataOnce?: DataViewObjectDefinitionsForSelector[];
         userDefined?: DataViewObjectDefinitionsForSelector[];
         metadata?: DataViewObjectDefinitionsForSelector[];
         data: DataViewObjectDefinitionsForSelectorWithRule[];
@@ -2396,7 +2422,7 @@ declare module powerbi.data {
         properties: DataViewObjectPropertyDefinitions;
     }
     module DataViewObjectEvaluationUtils {
-        function evaluateDataViewObjects(evalContext: IEvalContext, objectDescriptors: DataViewObjectDescriptors, objectDefns: DataViewNamedObjectDefinition[]): DataViewObjects;
+        function evaluateDataViewObjects(evalContext: IEvalContext, objectDescriptors: DataViewObjectDescriptors, objectDefns: DataViewNamedObjectDefinition[]): _.Dictionary<DataViewObject>;
         function groupObjectsBySelector(objectDefinitions: DataViewObjectDefinitions): DataViewObjectDefinitionsByRepetition;
         function addImplicitObjects(objectsForAllSelectors: DataViewObjectDefinitionsByRepetition, objectDescriptors: DataViewObjectDescriptors, columns: DataViewMetadataColumn[], selectTransforms: DataViewSelectTransform[]): void;
     }
@@ -2411,6 +2437,7 @@ declare module powerbi.data {
         function evaluateValue(evalContext: IEvalContext, definition: SQExpr | RuleEvaluation, valueType: ValueType): any;
     }
 }
+
 declare module powerbi.data {
     /** Responsible for evaluating and setting DataViewCategorical's values grouped() function. */
     module DataViewCategoricalEvalGrouped {
@@ -2586,15 +2613,33 @@ declare module powerbi.data {
         function create(queryDataViewMetadata: DataViewMetadata, objectDescriptors: DataViewObjectDescriptors, dataViewMappings: DataViewMapping[], dataRoles: VisualDataRole[], transforms: DataViewTransformActions, colorAllocatorFactory: IColorAllocatorFactory): DataViewTransformContext;
     }
 }
+
 declare module powerbi.data {
     import INumberDictionary = jsCommon.INumberDictionary;
+    import VisualDataRole = powerbi.VisualDataRole;
     /**
      * Responsible for applying projection order and split selects to DataViewCategorical.
      * If the specified prototype DataView needs to get transformed, the transformed DataView will be returned.
      * Else, the prototype DataView itself will be returned.
+     *
+     * Some terminologies that are used in this file (the exact wording might be different depending on who you talk to, but the concepts are the same):
+     *
+     * category columns / categories:
+     *   The fields on primary axis.  If there are multiple, they will be in one composite level on the hierarchy.
+     *
+     * dynamic series measures:
+     *   The measures that are under the scope of the secondary axis, repeated for every series group instance.  That implies there is a grouping field on the secondary axis.
+     *
+     * static series measures:
+     *   The measures that are NOT under the scope of the secondary axis.  In query DataView, it is possible to have static series measures
+     *   even if there is a grouping field on the secondary axis (e.g. the line measures in a combo chart.)
+     *
+     * valueGroups:
+     *   If the secondary axis has a grouping field, then valueGroups refers to the instances of that group.
+     *   Otherwise, the secondary axis has no grouping field, and valueGroups will contain the single static instance that contains the static series measures.
      */
     module DataViewCategoricalProjectionOrder {
-        function apply(prototype: DataView, applicableRoleMappings: DataViewMapping[], projectionOrdering: DataViewProjectionOrdering, splitSelects: INumberDictionary<boolean>): DataView;
+        function apply(prototype: DataView, applicableRoleMappings: DataViewMapping[], dataRoles: VisualDataRole[], projectionOrdering: DataViewProjectionOrdering, splitSelects: INumberDictionary<boolean>): DataView;
     }
 }
 
@@ -2826,6 +2871,7 @@ declare module powerbi.data {
         percentile?: FieldExprPercentilePattern;
         percentOfGrandTotal?: FieldExprPercentOfGrandTotalPattern;
         selectRef?: FieldExprSelectRefPattern;
+        transformOutputRoleRef?: FieldExprTransformOutputRoleRefPattern;
     }
     /** By design there is no default, no-op visitor. Components concerned with patterns need to be aware of all patterns as they are added. */
     interface IFieldExprPatternVisitor<T> {
@@ -2841,6 +2887,7 @@ declare module powerbi.data {
         visitPercentile(percentile: FieldExprPercentilePattern): T;
         visitPercentOfGrandTotal(percentOfGrandTotal: FieldExprPercentOfGrandTotalPattern): T;
         visitSelectRef(selectRef: FieldExprSelectRefPattern): T;
+        visitTransformOutputRoleRef(transformOutputRoleRef: FieldExprTransformOutputRoleRefPattern): T;
     }
     interface FieldExprEntityPattern {
         schema: string;
@@ -2883,6 +2930,9 @@ declare module powerbi.data {
         baseExpr: FieldExprPattern;
     }
     interface FieldExprSelectRefPattern {
+        expressionName: string;
+    }
+    interface FieldExprTransformOutputRoleRefPattern {
         expressionName: string;
     }
     module SQExprBuilder {
@@ -2957,6 +3007,7 @@ declare module powerbi {
         function validateRange(value: number, roleCondition: RoleCondition, ignoreMin?: boolean): DataViewMappingMatchErrorCode;
         /** Determines the appropriate DataViewMappings for the projections. */
         function chooseDataViewMappings(projections: QueryProjectionsByRole, mappings: DataViewMapping[], roleKindByQueryRef: RoleKindByQueryRef, objectDescriptors?: DataViewObjectDescriptors, objectDefinitions?: DataViewObjectDefinitions): DataViewMappingResult;
+        function checkForConditionErrors(projections: QueryProjectionsByRole, condition: DataViewMappingCondition, roleKindByQueryRef: RoleKindByQueryRef): DataViewMappingMatchError[];
         function getPropertyCount(roleName: string, projections: QueryProjectionsByRole, useActiveIfAvailable?: boolean): number;
         function hasSameCategoryIdentity(dataView1: DataView, dataView2: DataView): boolean;
         function areMetadataColumnsEquivalent(column1: DataViewMetadataColumn, column2: DataViewMetadataColumn): boolean;
@@ -3269,12 +3320,15 @@ declare module powerbi {
     interface ScriptResult {
         source: string;
         provider: string;
+        outputType: string;
     }
     module ScriptResultUtil {
-        function findScriptResult(dataViewMappings: DataViewMapping[] | data.CompiledDataViewMapping[]): DataViewScriptResultMapping | data.CompiledDataViewScriptResultMapping;
+        function findScriptResultMapping(dataViewMappings: DataViewMapping[] | data.CompiledDataViewMapping[]): DataViewScriptResultMapping | data.CompiledDataViewScriptResultMapping;
         function extractScriptResult(dataViewMappings: data.CompiledDataViewMapping[]): ScriptResult;
-        function extractScriptResultFromVisualConfig(dataViewMappings: DataViewMapping[], objects: powerbi.data.DataViewObjectDefinitions): ScriptResult;
-        function getScriptInput(projections: QueryProjectionsByRole, selects: ArrayNamedItems<data.NamedSQExpr>, schema: FederatedConceptualSchema): data.ScriptInput;
+        function extractScriptResultFromVisualConfig(dataViewMappings: DataViewMapping[], objects: data.DataViewObjectDefinitions): ScriptResult;
+        function extractScriptResultDefaultFromDataViewMappings(dataViewMappings: DataViewMapping[] | data.CompiledDataViewMapping[]): ScriptResult;
+        function extractScriptResultDefaultFromDataViewMappingScriptDefinition(scriptMapping: DataViewMappingScriptDefinition | data.CompiledDataViewMappingScriptDefinition): ScriptResult;
+        function getScriptInput(projections: QueryProjectionsByRole, selects: ArrayNamedItems<data.NamedSQExpr>, schema: FederatedConceptualSchema, customRoleSupport: boolean): data.ScriptInput;
     }
 }
 
@@ -3715,6 +3769,7 @@ declare module powerbi {
             hasPermile: boolean;
             precision: number;
             scale: number;
+            partsPerScale: number;
         }
         interface NumberFormatComponents {
             hasNegative: boolean;
@@ -3741,7 +3796,7 @@ declare module powerbi {
          * @param (optional) calculatePrecision - calculate precision of positive format
          * @param (optional) calculateScale - calculate scale of positive format
          */
-        function getCustomFormatMetadata(format: string, calculatePrecision?: boolean, calculateScale?: boolean): NumericFormatMetadata;
+        function getCustomFormatMetadata(format: string, calculatePrecision?: boolean, calculateScale?: boolean, calculatePartsPerScale?: boolean): NumericFormatMetadata;
     }
     var formattingService: IFormattingService;
 }
@@ -3761,6 +3816,7 @@ declare module powerbi.visuals {
         highlight: boolean;
         constructor(selector: Selector, highlight: boolean);
         equals(other: SelectionId): boolean;
+        static isEqual(one: SelectionId, other: SelectionId): boolean;
         /**
          * Checks equality against other for all identifiers existing in this.
          */

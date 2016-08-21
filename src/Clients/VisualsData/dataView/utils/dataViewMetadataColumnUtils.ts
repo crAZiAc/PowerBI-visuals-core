@@ -75,13 +75,19 @@ module powerbi.data {
         }
 
         /**
-         * Left-joins each metadata column of the specified target roles in the specified columnSources 
+         * Left-joins each metadata column (filtered by filterByRoles if specified) in the specified columnSources 
          * with projection ordering index into a wrapper object.
          * 
-         * If a metadata column is for one of the target roles but its select index is not projected, the projectionOrderIndex property
+         * The filterByRoles is just an optimization to avoid joining the irrevalent elements in columnSources.
+         * If filterByRoles is undefined, then every non-projected source in columnSources will result in a corresponding element with 
+         * undefined projectionOrderIndex in the return value.
+         * If filterByRoles is specified, then only the non-projected sources in columnSources that have any one of those roles will   
+         * result in corresponding elements with undefined projectionOrderIndex in the return value.
+         * 
+         * If a metadata column passes the filterByRoles check and its select index is not projected, the projectionOrderIndex property
          * in that MetadataColumnAndProjectionIndex object will be undefined.
          * 
-         * If a metadata column is for one of the target roles and its select index is projected more than once, that metadata column
+         * If a metadata column passes the filterByRoles check and its select index is projected more than once, that metadata column
          * will be included in multiple MetadataColumnAndProjectionIndex objects, once per occurrence in projection.
          *
          * If the specified projectionOrdering does not contain duplicate values, then the returned objects will be in the same order 
@@ -92,18 +98,18 @@ module powerbi.data {
          * the DataViewHierarchyLevel.sources and DataViewMatrix.valueSources array properties.
          *
          * @param columnSources E.g. DataViewHierarchyLevel.sources, DataViewMatrix.valueSources...
-         * @param projectionOrdering The select indices in projection ordering.  It should be the ordering for the specified target roles.
-         * @param roles The roles for filtering out the irrevalent columns in columnSources.
+         * @param projectionOrdering The select indices in projection ordering.  It should be the ordering for the specified filterByRoles.
+         * @param filterByRoles The roles for filtering out the irrevalent columns in columnSources. Optional.
          */
         export function leftJoinMetadataColumnsAndProjectionOrder(
             columnSources: DataViewMetadataColumn[],
             projectionOrdering: number[],
-            roles: string[]): MetadataColumnAndProjectionIndex[] {
+            filterByRoles?: string[]): MetadataColumnAndProjectionIndex[] {
             debug.assertAnyValue(columnSources, 'columnSources');
             debug.assert(_.every(columnSources, column => _.isNumber(column.index)),
                 'pre-condition: Every value in columnSources must already have its Select Index property initialized.');
             debug.assertValue(projectionOrdering, 'projectionOrdering');
-            debug.assertNonEmpty(roles, 'roles');
+            debug.assertAnyValue(filterByRoles, 'filterByRoles');
 
             let jointResult: MetadataColumnAndProjectionIndex[] = [];
 
@@ -112,7 +118,7 @@ module powerbi.data {
 
                 for (let j = 0, jlen = columnSources.length; j < jlen; j++) {
                     var column = columnSources[j];
-                    if (isForAnyRole(column, roles)) {
+                    if (!filterByRoles || isForAnyRole(column, filterByRoles)) {
                         let projectionIndices: number[] = selectIndexToProjectionIndicesMap[column.index];
                         if (!_.isEmpty(projectionIndices)) {
                             for (let projectionIndex of projectionIndices) {

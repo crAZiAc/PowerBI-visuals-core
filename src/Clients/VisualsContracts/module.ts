@@ -51,5 +51,6 @@ require("./extensibility/iVisual.d.ts");
 require("./extensibility/Versioning.d.ts");
 require("./extensibility/versions/v1.0.0.d.ts");
 require("./extensibility/versions/v1.1.0.d.ts");
+require("./extensibility/versions/v1.2.0.d.ts");
 require("./extensibility/components/iSelectionManager.d.ts");
 require("./extensibility/components/iSelectionIdBuilder.d.ts");

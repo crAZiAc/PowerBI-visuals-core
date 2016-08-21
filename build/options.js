@@ -14,7 +14,9 @@ var minimist = require("minimist"),
             "tslintOnBuild",
             "tslintOnChange",
             "buildWithoutTests", //disable build/watch tests during gulp build/watch tasks.
-            "watch" // to run karma in autoWatch mode - triggers tests run on change
+            "watch", // to run karma in autoWatch mode - triggers tests run on change
+            "minifyPackage",
+            "copyTSFilesToPackage"
         ],
         alias: {
             msbuildVersion: "msbv",

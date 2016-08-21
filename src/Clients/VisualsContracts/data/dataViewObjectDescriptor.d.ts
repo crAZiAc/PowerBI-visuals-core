@@ -51,10 +51,10 @@ declare module powerbi.data {
         description?: DisplayNameGetter;
         placeHolderText?: DisplayNameGetter;
         type: DataViewObjectPropertyTypeDescriptor;
-        rule?: DataViewObjectPropertyRuleDescriptor;        
+        rule?: DataViewObjectPropertyRuleDescriptor;
 
         /** Indicates whether the Format Painter should ignore this property. */
-        suppressFormatPainterCopy?: boolean;   
+        suppressFormatPainterCopy?: boolean;
     }
 
     export type DataViewObjectPropertyTypeDescriptor = ValueTypeDescriptor | StructuralTypeDescriptor;
@@ -65,6 +65,9 @@ declare module powerbi.data {
 
         /** Defines the output for rule-typed properties. */
         output?: DataViewObjectPropertyRuleOutputDescriptor;
+
+        /** Defines the conditions under which this rule applies */
+        conditions?: DataViewMappingCondition[];
     }
 
     export interface DataViewObjectPropertyRuleOutputDescriptor {
@@ -74,5 +77,5 @@ declare module powerbi.data {
         /** Names roles that define the selector for the output properties. */
         selector: string[];
     }
-    
+
 }

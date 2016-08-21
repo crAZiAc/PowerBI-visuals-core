@@ -63,7 +63,7 @@ module powerbi.data {
             debug.assertValue(leftFilter, 'leftFilter');
             debug.assertValue(rightFilter, 'rightFilter');
             
-            return ArrayExtensions.sequenceEqual<SQExpr>(leftFilter.target, rightFilter.target, SQExpr.equals);
+            return ArrayExtensions.sequenceEqual(leftFilter.target, rightFilter.target, SQExpr.equals);
         }
         
         export function contains(filters: SQFilter[], searchTarget: SQFilter): boolean {

@@ -33,6 +33,9 @@ declare module powerbi.data {
 
         /** The name of this column expected by the script. */
         Name: string;
+
+        /** The data role name */
+        Role?: string;
     }
 
     export interface ScriptInput {

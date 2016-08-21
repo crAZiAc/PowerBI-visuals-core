@@ -511,10 +511,10 @@ module powerbitests.customVisuals {
                 });
 
                 it("renderCrosshair - elements should be in DOM", () => {
-                    let element: D3.Selection;
+                    let element: D3.Selection,
+                        data: IEnhancedScatterChartData = createMockOfEnhancedScatterChartDataForCrosshair(true);
 
-                    enhancedScatterInstance.setData([dataView]);
-                    element = enhancedScatterInstance.renderCrosshair();
+                    element = enhancedScatterInstance.renderCrosshair(data);
 
                     expect(element.node()).toBeInDOM();
 
@@ -526,18 +526,46 @@ module powerbitests.customVisuals {
                 });
 
                 it("bindCrosshairEvents - should be called", () => {
+                    let data: IEnhancedScatterChartData = createMockOfEnhancedScatterChartDataForCrosshair(true);
+
                     spyOn(enhancedScatterInstance, "bindCrosshairEvents");
 
-                    enhancedScatterInstance.setData([dataView]);
-                    enhancedScatterInstance.renderCrosshair();
+                    enhancedScatterInstance.renderCrosshair(data);
 
                     expect(enhancedScatterInstance.bindCrosshairEvents).toHaveBeenCalled();
+                });
+
+                it("clearCrosshair should be called when crosshair is turned off",  () => {
+                    let data: IEnhancedScatterChartData = createMockOfEnhancedScatterChartDataForCrosshair(false);
+
+                    spyOn(enhancedScatterInstance, "clearCrosshair");
+
+                    enhancedScatterInstance.renderCrosshair(data);
+
+                    expect(enhancedScatterInstance.clearCrosshair).toHaveBeenCalled();
                 });
 
                 function expectElementsShouldBeInDOM(element: D3.Selection, selectors: string[]): void {
                     selectors.forEach((selector: string) => {
                         expect(element.select(selector).node()).toBeInDOM();
                     });
+                }
+
+                function createMockOfEnhancedScatterChartDataForCrosshair(
+                    crosshair: boolean): IEnhancedScatterChartData {
+                    return {
+                        crosshair: crosshair,
+                        useShape: false,
+                        useCustomColor: false,
+                        xCol: null,
+                        yCol: null,
+                        dataPoints: [],
+                        legendData: null,
+                        axesLabels: null,
+                        sizeRange: null,
+                        dataLabelsSettings: null,
+                        selectedIds: []
+                    };
                 }
             });
         });

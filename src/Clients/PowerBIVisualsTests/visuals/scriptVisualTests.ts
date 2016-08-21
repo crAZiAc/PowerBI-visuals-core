@@ -44,14 +44,14 @@ module powerbitests {
 
             if (imageData) {
                 options.dataViews[0].scriptResult = {
-                    imageBase64: imageData
+                    payloadBase64: imageData
                 };
             }
 
             return options;
         };
 
-        export function buildInitOptions(element: JQuery, viewport: powerbi.IViewport, hostServices: powerbi.IVisualHostServices) {            
+        export function buildInitOptions(element: JQuery, viewport: powerbi.IViewport, hostServices: powerbi.IVisualHostServices) {
             let options = {
                 element: $(element[0]),
                 host: hostServices,
@@ -105,9 +105,8 @@ module powerbitests {
                     height: element.height(),
                     width: element.width() 
                 };
-                let hostServices = mocks.createVisualHostServices();
-                let initOptions = ScriptVisualHelpers.buildInitOptions(element, viewport, hostServices);
-                scriptVisual = new ScriptVisual({ canRefresh: true });
+                let initOptions = ScriptVisualHelpers.buildInitOptions(element, viewport, undefined);
+                scriptVisual = new ScriptVisual();
                 scriptVisual.init(initOptions);
             });
 
@@ -136,38 +135,6 @@ module powerbitests {
                 expect(isUrlEqual).toBeTruthy();
                 expect(imageDiv.css('height')).toBe(viewport.height + 'px');
                 expect(imageDiv.css('width')).toBe(viewport.width + 'px');
-            });
-
-            it('visual with static image shows a warning', () => {
-                let warningSpy = jasmine.createSpy('setWarnings');
-                let hostServices = mocks.createVisualHostServices();
-                hostServices.setWarnings = warningSpy;
-
-                scriptVisual = new ScriptVisual({ canRefresh: false });
-                let visualInitOptions = ScriptVisualHelpers.buildInitOptions(element, viewport, hostServices);
-                scriptVisual.init(visualInitOptions);
-
-                let visualUpdateOptions = ScriptVisualHelpers.buildUpdateOptions(viewport, {}, 'iVBORw0KGgoAAAANSUhEUgAAA3gAAAIQ');
-                scriptVisual.update(visualUpdateOptions);
-
-                expect(warningSpy).toHaveBeenCalled();
-                expect(warningSpy.calls.count()).toBe(1);
-                expect(warningSpy.calls.argsFor(0)[0][0].code).toBe('ScriptVisualNotRefreshed');
-            });
-
-            it('non-static visual should not show a warning', () => {
-                let warningSpy = jasmine.createSpy('setWarnings');
-                let hostServices = mocks.createVisualHostServices();
-                hostServices.setWarnings = warningSpy;
-
-                scriptVisual = new ScriptVisual({ canRefresh: true });
-                let visualInitOptions = ScriptVisualHelpers.buildInitOptions(element, viewport, hostServices);
-                scriptVisual.init(visualInitOptions);
-
-                let visualUpdateOptions = ScriptVisualHelpers.buildUpdateOptions(viewport, {}, 'iVBORw0KGgoAAAANSUhEUgAAA3gAAAIQ');
-                scriptVisual.update(visualUpdateOptions);
-
-                expect(warningSpy).not.toHaveBeenCalled();
             });
         });
     });

@@ -5474,6 +5474,18 @@ declare module _ {
         take<W, T>(
             array: List<T>,
             whereValue: W): T[];
+
+        /**
+         * Creates a slice of array with n elements taken from the end.
+         *
+         * @param array The array to query.
+         * @param n The number of elements to take.
+         * @return Returns the slice of array.
+         */
+        takeRight<T>(
+            array: List<T>,
+            n?: number
+        ): T[];
     }
 
     interface LoDashArrayWrapper<T> {
@@ -5572,6 +5584,11 @@ declare module _ {
         * @param whereValue "_.where" style callback value
         **/
         take<W>(whereValue: W): LoDashArrayWrapper<T>;
+
+        /**
+         * @see _.takeRight
+         */
+        takeRight(n?: number): LoDashArrayWrapper<T>;
     }
 
     //_.flatten
@@ -11164,6 +11181,7 @@ declare module D3 {
         altKey: any;
         ctrlKey: any;
         shiftKey: any;
+        metaKey: boolean;
         type: string;
     }
 
@@ -12904,7 +12922,7 @@ declare module D3 {
                 (value: number): Axis;
             }
             tickFormat(): (any) => string;
-            tickFormat(formatter: (value: any) => string): Axis;
+            tickFormat(formatter: (value: any, index: number) => string): Axis;
             nice(count?: number): Axis;
         }
 

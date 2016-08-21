@@ -100,10 +100,11 @@ module powerbitests.helpers {
 
         private getDefaultObjects(): DataViewObjects {
             return {
-                forecast: [{
-                    id: '1',
-                    object: { show: true },
-                }]
+                forecast: {
+                    $instances: {
+                        '1': { show: true },
+                    }
+                }
             };
         }
 

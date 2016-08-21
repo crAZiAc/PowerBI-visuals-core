@@ -227,7 +227,7 @@ module powerbi.visuals {
                 value = row.values[columnIndex];
             }
 
-            let cellItem = new TablixUtils.TablixVisualCell(value, isTotal, columnItem, this.formatter, false);
+            let cellItem = new TablixUtils.TablixVisualCell(value, false, false, isTotal, false, columnItem, this.formatter, false);
             cellItem.position = position;
 
             let tableRow = <DataViewVisualTableRow>rowItem;
@@ -742,10 +742,6 @@ module powerbi.visuals {
         }
     }
 
-    export interface TableConstructorOptions {
-        isTouchEnabled?: boolean;
-    }
-
     export class Table implements IVisual {
         private static preferredLoadMoreThreshold: number = 0.8;
 
@@ -754,7 +750,7 @@ module powerbi.visuals {
         private style: IVisualStyle;
         private formatter: ICustomValueColumnFormatter;
         private isInteractive: boolean;
-        private isTouchEnabled: boolean;
+        private isTouchDisabled: boolean;
         private getLocalizedString: (stringId: string) => string;
         private hostServices: IVisualHostServices;
 
@@ -771,10 +767,8 @@ module powerbi.visuals {
         */
         public persistingObjects: boolean;
 
-        constructor(options?: TableConstructorOptions) {
-            if (options) {
-                this.isTouchEnabled = options.isTouchEnabled;
-            }
+        constructor(options?: TablixUtils.TablixConstructorOptions) {
+            this.isTouchDisabled = options && options.isTouchDisabled;
         }
 
         public static customizeQuery(options: CustomizeQueryOptions): void {
@@ -955,7 +949,7 @@ module powerbi.visuals {
 
             let tablixOptions: controls.TablixOptions = {
                 interactive: this.isInteractive,
-                enableTouchSupport: this.isTouchEnabled,
+                enableTouchSupport: !this.isTouchDisabled,
                 layoutKind: layoutKind,
                 fontSize: TablixObjects.getTextSizeInPx(textSize),
             };
@@ -1089,6 +1083,9 @@ module powerbi.visuals {
         }
 
         public onViewModeChanged(viewMode: ViewMode): void {
+            /* On Edit mode, we need to disable touch bindings to allow touch 
+             * to control visual container position and not causing scrolling */
+            this.tablixControl.toggleTouchBindings(viewMode !== ViewMode.Edit);
             /* Refreshes the column headers to enable/disable Column resizing */
             this.updateViewport(this.currentViewport);
         }
