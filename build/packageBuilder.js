@@ -432,7 +432,7 @@ PackageBuilder.createApprovedVisualsList = function(callback) {
     var customVisuals = getFolders(CUSTOM_VISUALS_PATH);
     var approvedResources = [];
 
-    for(var customVisual of customVisuals) {
+    for(var customVisual in customVisuals) {
         if(PACKAGE_SKIPLIST.indexOf(customVisual) < 0 ) {
             var pb = new PackageBuilder(customVisual);
             approvedResources.push(pb.getPackageGuid());
